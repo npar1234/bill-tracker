@@ -458,15 +458,19 @@
 
     <div class="settings-section" style="border-top:2px solid #e5e7eb;padding-top:20px;margin-top:4px">
       <h4>&#9729; Cloud Sync</h4>
-      <p style="font-size:13px;color:#6b7280;margin-bottom:14px">No account needed. Uses <strong><a href="https://jsonblob.com" target="_blank" style="color:#4f46e5">JSONBlob.com</a></strong> as private storage. Data is <strong>AES-256 encrypted</strong> in your browser before upload &mdash; only devices with your passphrase can read it.</p>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:14px">Uses your <strong>GitHub account</strong> as private encrypted storage. Data is <strong>AES-256 encrypted</strong> before upload — only devices with your passphrase can read it. Uses the same GitHub token as your deploy script.</p>
       <div id="syncStatusBar" style="margin-bottom:12px"></div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label style="font-size:13px;font-weight:600;color:#374151">GitHub Token <span style="font-weight:400;color:#9ca3af">(same one from deploy setup)</span></label>
+        <input id="syncToken" type="password" placeholder="ghp_..." style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:13px;font-family:monospace">
+      </div>
       <div class="form-group" style="margin-bottom:10px">
         <label style="font-size:13px;font-weight:600;color:#374151">Encryption Passphrase</label>
         <input id="syncPassphrase" type="password" placeholder="Choose a strong passphrase (same on all devices)" style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:14px">
       </div>
       <div class="form-group" style="margin-bottom:12px">
-        <label style="font-size:13px;font-weight:600;color:#374151">Blob ID <span style="font-weight:400;color:#9ca3af">(auto-created on first connect)</span></label>
-        <input id="syncBlobId" placeholder="Leave blank to create new &mdash; or paste existing ID" style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:13px;font-family:monospace">
+        <label style="font-size:13px;font-weight:600;color:#374151">Gist ID <span style="font-weight:400;color:#9ca3af">(auto-created on first connect)</span></label>
+        <input id="syncGistId" placeholder="Leave blank to create new — or paste existing ID" style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:13px;font-family:monospace">
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn-primary btn-sm" onclick="syncSetup()">&#128275; Connect</button>
@@ -984,13 +988,14 @@ function openSettingsModal() {
   renderReminderChips();
   renderFreqChips();
   updateNotifStatus();
+  if (syncConfig.token)      document.getElementById('syncToken').value      = syncConfig.token;
   if (syncConfig.passphrase) document.getElementById('syncPassphrase').value = syncConfig.passphrase;
-  if (syncConfig.blobId)     document.getElementById('syncBlobId').value     = syncConfig.blobId;
+  if (syncConfig.gistId)     document.getElementById('syncGistId').value     = syncConfig.gistId;
   const _syncBar = document.getElementById('syncStatusBar');
-  if (_syncBar && syncConfig.enabled && syncConfig.blobId) {
+  if (_syncBar && syncConfig.enabled && syncConfig.gistId) {
     const _t = syncConfig.lastPush ? new Date(syncConfig.lastPush).toLocaleString() : 'never';
     _syncBar.style.cssText = 'background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:10px 14px;border-radius:10px;font-size:13px';
-    _syncBar.innerHTML = '&#10003; Connected &mdash; Blob ID: <code style="background:#fff;padding:2px 6px;border-radius:4px;font-size:12px">' + syncConfig.blobId + '</code>' +
+    _syncBar.innerHTML = '✓ Connected &mdash; Gist ID: <code style="background:#fff;padding:2px 6px;border-radius:4px;font-size:12px">' + syncConfig.gistId + '</code>' +
       '<br><span style="font-size:11px;color:#6b7280">Last push: ' + _t + '</span>';
   }
   document.getElementById("settingsModal").classList.remove("hidden");
@@ -2147,7 +2152,7 @@ function renderSavings() {
 
 
 // ════════════════════════════════════════════════════
-//  CLOUD SYNC  (JSONBlob.com + AES-256-GCM encryption)
+//  CLOUD SYNC  (GitHub Gist + AES-256-GCM encryption)
 // ════════════════════════════════════════════════════
 const SYNC_KEY = 'billTracker_sync';
 
@@ -2167,82 +2172,86 @@ async function deriveCryptoKey(passphrase, saltHex) {
   const keyMaterial = await crypto.subtle.importKey(
     'raw', enc.encode(passphrase), { name: 'PBKDF2' }, false, ['deriveKey']
   );
-  const salt = hexToBytes(saltHex);
   return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: 250000, hash: 'SHA-256' },
-    keyMaterial,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
+    { name: 'PBKDF2', salt: hexToBytes(saltHex), iterations: 250000, hash: 'SHA-256' },
+    keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
   );
 }
-
 function bytesToHex(buf) {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
 function hexToBytes(hex) {
   const arr = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < hex.length; i += 2) arr[i/2] = parseInt(hex.slice(i, i+2), 16);
+  for (let i = 0; i < hex.length; i += 2) arr[i/2] = parseInt(hex.slice(i,i+2), 16);
   return arr;
 }
-
 async function encryptData(plaintext, passphrase, saltHex) {
   const key = await deriveCryptoKey(passphrase, saltHex);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const encoded = new TextEncoder().encode(plaintext);
-  const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
-  // Store as: ivHex + ':' + ciphertextHex
-  return bytesToHex(iv) + ':' + bytesToHex(cipherBuf);
+  const iv  = crypto.getRandomValues(new Uint8Array(12));
+  const buf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(plaintext));
+  return bytesToHex(iv) + ':' + bytesToHex(buf);
 }
-
 async function decryptData(payload, passphrase, saltHex) {
   const [ivHex, cipherHex] = payload.split(':');
   const key = await deriveCryptoKey(passphrase, saltHex);
-  const iv = hexToBytes(ivHex);
-  const cipher = hexToBytes(cipherHex);
-  const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher);
-  return new TextDecoder().decode(plainBuf);
+  const buf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: hexToBytes(ivHex) }, key, hexToBytes(cipherHex));
+  return new TextDecoder().decode(buf);
 }
 
 // ── Status display ────────────────────────────────────────────────────────────
 function setSyncStatus(st, msg) {
   const el  = document.getElementById('syncStatus');
   const bar = document.getElementById('syncStatusBar');
-  const ICON = { syncing:'&#8635; ', ok:'&#10003; ', error:'&#10007; ', ready:'&#9729; ', off:'' };
-  const HCOL = { syncing:'rgba(255,255,255,0.2)', ok:'rgba(34,197,94,0.25)', error:'rgba(239,68,68,0.3)', ready:'rgba(255,255,255,0.15)', off:'' };
-  const BCOL = { syncing:'#eff6ff:#bfdbfe:#1d4ed8', ok:'#f0fdf4:#bbf7d0:#166534', error:'#fef2f2:#fecaca:#991b1b', ready:'#f0fdf4:#bbf7d0:#166534', off:'::' };
+  const ICONS = { syncing:'⟳ ', ok:'✓ ', error:'✗ ', ready:'☁ ', off:'' };
+  const HBGS  = { syncing:'rgba(255,255,255,0.2)', ok:'rgba(34,197,94,0.25)', error:'rgba(239,68,68,0.3)', ready:'rgba(255,255,255,0.15)' };
+  const BCSS  = {
+    syncing:'background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;padding:10px 14px;border-radius:10px;font-size:13px',
+    ok:     'background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:10px 14px;border-radius:10px;font-size:13px',
+    error:  'background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:10px 14px;border-radius:10px;font-size:13px',
+    ready:  'background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:10px 14px;border-radius:10px;font-size:13px',
+  };
+  const DEFAULT_MSG = { syncing:'Syncing…', ok:'Saved', error:'Sync error', ready:'Cloud sync on' };
   if (el) {
     el.style.display = st === 'off' ? 'none' : 'flex';
-    el.style.background = HCOL[st] || '';
-    el.innerHTML = (ICON[st]||'') + (msg || { syncing:'Syncing…', ok:'Saved', error:'Sync error', ready:'Cloud sync on' }[st] || '');
+    if (st !== 'off') { el.style.background = HBGS[st]||''; el.innerHTML = (ICONS[st]||'') + (msg || DEFAULT_MSG[st] || ''); }
   }
-  if (bar && st !== 'off') {
-    const [bg, bd, cl] = (BCOL[st]||'::').split(':');
-    bar.style.cssText = bg ? `background:${bg};border:1px solid ${bd};color:${cl};padding:10px 14px;border-radius:10px;font-size:13px` : '';
-    bar.innerHTML = (ICON[st]||'') + (msg || '');
+  if (bar) {
+    if (st === 'off') { bar.innerHTML = ''; bar.style.cssText = ''; }
+    else { bar.style.cssText = BCSS[st]||''; bar.innerHTML = (ICONS[st]||'') + (msg || DEFAULT_MSG[st] || ''); }
   }
+}
+
+// ── GitHub Gist API ───────────────────────────────────────────────────────────
+async function gistRequest(method, path, token, body) {
+  const res = await fetch('https://api.github.com' + path, {
+    method,
+    headers: {
+      'Authorization': 'token ' + token,
+      'Accept': 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json'
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'HTTP ' + res.status);
+  }
+  return res.json();
 }
 
 // ── Core sync operations ──────────────────────────────────────────────────────
 async function syncPush(silent) {
-  if (!syncConfig.blobId || !syncConfig.passphrase) return;
+  if (!syncConfig.gistId || !syncConfig.token || !syncConfig.passphrase) return;
   if (!silent) setSyncStatus('syncing');
   try {
-    const plain = JSON.stringify(state);
-    const encrypted = await encryptData(plain, syncConfig.passphrase, syncConfig.salt);
-    const payload = JSON.stringify({ v: 1, d: encrypted });
-
-    const res = await fetch('https://jsonblob.com/api/jsonBlob/' + syncConfig.blobId, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: payload
+    const encrypted = await encryptData(JSON.stringify(state), syncConfig.passphrase, syncConfig.salt);
+    await gistRequest('PATCH', '/gists/' + syncConfig.gistId, syncConfig.token, {
+      files: { 'bill-tracker-data.txt': { content: encrypted } }
     });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-
     syncConfig.lastPush = new Date().toISOString();
     saveSyncConfig(syncConfig);
     const t = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-    setSyncStatus('ok', '&#10003; Saved ' + t);
+    setSyncStatus('ok', '✓ Saved ' + t);
     if (!silent) setTimeout(() => setSyncStatus('ready'), 3000);
   } catch(e) {
     setSyncStatus('error', 'Push failed: ' + e.message);
@@ -2250,35 +2259,24 @@ async function syncPush(silent) {
 }
 
 async function syncPull() {
-  if (!syncConfig.blobId || !syncConfig.passphrase) { alert('Connect sync first.'); return; }
+  if (!syncConfig.gistId || !syncConfig.token || !syncConfig.passphrase) { alert('Connect sync first.'); return; }
   setSyncStatus('syncing');
   try {
-    const res = await fetch('https://jsonblob.com/api/jsonBlob/' + syncConfig.blobId, {
-      headers: { 'Accept': 'application/json' }
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const envelope = await res.json();
-    if (!envelope || envelope.v !== 1 || !envelope.d) throw new Error('Unexpected data format');
-
+    const gist = await gistRequest('GET', '/gists/' + syncConfig.gistId, syncConfig.token);
+    const encrypted = gist.files['bill-tracker-data.txt']?.content;
+    if (!encrypted) throw new Error('No data found in gist');
     let plain;
-    try {
-      plain = await decryptData(envelope.d, syncConfig.passphrase, syncConfig.salt);
-    } catch(e) {
-      throw new Error('Decryption failed — wrong passphrase?');
-    }
+    try { plain = await decryptData(encrypted, syncConfig.passphrase, syncConfig.salt); }
+    catch(e) { throw new Error('Decryption failed — wrong passphrase?'); }
     const data = JSON.parse(plain);
-    if (!data || !data.bills) throw new Error('Invalid data after decryption');
-
+    if (!data?.bills) throw new Error('Invalid data');
     const nav = { currentMonth: state.currentMonth, currentYear: state.currentYear,
       view: 'dashboard', filterCat: 'all', editId: null, editIncomeId: null,
       editPropertyId: null, editExpenseId: null, editSavingsId: null, editSavingsTxnId: null };
     Object.assign(state, data, nav);
-    saveState();
-    render();
-    if (state.view === 'rental')  renderRental();
-    if (state.view === 'savings') renderSavings();
+    saveState(); render();
     const t = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-    setSyncStatus('ok', '&#10003; Pulled ' + t);
+    setSyncStatus('ok', '✓ Pulled ' + t);
     setTimeout(() => setSyncStatus('ready'), 3000);
   } catch(e) {
     setSyncStatus('error', e.message);
@@ -2286,9 +2284,11 @@ async function syncPull() {
 }
 
 async function syncSetup() {
+  const token      = document.getElementById('syncToken').value.trim();
   const passphrase = document.getElementById('syncPassphrase').value.trim();
-  const blobId     = document.getElementById('syncBlobId').value.trim();
-  if (!passphrase) { alert('Enter a passphrase first — you\'ll need the same one on every device.'); return; }
+  const gistId     = document.getElementById('syncGistId').value.trim();
+  if (!token)      { alert('Paste your GitHub token first.'); return; }
+  if (!passphrase) { alert('Enter a passphrase first.'); return; }
   if (passphrase.length < 8) { alert('Use at least 8 characters for your passphrase.'); return; }
 
   setSyncStatus('syncing');
@@ -2296,95 +2296,73 @@ async function syncSetup() {
   if (bar) { bar.style.cssText = 'background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;padding:10px 14px;border-radius:10px;font-size:13px'; bar.textContent = 'Connecting…'; }
 
   try {
-    // Generate a random salt (stays constant for this device's config)
     const salt = syncConfig.salt || bytesToHex(crypto.getRandomValues(new Uint8Array(16)));
-    const plain = JSON.stringify(state);
-    const encrypted = await encryptData(plain, passphrase, salt);
-    const payload = JSON.stringify({ v: 1, d: encrypted });
+    const encrypted = await encryptData(JSON.stringify(state), passphrase, salt);
+    let finalGistId = gistId;
 
-    let finalBlobId = blobId;
-    if (!finalBlobId) {
-      // Create new blob
-      const res = await fetch('https://jsonblob.com/api/jsonBlob', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: payload
+    if (!finalGistId) {
+      const created = await gistRequest('POST', '/gists', token, {
+        description: 'Bill Tracker Sync Data',
+        public: false,
+        files: { 'bill-tracker-data.txt': { content: encrypted } }
       });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      // Blob ID is in the Location header: https://jsonblob.com/api/jsonBlob/{id}
-      const location = res.headers.get('Location') || '';
-      finalBlobId = location.split('/').pop();
-      if (!finalBlobId) throw new Error('Could not get blob ID from response');
+      finalGistId = created.id;
     } else {
-      // Update existing blob
-      const res = await fetch('https://jsonblob.com/api/jsonBlob/' + finalBlobId, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: payload
+      await gistRequest('PATCH', '/gists/' + finalGistId, token, {
+        files: { 'bill-tracker-data.txt': { content: encrypted } }
       });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
     }
 
-    syncConfig = { blobId: finalBlobId, passphrase, salt, enabled: true, lastPush: new Date().toISOString() };
+    syncConfig = { token, passphrase, salt, gistId: finalGistId, enabled: true, lastPush: new Date().toISOString() };
     saveSyncConfig(syncConfig);
+    document.getElementById('syncGistId').value = finalGistId;
 
-    document.getElementById('syncBlobId').value = finalBlobId;
-    setSyncStatus('ok', '&#10003; Connected');
+    setSyncStatus('ok', '✓ Connected');
     if (bar) {
       bar.style.cssText = 'background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:10px 14px;border-radius:10px;font-size:13px';
-      bar.innerHTML = '&#10003; Connected! Share your <strong>Blob ID</strong> to other devices:<br>' +
-        '<code style="background:#fff;padding:3px 8px;border-radius:4px;font-size:12px;user-select:all;display:inline-block;margin-top:4px">' + finalBlobId + '</code>' +
-        '<br><span style="font-size:11px;color:#6b7280;margin-top:4px;display:block">Use the same passphrase + this ID on every device.</span>';
+      bar.innerHTML = '✓ Connected! Share your <strong>Gist ID</strong> to other devices:<br>' +
+        '<code style="background:#fff;padding:3px 8px;border-radius:4px;font-size:12px;user-select:all;display:inline-block;margin-top:4px">' + finalGistId + '</code>' +
+        '<br><span style="font-size:11px;color:#6b7280;margin-top:4px;display:block">Use the same token + passphrase + this ID on every device.</span>';
     }
     setTimeout(() => setSyncStatus('ready'), 4000);
-
   } catch(e) {
     setSyncStatus('error', 'Setup failed: ' + e.message);
   }
 }
 
 function syncDisconnect() {
-  if (!confirm('Disconnect cloud sync? Your local data and the remote blob are kept.')) return;
+  if (!confirm('Disconnect cloud sync? Your local data and the remote gist are kept.')) return;
   syncConfig = {};
   saveSyncConfig(syncConfig);
   setSyncStatus('off');
+  ['syncToken','syncPassphrase','syncGistId'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   const bar = document.getElementById('syncStatusBar');
   if (bar) bar.innerHTML = '';
-  const pp = document.getElementById('syncPassphrase');
-  if (pp) pp.value = '';
-  const bi = document.getElementById('syncBlobId');
-  if (bi) bi.value = '';
 }
 
 function scheduleSyncPush() {
   if (syncTimer) clearTimeout(syncTimer);
-  if (!syncConfig.blobId || !syncConfig.passphrase) return;
+  if (!syncConfig.gistId || !syncConfig.token || !syncConfig.passphrase) return;
   syncTimer = setTimeout(() => syncPush(true), 2000);
 }
 
 async function syncOnLoad() {
-  if (!syncConfig.enabled || !syncConfig.blobId || !syncConfig.passphrase) return;
+  if (!syncConfig.enabled || !syncConfig.gistId || !syncConfig.token || !syncConfig.passphrase) return;
   setSyncStatus('syncing');
   try {
-    const res = await fetch('https://jsonblob.com/api/jsonBlob/' + syncConfig.blobId, {
-      headers: { 'Accept': 'application/json' }
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const envelope = await res.json();
-    if (!envelope || envelope.v !== 1 || !envelope.d) throw new Error('Unexpected format');
-
+    const gist = await gistRequest('GET', '/gists/' + syncConfig.gistId, syncConfig.token);
+    const encrypted = gist.files['bill-tracker-data.txt']?.content;
+    if (!encrypted) throw new Error('No data in gist');
     let plain;
-    try { plain = await decryptData(envelope.d, syncConfig.passphrase, syncConfig.salt); }
-    catch(e) { throw new Error('Decryption failed — wrong passphrase?'); }
-
+    try { plain = await decryptData(encrypted, syncConfig.passphrase, syncConfig.salt); }
+    catch(e) { throw new Error('Decryption failed'); }
     const data = JSON.parse(plain);
-    if (data && data.bills) {
+    if (data?.bills) {
       const nav = { currentMonth: state.currentMonth, currentYear: state.currentYear,
         view: 'dashboard', filterCat: 'all', editId: null, editIncomeId: null,
         editPropertyId: null, editExpenseId: null, editSavingsId: null, editSavingsTxnId: null };
       Object.assign(state, data, nav);
-      saveState();
-      render();
+      saveState(); render();
     }
     setSyncStatus('ready');
   } catch(e) {
@@ -2399,7 +2377,7 @@ initCategorySelect();
 render();
 checkAndNotify();
 startCheckInterval();
-if (syncConfig.enabled && syncConfig.blobId) setSyncStatus('ready');
+if (syncConfig.enabled && syncConfig.gistId) setSyncStatus('ready');
 syncOnLoad();
 
 </script>
