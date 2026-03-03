@@ -1,0 +1,2407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bill Tracker</title>
+<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQmlsbCBUcmFja2VyIiwic2hvcnRfbmFtZSI6IkJpbGxzIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJzdGFydF91cmwiOiIuIiwiYmFja2dyb3VuZF9jb2xvciI6IiNmOGZhZmMiLCJ0aGVtZV9jb2xvciI6IiM0ZjQ2ZTUifQ==">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; color: #1e293b; min-height: 100vh; }
+
+  .header { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 28px 32px 0; color: #fff; }
+  .header-inner { max-width: 960px; margin: 0 auto; }
+  .header-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+  .header p { margin-top: 4px; opacity: 0.8; font-size: 14px; }
+  .header-btns { display: flex; gap: 8px; align-items: center; }
+  .month-nav { display: flex; align-items: center; gap: 16px; margin-top: 20px; }
+  .month-nav span { font-size: 18px; font-weight: 600; min-width: 150px; text-align: center; }
+  .month-btn { background: rgba(255,255,255,0.15); border: none; color: #fff; border-radius: 8px; width: 34px; height: 34px; cursor: pointer; font-size: 16px; }
+  .month-btn:hover { background: rgba(255,255,255,0.25); }
+  .tabs { display: flex; gap: 4px; margin-top: 16px; overflow-x: auto; }
+  .tab { background: transparent; border: none; color: #fff; padding: 10px 18px; border-radius: 10px 10px 0 0; cursor: pointer; font-size: 14px; font-weight: 400; white-space: nowrap; }
+  .tab.active { background: rgba(255,255,255,0.25); font-weight: 700; }
+  .tab:hover:not(.active) { background: rgba(255,255,255,0.1); }
+
+  .btn-add { background: rgba(255,255,255,0.2); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.3); color: #fff; border-radius: 10px; padding: 10px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-add:hover { background: rgba(255,255,255,0.3); }
+  .btn-icon { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 10px; width: 40px; height: 40px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; position: relative; }
+  .btn-icon:hover { background: rgba(255,255,255,0.25); }
+  .btn-icon .notif-dot { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; background: #ef4444; border-radius: 99px; border: 2px solid #4f46e5; }
+  .btn-primary { background: #4f46e5; color: #fff; border: none; border-radius: 10px; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .btn-primary:hover { background: #4338ca; }
+  .btn-secondary { background: #f3f4f6; color: #374151; border: none; border-radius: 10px; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .btn-secondary:hover { background: #e5e7eb; }
+  .btn-sm { padding: 6px 14px; font-size: 13px; border-radius: 8px; }
+
+  .main { max-width: 960px; margin: 0 auto; padding: 24px 16px 40px; }
+
+  /* Alert banners */
+  .alert-banner { border-radius: 12px; padding: 14px 18px; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 12px; }
+  .alert-banner.danger { background: #fef2f2; border: 1px solid #fecaca; }
+  .alert-banner.warning { background: #fffbeb; border: 1px solid #fde68a; }
+  .alert-banner.info { background: #eff6ff; border: 1px solid #bfdbfe; }
+  .alert-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+  .alert-content { flex: 1; }
+  .alert-title { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+  .alert-banner.danger .alert-title { color: #991b1b; }
+  .alert-banner.warning .alert-title { color: #92400e; }
+  .alert-banner.info .alert-title { color: #1e40af; }
+  .alert-text { font-size: 13px; color: #4b5563; line-height: 1.4; }
+  .alert-dismiss { background: none; border: none; font-size: 18px; cursor: pointer; color: #9ca3af; padding: 0 0 0 8px; }
+
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .summary-card { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border-left: 4px solid var(--accent); }
+  .summary-card .label { font-size: 11px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .summary-card .value { font-size: 22px; font-weight: 700; color: var(--accent); margin-top: 4px; }
+  .summary-card .sub { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+
+  .progress-card { background: #fff; border-radius: 14px; padding: 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .progress-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
+  .progress-header span:first-child { font-weight: 600; }
+  .progress-header span:last-child { color: #6b7280; }
+  .progress-track { background: #e5e7eb; border-radius: 99px; height: 12px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
+
+  .two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+  .panel { background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .panel h3 { font-size: 16px; margin-bottom: 14px; }
+
+  .upcoming-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+  .upcoming-item:last-child { border-bottom: none; }
+  .upcoming-name { font-size: 14px; font-weight: 600; }
+  .upcoming-due { font-size: 12px; color: #9ca3af; }
+  .upcoming-amount { font-size: 14px; font-weight: 700; text-align: right; }
+
+  .cat-row { margin-bottom: 14px; }
+  .cat-row:last-child { margin-bottom: 0; }
+  .cat-header { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+  .cat-header span:first-child { font-weight: 600; }
+  .cat-header span:last-child { color: #6b7280; }
+  .cat-track { background: #f1f5f9; border-radius: 99px; height: 8px; overflow: hidden; }
+  .cat-fill { height: 100%; border-radius: 99px; transition: width 0.3s; }
+
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .filter-btn { border: none; border-radius: 10px; padding: 6px 14px; font-size: 13px; cursor: pointer; font-weight: 600; }
+
+  .bill-list { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .bill-row { display: flex; align-items: center; padding: 14px 20px; border-bottom: 1px solid #f1f5f9; gap: 14px; }
+  .bill-row:last-child { border-bottom: none; }
+  .bill-row.paid { opacity: 0.6; }
+  .check-btn { width: 26px; height: 26px; border-radius: 8px; border: 2px solid #d1d5db; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #fff; flex-shrink: 0; }
+  .check-btn.checked { background: #4f46e5; border-color: #4f46e5; }
+  .cat-dot { width: 10px; height: 10px; border-radius: 99px; flex-shrink: 0; }
+  .bill-info { flex: 1; min-width: 0; }
+  .bill-name { font-size: 15px; font-weight: 600; }
+  .bill-name.struck { text-decoration: line-through; }
+  .bill-meta { font-size: 12px; color: #9ca3af; }
+  .bill-right { text-align: right; margin-right: 8px; }
+  .bill-amount { font-size: 16px; font-weight: 700; }
+  .bill-actions { display: flex; gap: 4px; }
+  .bill-actions button { background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px; }
+
+  .badge { padding: 2px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; display: inline-block; margin-top: 2px; }
+  .badge-paid { background: #dcfce7; color: #166534; }
+  .badge-overdue { background: #fee2e2; color: #991b1b; }
+  .badge-soon { background: #fef3c7; color: #92400e; }
+  .badge-upcoming { background: #e0e7ff; color: #3730a3; }
+  .badge-autopay { background: #dbeafe; color: #1d4ed8; font-size: 11px; padding: 1px 8px; }
+  .badge-manual { background: #f3f4f6; color: #6b7280; font-size: 11px; padding: 1px 8px; }
+
+  .history-list, .income-list { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .list-header { padding: 16px 20px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
+  .list-header h3 { font-size: 16px; margin: 0; }
+  .history-row, .income-row { display: flex; align-items: center; padding: 14px 20px; border-bottom: 1px solid #f1f5f9; gap: 14px; }
+  .history-icon { width: 38px; height: 38px; border-radius: 10px; background: #dcfce7; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .income-icon { width: 38px; height: 38px; border-radius: 10px; background: #dbeafe; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .row-info { flex: 1; }
+  .row-name { font-size: 14px; font-weight: 600; }
+  .row-meta { font-size: 12px; color: #9ca3af; }
+  .row-right { text-align: right; }
+  .row-amount { font-size: 15px; font-weight: 700; }
+  .row-sub { font-size: 12px; color: #9ca3af; }
+
+  /* Calendar */
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-header-cell { text-align: center; font-size: 12px; font-weight: 700; color: #6b7280; padding: 8px 0; text-transform: uppercase; }
+  .cal-cell { background: #fff; border-radius: 10px; min-height: 80px; padding: 6px; border: 1px solid #e5e7eb; position: relative; }
+  .cal-cell.empty { background: #f9fafb; border-color: #f1f5f9; }
+  .cal-cell.today { border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79,70,229,0.15); }
+  .cal-day { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 4px; }
+  .cal-cell.today .cal-day { color: #4f46e5; }
+  .cal-pip { font-size: 10px; padding: 2px 6px; border-radius: 6px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; font-weight: 600; cursor: pointer; }
+  .cal-pip.bill { background: #fee2e2; color: #991b1b; }
+  .cal-pip.bill.is-paid { background: #dcfce7; color: #166534; text-decoration: line-through; }
+  .cal-pip.income { background: #dbeafe; color: #1e40af; }
+  .cal-more { font-size: 10px; color: #9ca3af; text-align: center; margin-top: 2px; }
+
+  .budget-bar-wrap { background: #fff; border-radius: 14px; padding: 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .budget-labels { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+  .budget-track { background: #e5e7eb; border-radius: 99px; height: 18px; overflow: hidden; position: relative; }
+  .budget-fill-expense { height: 100%; border-radius: 99px; transition: width 0.4s; }
+  .budget-pct { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #374151; }
+
+  /* Settings panel */
+  .settings-section { margin-bottom: 24px; }
+  .settings-section h4 { font-size: 15px; font-weight: 700; margin-bottom: 12px; color: #1e293b; }
+  .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-label { font-size: 14px; font-weight: 500; }
+  .settings-desc { font-size: 12px; color: #9ca3af; margin-top: 2px; }
+  .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: #d1d5db; border-radius: 99px; transition: 0.2s; }
+  .toggle-slider:before { content: ""; position: absolute; height: 18px; width: 18px; left: 3px; bottom: 3px; background: #fff; border-radius: 99px; transition: 0.2s; }
+  .toggle input:checked + .toggle-slider { background: #4f46e5; }
+  .toggle input:checked + .toggle-slider:before { transform: translateX(20px); }
+  .chip-group { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { padding: 6px 14px; border-radius: 99px; font-size: 13px; font-weight: 600; border: 2px solid #e5e7eb; background: #fff; cursor: pointer; color: #374151; }
+  .chip.active { border-color: #4f46e5; background: #eef2ff; color: #4f46e5; }
+  .notif-status { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; }
+  .notif-status.enabled { background: #dcfce7; color: #166534; }
+  .notif-status.disabled { background: #fef3c7; color: #92400e; }
+  .notif-status.unsupported { background: #fee2e2; color: #991b1b; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+  .modal { background: #fff; border-radius: 16px; padding: 28px; width: 100%; max-width: 480px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .modal-header h3 { font-size: 18px; }
+  .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: #9ca3af; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 4px; }
+  .form-group input, .form-group select { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 14px; outline: none; }
+  .form-group input:focus, .form-group select:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-check { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .form-check label { font-size: 14px; }
+  .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+  .empty { padding: 24px; color: #9ca3af; text-align: center; font-size: 14px; }
+  .hidden { display: none; }
+
+
+  /* Rental */
+  .property-selector { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+  .property-tab { padding: 8px 18px; border-radius: 10px; border: 2px solid #e5e7eb; background: #fff; color: #374151; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .property-tab.active { border-color: #f59e0b; background: #fffbeb; color: #92400e; }
+  .rent-btn { width: 100%; padding: 16px; border-radius: 14px; border: 2px dashed #10b981; background: #f0fdf4; color: #166534; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 20px; transition: background 0.15s; }
+  .rent-btn:hover { background: #dcfce7; }
+  .rent-btn.received { border-style: solid; background: #dcfce7; }
+  .rental-list { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .rental-row { display: flex; align-items: center; padding: 14px 20px; border-bottom: 1px solid #f1f5f9; gap: 14px; }
+  .rental-row:last-child { border-bottom: none; }
+  .rental-icon { width: 38px; height: 38px; border-radius: 10px; background: #fef3c7; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .section-header h2 { font-size: 20px; font-weight: 700; }
+  /* Rental */
+  .property-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+  .property-tab-btn { padding:8px 18px; border-radius:10px; border:2px solid #e5e7eb; background:#fff; color:#374151; font-size:14px; font-weight:600; cursor:pointer; transition:.15s; }
+  .property-tab-btn.active { border-color:#f59e0b; background:#fffbeb; color:#92400e; }
+  .rent-collect-btn { width:100%; padding:16px; border-radius:14px; border:2px dashed #10b981; background:#f0fdf4; color:#166534; font-size:15px; font-weight:700; cursor:pointer; margin-bottom:20px; transition:background .15s; display:block; }
+  .rent-collect-btn:hover { background:#dcfce7; }
+  .rent-collect-btn.received { border-style:solid; background:#dcfce7; }
+  .expense-row { display:flex; align-items:flex-start; padding:14px 20px; border-bottom:1px solid #f1f5f9; gap:14px; }
+  .expense-row:last-child { border-bottom:none; }
+  .expense-icon { width:38px; height:38px; border-radius:10px; background:#fff7ed; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .section-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; gap:12px; flex-wrap:wrap; }
+  .rental-summary-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px; margin-bottom:20px; }
+
+
+  /* ── Savings ─────────────────────────────────── */
+  .savings-acct-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap: 14px; margin-bottom: 22px; }
+  .savings-card { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border-left: 4px solid #10b981; cursor: pointer; transition: box-shadow .15s; }
+  .savings-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+  .savings-card.active-acct { border-left-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79,70,229,.2); }
+  .savings-card .sc-name { font-size: 15px; font-weight: 700; }
+  .savings-card .sc-bank { font-size: 12px; color: #9ca3af; margin-bottom: 10px; }
+  .savings-card .sc-bal { font-size: 24px; font-weight: 700; color: #10b981; }
+  .savings-card .sc-meta { font-size: 12px; color: #6b7280; margin-top: 3px; }
+  .savings-card .sc-contrib { font-size: 12px; color: #4f46e5; font-weight: 600; margin-top: 3px; }
+  .goal-bar-wrap { margin-top: 10px; }
+  .goal-bar-labels { display: flex; justify-content: space-between; font-size: 10px; color: #9ca3af; margin-bottom: 3px; }
+  .goal-bar-track { background: #e5e7eb; border-radius: 99px; height: 6px; overflow: hidden; }
+  .goal-bar-fill { height: 100%; background: #10b981; border-radius: 99px; }
+  .txn-row { display: flex; align-items: center; padding: 12px 20px; border-bottom: 1px solid #f1f5f9; gap: 12px; }
+  .txn-row:last-child { border-bottom: none; }
+  .txn-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .txn-icon.deposit  { background: #dcfce7; }
+  .txn-icon.withdrawal { background: #fee2e2; }
+  .txn-icon.interest { background: #fef3c7; }
+  .txn-amt { font-size: 15px; font-weight: 700; }
+  .txn-amt.deposit  { color: #16a34a; }
+  .txn-amt.withdrawal { color: #dc2626; }
+  .txn-amt.interest { color: #d97706; }
+  .sav-chart-bars { display: flex; align-items: flex-end; gap: 6px; height: 120px; margin-top: 12px; }
+  .sav-chart-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .sav-chart-bar-col { width: 100%; background: #e5e7eb; border-radius: 6px 6px 0 0; height: 100px; display: flex; align-items: flex-end; }
+  .sav-chart-bar { width: 100%; background: linear-gradient(180deg,#34d399,#059669); border-radius: 6px 6px 0 0; transition: height .3s; }
+  .sav-chart-label { font-size: 10px; color: #9ca3af; }
+  @media (max-width: 600px) {
+    .header { padding: 20px 16px 0; }
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    .cal-cell { min-height: 60px; padding: 4px; }
+    .cal-pip { font-size: 9px; padding: 1px 4px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="header-top">
+      <div>
+        <h1>Bill Tracker</h1>
+        <p>Stay on top of your monthly expenses</p>
+      </div>
+      <div class="header-btns">
+        <button class="btn-add" onclick="openIncomeModal()">+ Income</button>
+        <button class="btn-add" onclick="openAddModal()">+ Bill</button>
+        <div id="syncStatus" style="display:none;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:6px 12px;border-radius:10px;background:rgba(255,255,255,0.15);color:#fff;cursor:pointer" onclick="openSettingsModal()" title="Sync Status"></div>
+        <button class="btn-icon" onclick="openSettingsModal()" id="settingsBtn" title="Settings">
+          &#9881;
+          <span class="notif-dot hidden" id="alertDot"></span>
+        </button>
+      </div>
+    </div>
+    <div class="month-nav">
+      <button class="month-btn" onclick="prevMonth()">&#9664;</button>
+      <span id="monthLabel"></span>
+      <button class="month-btn" onclick="nextMonth()">&#9654;</button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-view="dashboard" onclick="switchView('dashboard')">Dashboard</button>
+      <button class="tab" data-view="calendar" onclick="switchView('calendar')">Calendar</button>
+      <button class="tab" data-view="bills" onclick="switchView('bills')">All Bills</button>
+      <button class="tab" data-view="income" onclick="switchView('income')">Income</button>
+      <button class="tab" data-view="history" onclick="switchView('history')">History</button>
+      <button class="tab" data-view="rental" onclick="switchView('rental')">&#127968; Rental</button>
+      <button class="tab" data-view="savings" onclick="switchView('savings')">&#128176; Savings</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <div id="alerts-container"></div>
+  <div id="view-dashboard"></div>
+  <div id="view-calendar" class="hidden"></div>
+  <div id="view-bills" class="hidden"></div>
+  <div id="view-income" class="hidden"></div>
+  <div id="view-history" class="hidden"></div>
+  <div id="view-rental" class="hidden"></div>
+  <div id="view-savings" class="hidden"></div>
+</div>
+
+<!-- Bill Modal -->
+<div id="modal" class="modal-overlay hidden" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3 id="modalTitle">Add New Bill</h3>
+      <button class="modal-close" onclick="closeModalDirect()">&times;</button>
+    </div>
+    <div class="form-group">
+      <label>Bill Name</label>
+      <input id="fName" placeholder="e.g. Electric Bill">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Amount ($)</label>
+        <input id="fAmount" type="number" step="0.01" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label>Due Day of Month</label>
+        <input id="fDay" type="number" min="1" max="31" value="1">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Category</label>
+      <select id="fCategory"></select>
+    </div>
+    <div class="form-group">
+      <label>Biller / Payee Name <span style="font-weight:400;color:#9ca3af">(optional)</span></label>
+      <input id="fBiller" placeholder="e.g. Comcast, Duke Energy, Chase Bank" list="billersList">
+      <datalist id="billersList"></datalist>
+    </div>
+    <div class="form-group">
+      <label>Paid From Account <span style="font-weight:400;color:#9ca3af">(optional)</span></label>
+      <input id="fAccount" placeholder="e.g. Chase Checking, Visa Sapphire" list="accountsList">
+      <datalist id="accountsList"></datalist>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="margin-bottom:0">
+        <label>Frequency</label>
+        <select id="fFrequency" onchange="toggleStartMonth()">
+          <option value="monthly">Monthly</option>
+          <option value="quarterly">Quarterly</option>
+          <option value="once">One-Time</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Payment Method</label>
+        <select id="fPayMethod">
+          <option value="manual">Manual</option>
+          <option value="autopay">Autopay</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group hidden" id="fStartMonthWrap">
+      <label>First Due Month</label>
+      <select id="fStartMonth">
+        <option value="0">January</option><option value="1">February</option><option value="2">March</option>
+        <option value="3">April</option><option value="4">May</option><option value="5">June</option>
+        <option value="6">July</option><option value="7">August</option><option value="8">September</option>
+        <option value="9">October</option><option value="10">November</option><option value="11">December</option>
+      </select>
+    </div>
+    <div class="form-actions">
+      <button class="btn-secondary" onclick="closeModalDirect()">Cancel</button>
+      <button class="btn-primary" id="billSaveBtn" onclick="saveBill()">Add Bill</button>
+    </div>
+  </div>
+</div>
+
+<!-- Income Modal -->
+<div id="incomeModal" class="modal-overlay hidden" onclick="closeIncomeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3 id="incomeModalTitle">Add Income Source</h3>
+      <button class="modal-close" onclick="closeIncomeModalDirect()">&times;</button>
+    </div>
+    <div class="form-group">
+      <label>Source Name</label>
+      <input id="iName" placeholder="e.g. Salary, Freelance, Side Hustle">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Amount ($)</label>
+        <input id="iAmount" type="number" step="0.01" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label>Pay Day of Month</label>
+        <input id="iDay" type="number" min="1" max="31" value="1">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Frequency</label>
+      <select id="iFrequency">
+        <option value="monthly">Monthly</option>
+        <option value="biweekly">Bi-Weekly</option>
+        <option value="weekly">Weekly</option>
+        <option value="one-time">One-Time</option>
+      </select>
+    </div>
+    <div class="form-actions">
+      <button class="btn-secondary" onclick="closeIncomeModalDirect()">Cancel</button>
+      <button class="btn-primary" id="incomeSaveBtn" onclick="saveIncome()">Add Income</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="modal-overlay hidden" onclick="closeSettingsModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Notification Settings</h3>
+      <button class="modal-close" onclick="closeSettingsModalDirect()">&times;</button>
+    </div>
+
+    <div id="notifStatusBar"></div>
+
+    <div class="settings-section">
+      <h4>Push Notifications</h4>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:12px">Get alerts on your phone and desktop even when the page is in the background. Works best when you add this page to your home screen.</p>
+      <div style="display:flex;gap:10px">
+        <button class="btn-primary btn-sm" id="enableNotifBtn" onclick="requestNotifPermission()">Enable Push Notifications</button>
+        <button class="btn-secondary btn-sm" id="testNotifBtn" onclick="sendTestNotification()" style="display:none">Test Notification</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h4>In-App Alerts</h4>
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Show overdue alerts</div>
+          <div class="settings-desc">Banner for unpaid bills past their due date</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="sOverdue" onchange="saveSettings()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Show upcoming alerts</div>
+          <div class="settings-desc">Banner for manual bills coming due soon</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="sUpcoming" onchange="saveSettings()"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h4>Reminder Timing</h4>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:12px">How far in advance should you be reminded about upcoming bills?</p>
+      <div class="chip-group" id="reminderChips"></div>
+    </div>
+
+    <div class="settings-section">
+      <h4>Check Frequency</h4>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:12px">How often should the app check for bills to notify you about? (While page is open)</p>
+      <div class="chip-group" id="freqChips"></div>
+    </div>
+
+    <div class="settings-section">
+      <h4>Notify For</h4>
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Manual bills only</div>
+          <div class="settings-desc">Only remind me about bills I pay manually</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="sManualOnly" onchange="saveSettings()"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+    <div class="settings-section" style="border-top:2px solid #e5e7eb;padding-top:20px;margin-top:4px">
+      <h4>&#9729; Cloud Sync</h4>
+      <p style="font-size:13px;color:#6b7280;margin-bottom:14px">No account needed. Uses <strong><a href="https://jsonblob.com" target="_blank" style="color:#4f46e5">JSONBlob.com</a></strong> as private storage. Data is <strong>AES-256 encrypted</strong> in your browser before upload &mdash; only devices with your passphrase can read it.</p>
+      <div id="syncStatusBar" style="margin-bottom:12px"></div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label style="font-size:13px;font-weight:600;color:#374151">Encryption Passphrase</label>
+        <input id="syncPassphrase" type="password" placeholder="Choose a strong passphrase (same on all devices)" style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:14px">
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label style="font-size:13px;font-weight:600;color:#374151">Blob ID <span style="font-weight:400;color:#9ca3af">(auto-created on first connect)</span></label>
+        <input id="syncBlobId" placeholder="Leave blank to create new &mdash; or paste existing ID" style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:13px;font-family:monospace">
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-primary btn-sm" onclick="syncSetup()">&#128275; Connect</button>
+        <button class="btn-secondary btn-sm" onclick="syncPush()">&#8679; Push</button>
+        <button class="btn-secondary btn-sm" onclick="syncPull()">&#8681; Pull</button>
+        <button class="btn-secondary btn-sm" style="color:#ef4444" onclick="syncDisconnect()">Disconnect</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Property Modal -->
+<div id="propertyModal" class="modal-overlay hidden" onclick="if(event.target===this)closePropertyModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3 id="propertyModalTitle">Add Rental Property</h3>
+      <button class="modal-close" onclick="closePropertyModal()">&times;</button>
+    </div>
+    <div class="form-group"><label>Property Name / Nickname</label><input id="pName" placeholder="e.g. Main St Duplex"></div>
+    <div class="form-group"><label>Address <span style="font-weight:400;color:#9ca3af">(optional)</span></label><input id="pAddress" placeholder="123 Main St, City, State"></div>
+    <div class="form-group"><label>Tenant Name <span style="font-weight:400;color:#9ca3af">(optional)</span></label><input id="pTenant" placeholder="e.g. John Smith"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Monthly Rent ($)</label><input id="pRent" type="number" step="0.01" placeholder="0.00"></div>
+      <div class="form-group"><label>Rent Due Day</label><input id="pRentDay" type="number" min="1" max="31" value="1"></div>
+    </div>
+    <div class="form-group"><label>Notes</label><textarea id="pNotes" rows="2" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;outline:none" placeholder="Lease end date, special terms..."></textarea></div>
+    <div class="form-actions">
+      <button class="btn-secondary" onclick="closePropertyModal()">Cancel</button>
+      <button class="btn-primary" id="propertySaveBtn" onclick="saveProperty()">Add Property</button>
+    </div>
+  </div>
+</div>
+
+<!-- Expense Modal -->
+<div id="expenseModal" class="modal-overlay hidden" onclick="if(event.target===this)closeExpenseModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3 id="expenseModalTitle">Add Expense</h3>
+      <button class="modal-close" onclick="closeExpenseModal()">&times;</button>
+    </div>
+    <div class="form-group"><label>Description</label><input id="eName" placeholder="e.g. Roof repair, Pest control"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Amount ($)</label><input id="eAmount" type="number" step="0.01" placeholder="0.00"></div>
+      <div class="form-group"><label>Frequency</label>
+        <select id="eFrequency" onchange="toggleExpenseDate()">
+          <option value="monthly">Monthly</option>
+          <option value="quarterly">Quarterly</option>
+          <option value="once">One-Time</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" id="eRecurringFields">
+      <div class="form-group"><label>Due Day of Month</label><input id="eDueDay" type="number" min="1" max="31" value="1"></div>
+      <div class="form-group"><label>Start Month</label>
+        <select id="eStartMonth">
+          <option value="0">January</option><option value="1">February</option><option value="2">March</option>
+          <option value="3">April</option><option value="4">May</option><option value="5">June</option>
+          <option value="6">July</option><option value="7">August</option><option value="8">September</option>
+          <option value="9">October</option><option value="10">November</option><option value="11">December</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group hidden" id="eOnceFields"><label>Date</label><input id="eDate" type="date"></div>
+    <div class="form-group"><label>Category</label>
+      <select id="eCategory">
+        <option value="maintenance">Maintenance</option>
+        <option value="repairs">Repairs</option>
+        <option value="insurance">Insurance</option>
+        <option value="taxes">Property Tax</option>
+        <option value="utilities">Utilities</option>
+        <option value="management">Management Fees</option>
+        <option value="mortgage">Mortgage / HOA</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Account Paid From</label><input id="eAccount" placeholder="e.g. Chase Checking" list="expAccountsList"><datalist id="expAccountsList"></datalist></div>
+    <div class="form-group"><label>Notes</label><textarea id="eNotes" rows="2" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;outline:none" placeholder="Vendor, receipt #..."></textarea></div>
+    <div class="form-actions">
+      <button class="btn-secondary" onclick="closeExpenseModal()">Cancel</button>
+      <button class="btn-primary" id="expenseSaveBtn" onclick="saveExpense()">Add Expense</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Savings Account Modal -->
+<div id="savAcctModal" class="modal-overlay hidden" onclick="if(event.target===this)document.getElementById('savAcctModal').classList.add('hidden')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3 id="savAcctModalTitle">Add Savings Account</h3>
+      <button class="modal-close" onclick="document.getElementById('savAcctModal').classList.add('hidden')">&times;</button>
+    </div>
+    <div class="form-group"><label>Account Name</label><input id="saName" placeholder="e.g. Emergency Fund, HYSA"></div>
+    <div class="form-group"><label>Bank / Institution</label><input id="saBank" placeholder="e.g. Ally, Marcus, Chase"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Current Balance ($)</label><input id="saBalance" type="number" step="0.01" placeholder="0.00"></div>
+      <div class="form-group"><label>APY (%)</label><input id="saAPY" type="number" step="0.01" placeholder="e.g. 4.50"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Contribution Amount ($)</label><input id="saContrib" type="number" step="0.01" placeholder="0.00"></div>
+      <div class="form-group"><label>Frequency</label>
+        <select id="saContribFreq" onchange="document.getElementById('saContribDayRow').classList.toggle('hidden', this.value !== 'monthly')">
+          <option value="weekly">Weekly</option>
+          <option value="biweekly">Bi-Weekly (every 2 weeks)</option>
+          <option value="monthly" selected>Monthly</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" id="saContribDayRow">
+      <div class="form-group"><label>Day of Month</label><input id="saContribDay" type="number" min="1" max="31" value="1"></div>
+      <div class="form-group"></div>
+    </div>
+    <div class="form-group"><label>Savings Goal ($) — optional</label><input id="saGoal" type="number" step="0.01" placeholder="e.g. 10000"></div>
+    <div class="form-group"><label>Notes</label><input id="saNotes" placeholder="e.g. 6-month emergency fund"></div>
+    <div class="form-actions">
+      <button class="btn-secondary" onclick="document.getElementById('savAcctModal').classList.add('hidden')">Cancel</button>
+      <button class="btn-primary" id="savAcctSaveBtn" onclick="saveSavingsAcct()">Add Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- Savings Transaction Modal -->
+<div id="savTxnModal" class="modal-overlay hidden" onclick="if(event.target===this)document.getElementById('savTxnModal').classList.add('hidden')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3 id="savTxnModalTitle">Add Transaction</h3>
+      <button class="modal-close" onclick="document.getElementById('savTxnModal').classList.add('hidden')">&times;</button>
+    </div>
+    <div class="form-group"><label>Type</label>
+      <select id="stType">
+        <option value="deposit">&#8679; Deposit / Contribution</option>
+        <option value="withdrawal">&#8681; Withdrawal</option>
+        <option value="interest">&#11088; Interest Earned</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Amount ($)</label><input id="stAmount" type="number" step="0.01" placeholder="0.00"></div>
+      <div class="form-group"><label>Date</label><input id="stDate" type="date"></div>
+    </div>
+    <div class="form-group"><label>Notes</label><input id="stNotes" placeholder="Optional description"></div>
+    <div class="form-actions">
+      <button class="btn-secondary" onclick="document.getElementById('savTxnModal').classList.add('hidden')">Cancel</button>
+      <button class="btn-primary" id="savTxnSaveBtn" onclick="saveSavingsTxn()">Add Transaction</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CATEGORIES = [
+  { id: "housing", label: "Housing", color: "#6366f1" },
+  { id: "utilities", label: "Utilities", color: "#f59e0b" },
+  { id: "subscriptions", label: "Subscriptions", color: "#ec4899" },
+  { id: "insurance", label: "Insurance", color: "#10b981" },
+  { id: "transportation", label: "Transportation", color: "#3b82f6" },
+  { id: "phone_internet", label: "Phone & Internet", color: "#8b5cf6" },
+  { id: "loans", label: "Loans & Debt", color: "#ef4444" },
+  { id: "other", label: "Other", color: "#6b7280" },
+  { id: "savings", label: "Savings Transfer", color: "#10b981" },
+];
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const FULL_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DAYS_NAMES = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const STORAGE_KEY = "billTracker_v3";
+const SETTINGS_KEY = "billTracker_settings";
+
+const REMINDER_OPTIONS = [
+  { value: 1, label: "1 day" },
+  { value: 3, label: "3 days" },
+  { value: 5, label: "5 days" },
+  { value: 7, label: "7 days" },
+  { value: 14, label: "14 days" },
+];
+const FREQ_OPTIONS = [
+  { value: 60000, label: "1 min" },
+  { value: 300000, label: "5 min" },
+  { value: 900000, label: "15 min" },
+  { value: 3600000, label: "1 hour" },
+  { value: 21600000, label: "6 hours" },
+];
+
+let state = loadState();
+let settings = loadSettings();
+let checkInterval = null;
+let dismissedAlerts = {};
+
+function defaultState() {
+  const now = new Date();
+  return {
+    currentMonth: now.getMonth(),
+    currentYear: now.getFullYear(),
+    bills: [
+      { id: "s1", name: "Rent / Mortgage", amount: 1850, category: "housing", dueDay: 1, isRecurring: true, payMethod: "manual" },
+      { id: "s2", name: "Electric Bill", amount: 145, category: "utilities", dueDay: 15, isRecurring: true, payMethod: "autopay" },
+      { id: "s3", name: "Water & Sewer", amount: 65, category: "utilities", dueDay: 20, isRecurring: true, payMethod: "manual" },
+      { id: "s4", name: "Internet", amount: 79.99, category: "phone_internet", dueDay: 8, isRecurring: true, payMethod: "autopay" },
+      { id: "s5", name: "Phone Plan", amount: 55, category: "phone_internet", dueDay: 12, isRecurring: true, payMethod: "autopay" },
+      { id: "s6", name: "Netflix", amount: 15.49, category: "subscriptions", dueDay: 5, isRecurring: true, payMethod: "autopay" },
+      { id: "s7", name: "Car Insurance", amount: 210, category: "insurance", dueDay: 22, isRecurring: true, payMethod: "autopay" },
+      { id: "s8", name: "Car Payment", amount: 385, category: "transportation", dueDay: 18, isRecurring: true, payMethod: "autopay" },
+      { id: "s9", name: "Student Loan", amount: 320, category: "loans", dueDay: 25, isRecurring: true, payMethod: "autopay" },
+      { id: "s10", name: "Spotify", amount: 10.99, category: "subscriptions", dueDay: 10, isRecurring: true, payMethod: "autopay" },
+    ],
+    incomes: [
+      { id: "i1", name: "Primary Salary", amount: 4200, payDay: 1, frequency: "monthly" },
+      { id: "i2", name: "Mid-Month Pay", amount: 4200, payDay: 15, frequency: "monthly" },
+    ],
+    payments: [],
+    view: "dashboard",
+    filterCat: "all",
+    editId: null,
+    editIncomeId: null,
+    properties: [],
+    rentalExpenses: [],
+    rentalPayments: [],
+    rentalExpPayments: [],
+    selectedProperty: null,
+    editPropertyId: null,
+    editExpenseId: null,
+    savingsAccounts: [],
+    savingsTransactions: [],
+    selectedSavingsId: null,
+    editSavingsId: null,
+    editSavingsTxnId: null
+  };
+}
+
+function defaultSettings() {
+  return {
+    showOverdue: true,
+    showUpcoming: true,
+    reminderDays: [3, 7],
+    checkFrequency: 3600000,
+    manualOnly: true,
+    pushEnabled: false,
+    lastNotified: {}
+  };
+}
+
+function loadState() {
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    if (s) {
+      const parsed = JSON.parse(s);
+      parsed.view = "dashboard"; parsed.filterCat = "all"; parsed.editId = null; parsed.editIncomeId = null; parsed.editPropertyId = null; parsed.editExpenseId = null;
+      if (!parsed.incomes) parsed.incomes = [];
+      if (!parsed.properties) parsed.properties = [];
+      if (!parsed.rentalExpenses) parsed.rentalExpenses = [];
+      if (!parsed.rentalPayments) parsed.rentalPayments = [];
+      if (!parsed.rentalExpPayments) parsed.rentalExpPayments = [];
+      if (!parsed.savingsAccounts) parsed.savingsAccounts = [];
+      if (!parsed.savingsTransactions) parsed.savingsTransactions = [];
+      if (parsed.selectedProperty === undefined) parsed.selectedProperty = null;
+      parsed.bills = (parsed.bills || []).map(b => ({ biller: "", accountId: "", frequency: b.isRecurring === false ? "once" : "monthly", startMonth: 0, ...b }));
+      return parsed;
+    }
+  } catch(e) {}
+  return defaultState();
+}
+function saveState() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {} scheduleSyncPush(); }
+
+function loadSettings() {
+  try {
+    const s = localStorage.getItem(SETTINGS_KEY);
+    if (s) return { ...defaultSettings(), ...JSON.parse(s) };
+  } catch(e) {}
+  return defaultSettings();
+}
+function saveSettings() {
+  settings.showOverdue = document.getElementById("sOverdue").checked;
+  settings.showUpcoming = document.getElementById("sUpcoming").checked;
+  settings.manualOnly = document.getElementById("sManualOnly").checked;
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch(e) {}
+  startCheckInterval();
+  renderAlerts();
+}
+
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function fmt(n) { return "$" + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+function fmtShort(n) { return "$" + (n >= 1000 ? (n/1000).toFixed(1).replace(/\.0$/,"") + "k" : Number(n).toFixed(0)); }
+function catInfo(id) { return CATEGORIES.find(c => c.id === id) || CATEGORIES[CATEGORIES.length-1]; }
+
+function daysUntil(dateStr) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.ceil((new Date(dateStr+"T00:00:00") - today) / 86400000);
+}
+function getDueDate(bill, month, year) {
+  const m = month !== undefined ? month : state.currentMonth;
+  const y = year !== undefined ? year : state.currentYear;
+  const day = Math.min(bill.dueDay, new Date(y, m+1, 0).getDate());
+  return `${y}-${String(m+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+}
+function isPaid(billId, month, year) {
+  const m = month !== undefined ? month : state.currentMonth;
+  const y = year !== undefined ? year : state.currentYear;
+  if (billId && billId.startsWith('sav_')) {
+    const acctId = billId.slice(4);
+    return state.savingsTransactions.some(t => {
+      if (t.accountId !== acctId || t.type !== 'deposit') return false;
+      const d = new Date(t.date + 'T12:00:00');
+      return d.getMonth() === m && d.getFullYear() === y;
+    });
+  }
+  return state.payments.some(p => p.billId === billId && p.month === m && p.year === y);
+}
+
+function badgeHTML(paid, dueDate) {
+  if (paid) return '<span class="badge badge-paid">Paid</span>';
+  const d = daysUntil(dueDate);
+  if (d < 0) return '<span class="badge badge-overdue">Overdue</span>';
+  if (d <= 3) return '<span class="badge badge-soon">Due Soon</span>';
+  return '<span class="badge badge-upcoming">Upcoming</span>';
+}
+
+function getMonthlyIncome() {
+  return state.incomes.reduce((sum, inc) => {
+    if (inc.frequency === "monthly") return sum + inc.amount;
+    if (inc.frequency === "biweekly") return sum + (inc.amount * 26 / 12);
+    if (inc.frequency === "weekly") return sum + (inc.amount * 52 / 12);
+    if (inc.frequency === "one-time") return sum + inc.amount;
+    return sum;
+  }, 0);
+}
+
+// ===== NOTIFICATIONS =====
+function getNotifPermission() {
+  if (!("Notification" in window)) return "unsupported";
+  return Notification.permission;
+}
+
+function requestNotifPermission() {
+  if (!("Notification" in window)) {
+    alert("This browser does not support push notifications. Try Chrome, Edge, or Safari.");
+    return;
+  }
+  Notification.requestPermission().then(perm => {
+    settings.pushEnabled = perm === "granted";
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch(e) {}
+    updateNotifStatus();
+    if (perm === "granted") {
+      new Notification("Bill Tracker", { body: "Notifications enabled! You'll be alerted about upcoming bills.", icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>" });
+    }
+  });
+}
+
+function sendTestNotification() {
+  if (getNotifPermission() === "granted") {
+    new Notification("Bill Tracker - Test", {
+      body: "Notifications are working! You'll receive alerts for upcoming bills.",
+      icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔔</text></svg>"
+    });
+  }
+}
+
+function updateNotifStatus() {
+  const perm = getNotifPermission();
+  const bar = document.getElementById("notifStatusBar");
+  const enableBtn = document.getElementById("enableNotifBtn");
+  const testBtn = document.getElementById("testNotifBtn");
+
+  if (perm === "granted") {
+    bar.innerHTML = '<div class="notif-status enabled">&#10003; Push notifications are enabled</div>';
+    enableBtn.style.display = "none";
+    testBtn.style.display = "";
+  } else if (perm === "denied") {
+    bar.innerHTML = '<div class="notif-status unsupported">&#10007; Notifications blocked. Enable them in your browser settings for this site.</div>';
+    enableBtn.style.display = "none";
+    testBtn.style.display = "none";
+  } else if (perm === "unsupported") {
+    bar.innerHTML = '<div class="notif-status unsupported">&#10007; This browser does not support notifications. Try Chrome or Safari.</div>';
+    enableBtn.style.display = "none";
+    testBtn.style.display = "none";
+  } else {
+    bar.innerHTML = '<div class="notif-status disabled">&#9888; Push notifications are not enabled</div>';
+    enableBtn.style.display = "";
+    testBtn.style.display = "none";
+  }
+}
+
+function checkAndNotify() {
+  const now = new Date();
+  const curMonth = now.getMonth();
+  const curYear = now.getFullYear();
+  const maxReminder = Math.max(...settings.reminderDays, 0);
+
+  state.bills.forEach(b => {
+    if (settings.manualOnly && b.payMethod === "autopay") return;
+    if (isPaid(b.id, curMonth, curYear)) return;
+
+    const dueDate = getDueDate(b, curMonth, curYear);
+    const days = daysUntil(dueDate);
+
+    // Check if this bill matches any reminder interval
+    let shouldNotify = false;
+    let message = "";
+
+    if (days < 0) {
+      shouldNotify = true;
+      message = `${b.name} (${fmt(b.amount)}) is ${Math.abs(days)} day${Math.abs(days)>1?'s':''} overdue!`;
+    } else {
+      for (const rd of settings.reminderDays) {
+        if (days <= rd && days >= 0) {
+          shouldNotify = true;
+          message = days === 0
+            ? `${b.name} (${fmt(b.amount)}) is due TODAY!`
+            : `${b.name} (${fmt(b.amount)}) is due in ${days} day${days>1?'s':''}`;
+          break;
+        }
+      }
+    }
+
+    if (shouldNotify && getNotifPermission() === "granted") {
+      // Only notify once per bill per day
+      const notifKey = `${b.id}_${dueDate}_${now.toISOString().slice(0,10)}`;
+      if (!settings.lastNotified[notifKey]) {
+        settings.lastNotified[notifKey] = true;
+        // Clean old keys
+        const today = now.toISOString().slice(0,10);
+        Object.keys(settings.lastNotified).forEach(k => {
+          if (!k.endsWith(today)) delete settings.lastNotified[k];
+        });
+        try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch(e) {}
+
+        new Notification(days < 0 ? "Overdue Bill!" : "Bill Reminder", {
+          body: message,
+          icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>" + (days < 0 ? "🚨" : "🔔") + "</text></svg>",
+          tag: b.id,
+          requireInteraction: days < 0
+        });
+      }
+    }
+  });
+}
+
+function startCheckInterval() {
+  if (checkInterval) clearInterval(checkInterval);
+  checkInterval = setInterval(checkAndNotify, settings.checkFrequency);
+}
+
+// ===== ALERTS (in-app banners) =====
+function renderAlerts() {
+  const container = document.getElementById("alerts-container");
+  const now = new Date();
+  const curMonth = now.getMonth();
+  const curYear = now.getFullYear();
+  let html = "";
+
+  // Overdue bills
+  if (settings.showOverdue) {
+    const overdue = state.bills.filter(b => {
+      if (isPaid(b.id, curMonth, curYear)) return false;
+      const dd = getDueDate(b, curMonth, curYear);
+      return daysUntil(dd) < 0;
+    });
+    if (overdue.length > 0 && !dismissedAlerts["overdue"]) {
+      const names = overdue.map(b => `<strong>${b.name}</strong> (${fmt(b.amount)})`).join(", ");
+      html += `<div class="alert-banner danger">
+        <div class="alert-icon">&#128680;</div>
+        <div class="alert-content">
+          <div class="alert-title">${overdue.length} Overdue Bill${overdue.length>1?'s':''}</div>
+          <div class="alert-text">${names}</div>
+        </div>
+        <button class="alert-dismiss" onclick="dismissAlert('overdue')">&times;</button>
+      </div>`;
+    }
+  }
+
+  // Upcoming manual bills
+  if (settings.showUpcoming) {
+    const maxDays = Math.max(...settings.reminderDays, 3);
+    const upcoming = state.bills.filter(b => {
+      if (settings.manualOnly && b.payMethod === "autopay") return false;
+      if (isPaid(b.id, curMonth, curYear)) return false;
+      const dd = getDueDate(b, curMonth, curYear);
+      const d = daysUntil(dd);
+      return d >= 0 && d <= maxDays;
+    });
+    if (upcoming.length > 0 && !dismissedAlerts["upcoming"]) {
+      const items = upcoming.map(b => {
+        const d = daysUntil(getDueDate(b, curMonth, curYear));
+        const urgency = d === 0 ? "TODAY" : d === 1 ? "tomorrow" : `in ${d} days`;
+        return `<strong>${b.name}</strong> (${fmt(b.amount)}) &mdash; ${urgency}`;
+      }).join("<br>");
+      html += `<div class="alert-banner warning">
+        <div class="alert-icon">&#9888;&#65039;</div>
+        <div class="alert-content">
+          <div class="alert-title">${upcoming.length} Bill${upcoming.length>1?'s':''} Coming Due</div>
+          <div class="alert-text">${items}</div>
+        </div>
+        <button class="alert-dismiss" onclick="dismissAlert('upcoming')">&times;</button>
+      </div>`;
+    }
+  }
+
+  // Show alert dot on settings icon
+  const dot = document.getElementById("alertDot");
+  if (getNotifPermission() !== "granted" && settings.pushEnabled === false) {
+    dot.classList.remove("hidden");
+  } else {
+    dot.classList.add("hidden");
+  }
+
+  container.innerHTML = html;
+}
+
+function dismissAlert(key) {
+  dismissedAlerts[key] = true;
+  renderAlerts();
+}
+
+// ===== SETTINGS MODAL =====
+function openSettingsModal() {
+  document.getElementById("sOverdue").checked = settings.showOverdue;
+  document.getElementById("sUpcoming").checked = settings.showUpcoming;
+  document.getElementById("sManualOnly").checked = settings.manualOnly;
+  renderReminderChips();
+  renderFreqChips();
+  updateNotifStatus();
+  if (syncConfig.passphrase) document.getElementById('syncPassphrase').value = syncConfig.passphrase;
+  if (syncConfig.blobId)     document.getElementById('syncBlobId').value     = syncConfig.blobId;
+  const _syncBar = document.getElementById('syncStatusBar');
+  if (_syncBar && syncConfig.enabled && syncConfig.blobId) {
+    const _t = syncConfig.lastPush ? new Date(syncConfig.lastPush).toLocaleString() : 'never';
+    _syncBar.style.cssText = 'background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:10px 14px;border-radius:10px;font-size:13px';
+    _syncBar.innerHTML = '&#10003; Connected &mdash; Blob ID: <code style="background:#fff;padding:2px 6px;border-radius:4px;font-size:12px">' + syncConfig.blobId + '</code>' +
+      '<br><span style="font-size:11px;color:#6b7280">Last push: ' + _t + '</span>';
+  }
+  document.getElementById("settingsModal").classList.remove("hidden");
+}
+function closeSettingsModal(e) { if (e.target === e.currentTarget) document.getElementById("settingsModal").classList.add("hidden"); }
+function closeSettingsModalDirect() { document.getElementById("settingsModal").classList.add("hidden"); }
+
+function renderReminderChips() {
+  document.getElementById("reminderChips").innerHTML = REMINDER_OPTIONS.map(o =>
+    `<button class="chip${settings.reminderDays.includes(o.value) ? ' active' : ''}" onclick="toggleReminder(${o.value})">${o.label}</button>`
+  ).join("");
+}
+function toggleReminder(val) {
+  const idx = settings.reminderDays.indexOf(val);
+  if (idx >= 0) settings.reminderDays.splice(idx, 1);
+  else settings.reminderDays.push(val);
+  settings.reminderDays.sort((a,b) => a-b);
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch(e) {}
+  renderReminderChips();
+  renderAlerts();
+}
+
+function renderFreqChips() {
+  document.getElementById("freqChips").innerHTML = FREQ_OPTIONS.map(o =>
+    `<button class="chip${settings.checkFrequency === o.value ? ' active' : ''}" onclick="setFreq(${o.value})">${o.label}</button>`
+  ).join("");
+}
+function setFreq(val) {
+  settings.checkFrequency = val;
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch(e) {}
+  renderFreqChips();
+  startCheckInterval();
+}
+
+// ===== NAVIGATION =====
+function prevMonth() {
+  if (state.currentMonth === 0) { state.currentMonth = 11; state.currentYear--; } else state.currentMonth--;
+  dismissedAlerts = {};
+  render();
+}
+function nextMonth() {
+  if (state.currentMonth === 11) { state.currentMonth = 0; state.currentYear++; } else state.currentMonth++;
+  dismissedAlerts = {};
+  render();
+}
+function switchView(v) { state.view = v; render(); }
+
+function togglePaid(billId) {
+  if (billId && billId.startsWith('sav_')) {
+    state.selectedSavingsId = billId.slice(4);
+    switchView('savings');
+    setTimeout(() => openSavingsTxnModal(), 80);
+    return;
+  }
+  if (isPaid(billId)) {
+    state.payments = state.payments.filter(p => !(p.billId === billId && p.month === state.currentMonth && p.year === state.currentYear));
+  } else {
+    state.payments.push({ billId, month: state.currentMonth, year: state.currentYear, paidDate: new Date().toISOString().slice(0,10) });
+  }
+  saveState(); render();
+}
+
+// Bill Modal
+function toggleStartMonth() {
+  const freq = document.getElementById("fFrequency").value;
+  document.getElementById("fStartMonthWrap").classList.toggle("hidden", freq !== "quarterly");
+}
+function openAddModal() {
+  state.editId = null;
+  document.getElementById("modalTitle").textContent = "Add New Bill";
+  document.getElementById("fName").value = "";
+  document.getElementById("fAmount").value = "";
+  document.getElementById("fDay").value = "1";
+  document.getElementById("fCategory").value = "utilities";
+  document.getElementById("fFrequency").value = "monthly";
+  document.getElementById("fStartMonth").value = new Date().getMonth();
+  document.getElementById("fStartMonthWrap").classList.add("hidden");
+  document.getElementById("fPayMethod").value = "manual";
+  document.getElementById("fBiller").value = "";
+  document.getElementById("fAccount").value = "";
+  populateBillerDataLists();
+  document.getElementById("billSaveBtn").textContent = "Add Bill";
+  document.getElementById("modal").classList.remove("hidden");
+}
+function openEditModal(id) {
+  const bill = state.bills.find(b => b.id === id);
+  if (!bill) return;
+  state.editId = id;
+  document.getElementById("modalTitle").textContent = "Edit Bill";
+  document.getElementById("fName").value = bill.name;
+  document.getElementById("fAmount").value = bill.amount;
+  document.getElementById("fDay").value = bill.dueDay;
+  document.getElementById("fCategory").value = bill.category;
+  const freq = bill.frequency || (bill.isRecurring === false ? "once" : "monthly");
+  document.getElementById("fFrequency").value = freq;
+  document.getElementById("fStartMonth").value = bill.startMonth !== undefined ? bill.startMonth : 0;
+  document.getElementById("fStartMonthWrap").classList.toggle("hidden", freq !== "quarterly");
+  document.getElementById("fPayMethod").value = bill.payMethod || "manual";
+  document.getElementById("fBiller").value = bill.biller || "";
+  document.getElementById("fAccount").value = bill.accountId || "";
+  populateBillerDataLists();
+  document.getElementById("billSaveBtn").textContent = "Save Changes";
+  document.getElementById("modal").classList.remove("hidden");
+}
+function closeModal(e) { if (e.target === e.currentTarget) document.getElementById("modal").classList.add("hidden"); }
+function closeModalDirect() { document.getElementById("modal").classList.add("hidden"); }
+
+function saveBill() {
+  const name = document.getElementById("fName").value.trim();
+  const amount = parseFloat(document.getElementById("fAmount").value);
+  const dueDay = parseInt(document.getElementById("fDay").value) || 1;
+  const category = document.getElementById("fCategory").value;
+  const payMethod = document.getElementById("fPayMethod").value;
+  const frequency = document.getElementById("fFrequency").value;
+  const startMonth = frequency === "quarterly" ? parseInt(document.getElementById("fStartMonth").value) : 0;
+  const isRecurring = frequency !== "once";
+  const biller = document.getElementById("fBiller").value.trim();
+  const accountId = document.getElementById("fAccount").value.trim();
+  if (!name || isNaN(amount)) return;
+  if (state.editId) {
+    const bill = state.bills.find(b => b.id === state.editId);
+    if (bill) Object.assign(bill, { name, amount, dueDay, category, isRecurring, frequency, startMonth, payMethod, biller, accountId });
+  } else {
+    state.bills.push({ id: genId(), name, amount, dueDay, category, isRecurring, frequency, startMonth, payMethod, biller, accountId });
+  }
+  saveState(); closeModalDirect(); render();
+}
+
+function deleteBill(id) {
+  if (!confirm("Delete this bill?")) return;
+  state.bills = state.bills.filter(b => b.id !== id);
+  state.payments = state.payments.filter(p => p.billId !== id);
+  saveState(); render();
+}
+
+// Income Modal
+function openIncomeModal() {
+  state.editIncomeId = null;
+  document.getElementById("incomeModalTitle").textContent = "Add Income Source";
+  document.getElementById("iName").value = "";
+  document.getElementById("iAmount").value = "";
+  document.getElementById("iDay").value = "1";
+  document.getElementById("iFrequency").value = "monthly";
+  document.getElementById("incomeSaveBtn").textContent = "Add Income";
+  document.getElementById("incomeModal").classList.remove("hidden");
+}
+function openEditIncome(id) {
+  const inc = state.incomes.find(i => i.id === id);
+  if (!inc) return;
+  state.editIncomeId = id;
+  document.getElementById("incomeModalTitle").textContent = "Edit Income";
+  document.getElementById("iName").value = inc.name;
+  document.getElementById("iAmount").value = inc.amount;
+  document.getElementById("iDay").value = inc.payDay;
+  document.getElementById("iFrequency").value = inc.frequency;
+  document.getElementById("incomeSaveBtn").textContent = "Save Changes";
+  document.getElementById("incomeModal").classList.remove("hidden");
+}
+function closeIncomeModal(e) { if (e.target === e.currentTarget) document.getElementById("incomeModal").classList.add("hidden"); }
+function closeIncomeModalDirect() { document.getElementById("incomeModal").classList.add("hidden"); }
+
+function saveIncome() {
+  const name = document.getElementById("iName").value.trim();
+  const amount = parseFloat(document.getElementById("iAmount").value);
+  const payDay = parseInt(document.getElementById("iDay").value) || 1;
+  const frequency = document.getElementById("iFrequency").value;
+  if (!name || isNaN(amount)) return;
+  if (state.editIncomeId) {
+    const inc = state.incomes.find(i => i.id === state.editIncomeId);
+    if (inc) Object.assign(inc, { name, amount, payDay, frequency });
+  } else {
+    state.incomes.push({ id: genId(), name, amount, payDay, frequency });
+  }
+  saveState(); closeIncomeModalDirect(); render();
+}
+
+function deleteIncome(id) {
+  if (!confirm("Delete this income source?")) return;
+  state.incomes = state.incomes.filter(i => i.id !== id);
+  saveState(); render();
+}
+
+function setFilter(cat) { state.filterCat = cat; render(); }
+
+function initCategorySelect() {
+  document.getElementById("fCategory").innerHTML = CATEGORIES.map(c => `<option value="${c.id}">${c.label}</option>`).join("");
+}
+
+
+function isDueThisMonth(bill, month) {
+  var m = month !== undefined ? month : state.currentMonth;
+  var freq = bill.frequency || "monthly";
+  if (freq === "monthly" || freq === "once") return true;
+  if (freq === "quarterly") {
+    var startM = bill.startMonth !== undefined ? bill.startMonth : 0;
+    return ((m - startM) % 3 + 3) % 3 === 0;
+  }
+  return true;
+}
+
+// ===== RENDER =====
+function render() {
+  document.getElementById("monthLabel").textContent = `${MONTHS[state.currentMonth]} ${state.currentYear}`;
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.view === state.view));
+  ["dashboard","calendar","bills","income","history","rental","savings"].forEach(v => document.getElementById("view-"+v).classList.toggle("hidden", state.view !== v));
+
+  const savingsContribBills = getSavingsContribBills();
+  const allBills = state.bills.concat(savingsContribBills);
+  const bills = allBills.filter(b => isDueThisMonth(b));
+  const monthTotal = bills.reduce((s,b) => s+b.amount, 0);
+  const paidBills = bills.filter(b => isPaid(b.id));
+  const paidTotal = paidBills.reduce((s,b) => s+b.amount, 0);
+  const unpaidTotal = monthTotal - paidTotal;
+  const paidCount = paidBills.length;
+  const pct = bills.length > 0 ? Math.round((paidCount/bills.length)*100) : 0;
+  const totalIncome = getMonthlyIncome();
+  const netCash = totalIncome - monthTotal;
+
+  renderAlerts();
+
+  // ===== DASHBOARD =====
+  if (state.view === "dashboard") {
+    const catMap = {};
+    bills.forEach(b => { catMap[b.category] = (catMap[b.category]||0) + b.amount; });
+    const catBreakdown = CATEGORIES.map(c => ({...c, total: catMap[c.id]||0})).filter(c => c.total > 0).sort((a,b) => b.total - a.total);
+    const barMax = catBreakdown.length > 0 ? catBreakdown[0].total : 1;
+    const upcoming = bills.filter(b => !isPaid(b.id)).map(b => ({...b, dueDate: getDueDate(b), daysLeft: daysUntil(getDueDate(b))})).sort((a,b) => a.daysLeft - b.daysLeft).slice(0,5);
+    const expPct = totalIncome > 0 ? Math.min(100, Math.round((monthTotal / totalIncome) * 100)) : 0;
+    const barColor = expPct > 90 ? "#ef4444" : expPct > 70 ? "#f59e0b" : "#10b981";
+
+    document.getElementById("view-dashboard").innerHTML = `
+      <div class="summary-grid">
+        ${[
+          { label: "Income", value: fmt(totalIncome), sub: `${state.incomes.length} sources`, accent: "#3b82f6" },
+          { label: "Bills Total", value: fmt(monthTotal), sub: `${bills.length} bills`, accent: "#4f46e5" },
+          { label: "Net Cash", value: fmt(netCash), sub: netCash >= 0 ? "surplus" : "deficit", accent: netCash >= 0 ? "#16a34a" : "#ef4444" },
+          { label: "Remaining", value: fmt(unpaidTotal), sub: `${bills.length-paidCount} unpaid`, accent: unpaidTotal > 0 ? "#d97706" : "#16a34a" },
+          { label: "Progress", value: pct+"%", sub: "bills paid", accent: "#7c3aed" },
+        ].map(c => `
+          <div class="summary-card" style="--accent:${c.accent}">
+            <div class="label">${c.label}</div>
+            <div class="value">${c.value}</div>
+            <div class="sub">${c.sub}</div>
+          </div>`).join("")}
+      </div>
+      ${totalIncome > 0 ? `
+      <div class="budget-bar-wrap">
+        <div class="budget-labels"><span style="font-weight:600">Budget Used</span><span style="color:#6b7280">${fmt(monthTotal)} of ${fmt(totalIncome)}</span></div>
+        <div class="budget-track"><div class="budget-fill-expense" style="width:${expPct}%;background:${barColor}"></div><div class="budget-pct">${expPct}%</div></div>
+      </div>` : ""}
+      <div class="progress-card">
+        <div class="progress-header"><span>Payment Progress</span><span>${paidCount}/${bills.length} paid</span></div>
+        <div class="progress-track"><div class="progress-fill" style="width:${pct}%;background:linear-gradient(90deg,#4f46e5,#7c3aed)"></div></div>
+      </div>
+      <div class="two-col">
+        <div class="panel">
+          <h3>Upcoming Bills</h3>
+          ${upcoming.length === 0 ? '<p class="empty">All bills paid this month!</p>' :
+            upcoming.map(b => `
+              <div class="upcoming-item">
+                <div><div class="upcoming-name">${b.name}${b.biller ? ' <span style="color:#9ca3af;font-size:12px;font-weight:400">&middot; ' + b.biller + '</span>' : ''} <span class="badge ${b.payMethod === 'autopay' ? 'badge-autopay' : 'badge-manual'}" style="vertical-align:middle">${b.payMethod === 'autopay' ? 'Auto' : 'Manual'}</span></div><div class="upcoming-due">Due ${b.dueDate}${b.accountId ? ' &middot; ' + b.accountId : ''}</div></div>
+                <div><div class="upcoming-amount">${fmt(b.amount)}</div>${badgeHTML(false, b.dueDate)}</div>
+              </div>`).join("")}
+        </div>
+        <div class="panel">
+          <h3>Spending by Category</h3>
+          ${catBreakdown.length === 0 ? '<p class="empty">No bills added yet</p>' :
+            catBreakdown.map(c => `
+              <div class="cat-row">
+                <div class="cat-header"><span>${c.label}</span><span>${fmt(c.total)} (${Math.round((c.total/monthTotal)*100)}%)</span></div>
+                <div class="cat-track"><div class="cat-fill" style="width:${(c.total/barMax)*100}%;background:${c.color}"></div></div>
+              </div>`).join("")}
+        </div>
+      </div>`;
+  }
+
+  // ===== CALENDAR =====
+  if (state.view === "calendar") {
+    const firstDay = new Date(state.currentYear, state.currentMonth, 1).getDay();
+    const daysInMonth = new Date(state.currentYear, state.currentMonth + 1, 0).getDate();
+    const today = new Date(); today.setHours(0,0,0,0);
+    const todayDate = today.getDate();
+    const isCurrentMonth = today.getMonth() === state.currentMonth && today.getFullYear() === state.currentYear;
+
+    const dayEvents = {};
+    bills.forEach(b => {
+      const d = Math.min(b.dueDay, daysInMonth);
+      if (!dayEvents[d]) dayEvents[d] = [];
+      dayEvents[d].push({ type: "bill", name: b.name, amount: b.amount, id: b.id, paid: isPaid(b.id), category: b.category, payMethod: b.payMethod });
+    });
+    state.incomes.forEach(inc => {
+      const d = Math.min(inc.payDay, daysInMonth);
+      if (!dayEvents[d]) dayEvents[d] = [];
+      dayEvents[d].push({ type: "income", name: inc.name, amount: inc.amount });
+    });
+
+    let cells = DAYS_NAMES.map(d => `<div class="cal-header-cell">${d}</div>`).join("");
+    for (let i = 0; i < firstDay; i++) cells += '<div class="cal-cell empty"></div>';
+    for (let day = 1; day <= daysInMonth; day++) {
+      const isToday = isCurrentMonth && day === todayDate;
+      const events = dayEvents[day] || [];
+      const shown = events.slice(0, 3);
+      const extra = events.length - 3;
+      cells += `<div class="cal-cell${isToday ? " today" : ""}">
+        <div class="cal-day">${day}</div>
+        ${shown.map(ev => {
+          if (ev.type === "bill") {
+            return `<span class="cal-pip bill${ev.paid ? " is-paid" : ""}" title="${ev.name}: ${fmt(ev.amount)} (${ev.payMethod === 'autopay' ? 'Autopay' : 'Manual'})" onclick="togglePaid('${ev.id}')">${ev.payMethod === 'autopay' ? '⚡' : ''}${fmtShort(ev.amount)} ${ev.name}</span>`;
+          } else {
+            return `<span class="cal-pip income" title="${ev.name}: ${fmt(ev.amount)}">+${fmtShort(ev.amount)} ${ev.name}</span>`;
+          }
+        }).join("")}
+        ${extra > 0 ? `<div class="cal-more">+${extra} more</div>` : ""}
+      </div>`;
+    }
+
+    document.getElementById("view-calendar").innerHTML = `
+      <div class="panel" style="margin-bottom:16px">
+        <h3 style="margin-bottom:4px">${FULL_MONTHS[state.currentMonth]} ${state.currentYear}</h3>
+        <p style="font-size:13px;color:#9ca3af;margin-bottom:16px">Click a bill to toggle paid status</p>
+        <div class="cal-grid">${cells}</div>
+        <div style="display:flex;gap:16px;margin-top:14px;font-size:12px;color:#6b7280;flex-wrap:wrap">
+          <span><span class="badge badge-overdue" style="font-size:10px;padding:1px 8px">Red</span> = Bill due</span>
+          <span><span class="badge badge-paid" style="font-size:10px;padding:1px 8px">Green</span> = Paid</span>
+          <span><span style="background:#dbeafe;color:#1e40af;padding:1px 8px;border-radius:6px;font-size:10px;font-weight:600">Blue</span> = Income</span>
+          <span>⚡ = Autopay</span>
+        </div>
+      </div>`;
+  }
+
+  // ===== ALL BILLS =====
+  if (state.view === "bills") {
+    const filtered = state.filterCat === "all" ? allBills : allBills.filter(b => b.category === state.filterCat);
+    document.getElementById("view-bills").innerHTML = `
+      <div class="filters">
+        <button class="filter-btn" style="background:${state.filterCat==="all"?"#4f46e5":"#f3f4f6"};color:${state.filterCat==="all"?"#fff":"#374151"}" onclick="setFilter('all')">All</button>
+        ${CATEGORIES.map(c => `<button class="filter-btn" style="background:${state.filterCat===c.id?c.color:"#f3f4f6"};color:${state.filterCat===c.id?"#fff":"#374151"}" onclick="setFilter('${c.id}')">${c.label}</button>`).join("")}
+      </div>
+      <div class="bill-list">
+        ${filtered.length === 0 ? '<p class="empty">No bills in this category</p>' :
+          filtered.map(b => {
+            const cat = catInfo(b.category);
+            const paid = isPaid(b.id);
+            const dueDate = getDueDate(b);
+            return `<div class="bill-row${paid?" paid":""}${!isDueThisMonth(b) ? " paid" : ""}">
+              <button class="check-btn${paid?" checked":""}" onclick="togglePaid('${b.id}')" ${!isDueThisMonth(b) ? "disabled style='opacity:0.3'" : ""}>${paid?"✓":""}</button>
+              <div class="cat-dot" style="background:${cat.color}"></div>
+              <div class="bill-info">
+                <div class="bill-name${paid?" struck":""}">${b.name}</div>
+                <div class="bill-meta">${cat.label} &middot; ${b.frequency === "quarterly" ? "Quarterly · " : ""}Due ${MONTHS[state.currentMonth]} ${b.dueDay}${b.biller ? " &middot; " + b.biller : ""}${b.accountId ? " &middot; &#x1F4B3; " + b.accountId : ""} &middot; <span class="badge ${b.payMethod === 'autopay' ? 'badge-autopay' : 'badge-manual'}">${b.payMethod === 'autopay' ? 'Autopay' : 'Manual'}</span></div>
+              </div>
+              <div class="bill-right">
+                <div class="bill-amount">${fmt(b.amount)}</div>
+                ${badgeHTML(paid, dueDate)}
+              </div>
+              <div class="bill-actions">
+                <button onclick="openEditModal('${b.id}')" title="Edit">&#9998;</button>
+                <button onclick="deleteBill('${b.id}')" title="Delete">&#128465;</button>
+              </div>
+            </div>`;
+          }).join("")}
+      </div>`;
+  }
+
+  // ===== INCOME =====
+  if (state.view === "income") {
+    const freqLabels = { monthly: "Monthly", biweekly: "Bi-Weekly", weekly: "Weekly", "one-time": "One-Time" };
+    document.getElementById("view-income").innerHTML = `
+      <div class="summary-grid" style="margin-bottom:20px">
+        ${[
+          { label: "Monthly Income", value: fmt(totalIncome), sub: `${state.incomes.length} sources`, accent: "#3b82f6" },
+          { label: "Monthly Bills", value: fmt(monthTotal), sub: `${bills.length} bills`, accent: "#ef4444" },
+          { label: "Net Cash Flow", value: fmt(netCash), sub: netCash >= 0 ? "You're in the green" : "Spending exceeds income", accent: netCash >= 0 ? "#16a34a" : "#ef4444" },
+        ].map(c => `
+          <div class="summary-card" style="--accent:${c.accent}">
+            <div class="label">${c.label}</div>
+            <div class="value">${c.value}</div>
+            <div class="sub">${c.sub}</div>
+          </div>`).join("")}
+      </div>
+      <div class="income-list">
+        <div class="list-header">
+          <h3>Income Sources</h3>
+          <button class="btn-primary btn-sm" onclick="openIncomeModal()">+ Add Income</button>
+        </div>
+        ${state.incomes.length === 0 ? '<p class="empty">No income sources added yet.</p>' :
+          state.incomes.map(inc => `
+            <div class="income-row">
+              <div class="income-icon">$</div>
+              <div class="row-info">
+                <div class="row-name">${inc.name}</div>
+                <div class="row-meta">${freqLabels[inc.frequency] || inc.frequency} &middot; Day ${inc.payDay}</div>
+              </div>
+              <div class="row-right" style="margin-right:8px">
+                <div class="row-amount" style="color:#3b82f6">${fmt(inc.amount)}</div>
+                <div class="row-sub">${freqLabels[inc.frequency]}</div>
+              </div>
+              <div class="bill-actions">
+                <button onclick="openEditIncome('${inc.id}')" title="Edit">&#9998;</button>
+                <button onclick="deleteIncome('${inc.id}')" title="Delete">&#128465;</button>
+              </div>
+            </div>`).join("")}
+      </div>`;
+  }
+
+  // ===== HISTORY =====
+  if (state.view === "history") {
+    const history = [...state.payments].sort((a,b) => new Date(b.paidDate) - new Date(a.paidDate)).map(p => {
+      const bill = state.bills.find(x => x.id === p.billId);
+      return bill ? {...p, billName: bill.name, amount: bill.amount, category: bill.category} : null;
+    }).filter(Boolean);
+
+    document.getElementById("view-history").innerHTML = `
+      <div class="history-list">
+        <div class="list-header"><h3>Payment History</h3></div>
+        ${history.length === 0 ? '<p class="empty">No payments recorded yet. Mark bills as paid to start tracking history.</p>' :
+          history.map(p => {
+            const cat = catInfo(p.category);
+            return `<div class="history-row">
+              <div class="history-icon">&#10003;</div>
+              <div class="row-info">
+                <div class="row-name">${p.billName}</div>
+                <div class="row-meta">${cat.label} &middot; ${MONTHS[p.month]} ${p.year}</div>
+              </div>
+              <div class="row-right">
+                <div class="row-amount">${fmt(p.amount)}</div>
+                <div class="row-sub">Paid ${p.paidDate}</div>
+              </div>
+            </div>`;
+          }).join("")}
+      </div>`;
+  }
+
+  if (state.view === "rental") { renderRental(); }
+  if (state.view === "savings") { renderSavings(); }
+}
+
+
+function populateBillerDataLists() {
+  var billers = [...new Set(state.bills.map(b => b.biller).filter(Boolean))];
+  var accounts = [...new Set(state.bills.map(b => b.accountId).filter(Boolean))];
+  var bEl = document.getElementById("billersList");
+  var aEl = document.getElementById("accountsList");
+  if (bEl) bEl.innerHTML = billers.map(b => "<option value=" + b + ">").join("");
+  if (aEl) aEl.innerHTML = accounts.map(a => "<option value=" + a + ">").join("");
+}
+
+
+// ===== RENTAL PROPERTY FUNCTIONS =====
+const EXPENSE_CATS = {
+  maintenance: { label: "Maintenance", icon: "🔧", color: "#f59e0b" },
+  repairs:     { label: "Repairs",     icon: "🪛", color: "#ef4444" },
+  insurance:   { label: "Insurance",   icon: "🛡️", color: "#10b981" },
+  taxes:       { label: "Property Tax",icon: "🏛️", color: "#6366f1" },
+  utilities:   { label: "Utilities",   icon: "💡", color: "#8b5cf6" },
+  management:  { label: "Mgmt Fees",   icon: "📋", color: "#ec4899" },
+  mortgage:    { label: "Mortgage/HOA",icon: "🏦", color: "#3b82f6" },
+  other:       { label: "Other",       icon: "📌", color: "#6b7280" },
+};
+
+function isRentPaid(propId, month, year) {
+  const m = month !== undefined ? month : state.currentMonth;
+  const y = year !== undefined ? year : state.currentYear;
+  return state.rentalPayments.some(p => p.propId === propId && p.month === m && p.year === y);
+}
+
+function toggleRentPaid(propId) {
+  if (isRentPaid(propId)) {
+    state.rentalPayments = state.rentalPayments.filter(
+      p => !(p.propId === propId && p.month === state.currentMonth && p.year === state.currentYear)
+    );
+  } else {
+    state.rentalPayments.push({ propId, month: state.currentMonth, year: state.currentYear, paidDate: new Date().toISOString().slice(0,10) });
+  }
+  saveState(); renderRental();
+}
+
+function openPropertyModal(id) {
+  const isEdit = !!id;
+  document.getElementById("propertyModalTitle").textContent = isEdit ? "Edit Property" : "Add Rental Property";
+  document.getElementById("propertySaveBtn").textContent = isEdit ? "Save Changes" : "Add Property";
+  state.editPropertyId = id || null;
+  if (isEdit) {
+    const p = state.properties.find(x => x.id === id);
+    if (!p) return;
+    document.getElementById("pName").value = p.name;
+    document.getElementById("pAddress").value = p.address || "";
+    document.getElementById("pTenant").value = p.tenant || "";
+    document.getElementById("pRent").value = p.rent;
+    document.getElementById("pRentDay").value = p.rentDay;
+    document.getElementById("pNotes").value = p.notes || "";
+  } else {
+    document.getElementById("pName").value = "";
+    document.getElementById("pAddress").value = "";
+    document.getElementById("pTenant").value = "";
+    document.getElementById("pRent").value = "";
+    document.getElementById("pRentDay").value = "1";
+    document.getElementById("pNotes").value = "";
+  }
+  document.getElementById("propertyModal").classList.remove("hidden");
+}
+function closePropertyModal() { document.getElementById("propertyModal").classList.add("hidden"); }
+
+function saveProperty() {
+  const name = document.getElementById("pName").value.trim();
+  const rent = parseFloat(document.getElementById("pRent").value);
+  if (!name || isNaN(rent)) return;
+  const data = {
+    name, rent,
+    address: document.getElementById("pAddress").value.trim(),
+    tenant:  document.getElementById("pTenant").value.trim(),
+    rentDay: parseInt(document.getElementById("pRentDay").value) || 1,
+    notes:   document.getElementById("pNotes").value.trim(),
+  };
+  if (state.editPropertyId) {
+    const p = state.properties.find(x => x.id === state.editPropertyId);
+    if (p) Object.assign(p, data);
+  } else {
+    const newProp = { id: genId(), ...data };
+    state.properties.push(newProp);
+    state.selectedProperty = newProp.id;
+  }
+  saveState(); closePropertyModal(); renderRental();
+}
+
+function deleteProperty(id) {
+  if (!confirm("Delete this property and all its expense records?")) return;
+  state.properties = state.properties.filter(p => p.id !== id);
+  state.rentalExpenses = state.rentalExpenses.filter(e => e.propId !== id);
+  state.rentalPayments = state.rentalPayments.filter(p => p.propId !== id);
+  state.rentalExpPayments = state.rentalExpPayments.filter(p => {
+    return !state.rentalExpenses.filter(e => e.propId !== id).every(e => e.id !== p.expId);
+  });
+  if (state.selectedProperty === id) state.selectedProperty = state.properties[0]?.id || null;
+  saveState(); renderRental();
+}
+
+function toggleExpenseDate() {
+  var freq = document.getElementById("eFrequency").value;
+  document.getElementById("eRecurringFields").classList.toggle("hidden", freq === "once");
+  document.getElementById("eOnceFields").classList.toggle("hidden", freq !== "once");
+}
+function openExpenseModal(id) {
+  const isEdit = !!id;
+  document.getElementById("expenseModalTitle").textContent = isEdit ? "Edit Expense" : "Add Expense";
+  document.getElementById("expenseSaveBtn").textContent = isEdit ? "Save Changes" : "Add Expense";
+  state.editExpenseId = id || null;
+  const today = new Date().toISOString().slice(0,10);
+  if (isEdit) {
+    const e = state.rentalExpenses.find(x => x.id === id);
+    if (!e) return;
+    document.getElementById("eName").value = e.name;
+    document.getElementById("eAmount").value = e.amount;
+    const freq = e.frequency || "once";
+    document.getElementById("eFrequency").value = freq;
+    document.getElementById("eDueDay").value = e.dueDay || 1;
+    document.getElementById("eStartMonth").value = e.startMonth !== undefined ? e.startMonth : 0;
+    document.getElementById("eDate").value = e.date || today;
+    document.getElementById("eCategory").value = e.category;
+    document.getElementById("eAccount").value = e.account || "";
+    document.getElementById("eNotes").value = e.notes || "";
+  } else {
+    document.getElementById("eName").value = "";
+    document.getElementById("eAmount").value = "";
+    document.getElementById("eFrequency").value = "monthly";
+    document.getElementById("eDueDay").value = "1";
+    document.getElementById("eStartMonth").value = state.currentMonth;
+    document.getElementById("eDate").value = today;
+    document.getElementById("eCategory").value = "maintenance";
+    document.getElementById("eAccount").value = "";
+    document.getElementById("eNotes").value = "";
+  }
+  toggleExpenseDate();
+  const accts = [...new Set(state.rentalExpenses.map(e => e.account).filter(Boolean))];
+  const dl = document.getElementById("expAccountsList");
+  if (dl) dl.innerHTML = accts.map(a => '<option value="' + a + '">').join('');
+  document.getElementById("expenseModal").classList.remove("hidden");
+}
+function closeExpenseModal() { document.getElementById("expenseModal").classList.add("hidden"); }
+
+function saveExpense() {
+  const name = document.getElementById("eName").value.trim();
+  const amount = parseFloat(document.getElementById("eAmount").value);
+  if (!name || isNaN(amount) || !state.selectedProperty) return;
+  const frequency = document.getElementById("eFrequency").value;
+  const data = {
+    propId: state.selectedProperty,
+    name, amount, frequency,
+    dueDay:     frequency !== "once" ? (parseInt(document.getElementById("eDueDay").value)||1) : 1,
+    startMonth: frequency !== "once" ? parseInt(document.getElementById("eStartMonth").value) : 0,
+    startYear:  state.currentYear,
+    date:       frequency === "once" ? document.getElementById("eDate").value : "",
+    category: document.getElementById("eCategory").value,
+    account:  document.getElementById("eAccount").value.trim(),
+    notes:    document.getElementById("eNotes").value.trim(),
+  };
+  if (state.editExpenseId) {
+    const e = state.rentalExpenses.find(x => x.id === state.editExpenseId);
+    if (e) Object.assign(e, data);
+  } else {
+    state.rentalExpenses.push({ id: genId(), ...data });
+  }
+  saveState(); closeExpenseModal(); renderRental();
+}
+
+function deleteExpense(id) {
+  if (!confirm("Delete this expense?")) return;
+  state.rentalExpenses = state.rentalExpenses.filter(e => e.id !== id);
+  saveState(); renderRental();
+}
+
+function isExpPaid(expId, month, year) {
+  var m = month !== undefined ? month : state.currentMonth;
+  var y = year !== undefined ? year : state.currentYear;
+  return state.rentalExpPayments.some(function(p){ return p.expId===expId && p.month===m && p.year===y; });
+}
+function toggleExpPaid(expId) {
+  if (isExpPaid(expId)) {
+    state.rentalExpPayments = state.rentalExpPayments.filter(function(p){
+      return !(p.expId===expId && p.month===state.currentMonth && p.year===state.currentYear);
+    });
+  } else {
+    state.rentalExpPayments.push({expId: expId, month: state.currentMonth, year: state.currentYear, date: new Date().toISOString().slice(0,10)});
+  }
+  saveState(); renderRental();
+}
+function selectProperty(id) { state.selectedProperty = id; saveState(); renderRental(); }
+
+function renderRental() {
+  const el = document.getElementById("view-rental");
+  if (!el) return;
+
+  if (state.properties.length === 0) {
+    el.innerHTML = `
+      <div class="panel" style="text-align:center;padding:48px 24px">
+        <div style="font-size:48px;margin-bottom:12px">🏠</div>
+        <h2 style="margin-bottom:8px">No Rental Properties Yet</h2>
+        <p style="color:#9ca3af;margin-bottom:24px">Add a property to track rent collection and expenses.</p>
+        <button class="btn-primary" onclick="openPropertyModal()">+ Add First Property</button>
+      </div>`;
+    return;
+  }
+
+  // Auto-select first property if none selected
+  if (!state.selectedProperty || !state.properties.find(p => p.id === state.selectedProperty)) {
+    state.selectedProperty = state.properties[0].id;
+  }
+  const prop = state.properties.find(p => p.id === state.selectedProperty);
+  const rentPaid = isRentPaid(prop.id);
+  const propExpenses = state.rentalExpenses.filter(e => e.propId === prop.id);
+
+
+  // Expense applies to a given month based on frequency
+  function expApplies(e, m, y) {
+    var freq = e.frequency || "once";
+    if (freq === "once") {
+      var d = new Date((e.date || "") + "T12:00:00");
+      return d.getMonth() === m && d.getFullYear() === y;
+    }
+    // Recurring: must be at or after start
+    var sy = e.startYear || new Date((e.date||"") + "T12:00:00").getFullYear() || y;
+    var sm = e.startMonth !== undefined ? e.startMonth : 0;
+    var monthsFromStart = (y - sy) * 12 + (m - sm);
+    if (monthsFromStart < 0) return false;
+    if (freq === "monthly") return true;
+    if (freq === "quarterly") return monthsFromStart % 3 === 0;
+    return false;
+  }
+
+  // Month expenses
+  const monthExpenses = propExpenses.filter(e => expApplies(e, state.currentMonth, state.currentYear));
+  const monthExpTotal = monthExpenses.reduce((s,e) => s + e.amount, 0);
+
+  // YTD (sum all months Jan through current)
+  var ytdExpTotal = 0;
+  var ytdExpCount = 0;
+  for (var m = 0; m <= state.currentMonth; m++) {
+    propExpenses.forEach(e => {
+      if (expApplies(e, m, state.currentYear)) { ytdExpTotal += e.amount; ytdExpCount++; }
+    });
+  }
+
+
+  // YTD rent collected
+  const ytdRentPayments = state.rentalPayments.filter(p => p.propId === prop.id && p.year === state.currentYear);
+  const ytdRentCollected = ytdRentPayments.length * prop.rent;
+  const ytdNet = ytdRentCollected - ytdExpTotal;
+
+  // Property tabs
+  const propTabs = state.properties.map(p => `
+    <button class="property-tab-btn${p.id === state.selectedProperty ? ' active' : ''}" onclick="selectProperty('${p.id}')">
+      🏠 ${p.name}
+    </button>`).join('');
+
+  // Summary cards
+  const summaryCards = [
+    { label: 'Monthly Rent', value: fmt(prop.rent), sub: rentPaid ? '✓ Collected' : `Due day ${prop.rentDay}`, accent: rentPaid ? '#16a34a' : '#f59e0b' },
+    { label: 'Month Expenses', value: fmt(monthExpTotal), sub: `${monthExpenses.length} items`, accent: '#ef4444' },
+    { label: 'Month Net', value: fmt((rentPaid ? prop.rent : 0) - monthExpTotal), sub: rentPaid ? 'rent received' : 'rent pending', accent: (rentPaid ? prop.rent : 0) - monthExpTotal >= 0 ? '#16a34a' : '#ef4444' },
+    { label: 'YTD Income', value: fmt(ytdRentCollected), sub: `${ytdRentPayments.length} months`, accent: '#3b82f6' },
+    { label: 'YTD Expenses', value: fmt(ytdExpTotal), sub: ytdExpCount + ' occurrences', accent: '#8b5cf6' },
+    { label: 'YTD Net', value: fmt(ytdNet), sub: state.currentYear, accent: ytdNet >= 0 ? '#16a34a' : '#ef4444' },
+  ].map(c => `<div class="summary-card" style="--accent:${c.accent}"><div class="label">${c.label}</div><div class="value" style="font-size:18px">${c.value}</div><div class="sub">${c.sub}</div></div>`).join('');
+
+  // Expense breakdown by category
+  const catTotals = {};
+  monthExpenses.forEach(e => { catTotals[e.category] = (catTotals[e.category]||0) + e.amount; });
+  const catRows = Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).map(([cat, total]) => {
+    const info = EXPENSE_CATS[cat] || EXPENSE_CATS.other;
+    return `<div class="cat-row">
+      <div class="cat-header"><span>${info.icon} ${info.label}</span><span>${fmt(total)}</span></div>
+      <div class="cat-track"><div class="cat-fill" style="width:${monthExpTotal > 0 ? Math.round((total/monthExpTotal)*100) : 0}%;background:${info.color}"></div></div>
+    </div>`;
+  }).join('');
+
+  // All expenses list
+  var MO_SHORT2 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var FREQ_LABELS2 = {monthly:"Monthly",quarterly:"Quarterly",once:"One-Time"};
+  function buildExpRow(e) {
+    var info = EXPENSE_CATS[e.category] || EXPENSE_CATS.other;
+    var freq = e.frequency || "once";
+    var fLabel = FREQ_LABELS2[freq] || freq;
+    var fClass = freq === "once" ? "badge-manual" : "badge-autopay";
+    var subDate = freq === "once" ? (e.date || "") : ("Day " + (e.dueDay || 1) + " from " + MO_SHORT2[e.startMonth || 0] + " " + (e.startYear || ""));
+    var h = "";
+    h += "<div class='expense-row'>";
+    h += "<div class='expense-icon'>" + info.icon + "</div>";
+    h += "<div class='row-info'>";
+    h += "<div class='row-name'>" + e.name + " <span class='badge " + fClass + "' style='font-size:10px'>" + fLabel + "</span></div>";
+    h += "<div class='row-meta'>" + info.label + (e.account ? " &middot; " + e.account : "") + (e.notes ? " &middot; " + e.notes : "") + "</div>";
+    h += "</div>";
+    h += "<div class='row-right' style='margin-right:8px;text-align:right'>";
+    h += "<div class='row-amount' style='color:" + info.color + "'>" + fmt(e.amount) + "</div>";
+    h += "<div class='row-sub'>" + subDate + "</div>";
+    h += "</div>";
+    h += "<div class='bill-actions'>";
+    h += "<button onclick='openExpenseModal(\"" + e.id + "\")' title='Edit'>&#9998;</button>";
+    h += "<button onclick='deleteExpense(\"" + e.id + "\")' title='Delete'>&#128465;</button>";
+    h += "</div></div>";
+    return h;
+  }
+  var sortedExp = propExpenses.slice().sort(function(a,b) {
+    var fa = a.frequency||"once", fb = b.frequency||"once";
+    if (fa==="once" && fb!=="once") return 1;
+    if (fa!=="once" && fb==="once") return -1;
+    if (fa==="once") return new Date(b.date)-new Date(a.date);
+    return a.name.localeCompare(b.name);
+  });
+  var expRows = sortedExp.map(buildExpRow).join("");
+
+
+
+
+  // Build "This Month" checklist rows
+  var MO_S = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var monthExpRows = monthExpenses.map(function(e) {
+    var info = EXPENSE_CATS[e.category] || EXPENSE_CATS.other;
+    var paid = isExpPaid(e.id);
+    var freq = e.frequency || "once";
+    var subLine = freq === "once" ? (e.date || "") : (info.label + (e.account ? " · " + e.account : ""));
+    var h = "<div class=\"bill-row" + (paid ? " paid" : "") + "\">";
+    h += "<button class=\"check-btn" + (paid ? " checked" : "") + "\" onclick=\"toggleExpPaid('"+e.id+"')\">" + (paid ? "&#10003;" : "") + "</button>";
+    h += "<div class=\"expense-icon\" style=\"margin:0 4px\">" + info.icon + "</div>";
+    h += "<div class=\"bill-info\">";
+    h += "<div class=\"bill-name" + (paid ? " struck" : "") + "\">" + e.name + "</div>";
+    h += "<div class=\"bill-meta\">" + subLine + "</div>";
+    h += "</div>";
+    h += "<div class=\"bill-right\">";
+    h += "<div class=\"bill-amount\">" + fmt(e.amount) + "</div>";
+    h += paid ? "<span class=\"badge badge-paid\">Confirmed</span>" : "<span class=\"badge badge-upcoming\">Pending</span>";
+    h += "</div></div>";
+    return h;
+  }).join("");
+
+  el.innerHTML = `
+    <div class="section-header">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div class="property-tabs">${propTabs}</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-secondary btn-sm" onclick="openPropertyModal('${prop.id}')">✏️ Edit</button>
+        <button class="btn-primary btn-sm" onclick="openPropertyModal()">+ Property</button>
+      </div>
+    </div>
+
+    ${prop.address || prop.tenant ? `<div class="panel" style="margin-bottom:16px;padding:14px 20px">
+      ${prop.address ? `<div style="font-size:13px;color:#6b7280">📍 ${prop.address}</div>` : ''}
+      ${prop.tenant ? `<div style="font-size:13px;color:#6b7280;margin-top:4px">👤 Tenant: <strong>${prop.tenant}</strong></div>` : ''}
+      ${prop.notes ? `<div style="font-size:13px;color:#9ca3af;margin-top:4px">📝 ${prop.notes}</div>` : ''}
+    </div>` : ''}
+
+    <button class="rent-collect-btn${rentPaid ? ' received' : ''}" onclick="toggleRentPaid('${prop.id}')">
+      ${rentPaid ? '✅ Rent Collected — ' + MONTHS[state.currentMonth] + ' ' + state.currentYear + ' (click to undo)' : '💰 Mark Rent as Collected — ' + MONTHS[state.currentMonth] + ' ' + state.currentYear + ' (' + fmt(prop.rent) + ')'}
+    </button>
+
+    <div class="rental-summary-grid">${summaryCards}</div>
+
+    <div class="two-col" style="margin-bottom:20px">
+      <div class="panel">
+        <h3 style="margin-bottom:14px">This Month's Expenses</h3>
+        ${monthExpRows || '<p class="empty">No expenses this month</p>'}
+      </div>
+      <div class="panel">
+        <h3>Rent Collection History</h3>
+        <div style="margin-top:8px">
+          ${[...Array(6)].map((_,i) => {
+            const d = new Date(state.currentYear, state.currentMonth - i, 1);
+            const m = d.getMonth(); const y = d.getFullYear();
+            const paid = isRentPaid(prop.id, m, y);
+            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9">
+              <span style="font-size:14px">${MONTHS[m]} ${y}</span>
+              <span class="badge ${paid ? 'badge-paid' : 'badge-upcoming'}">${paid ? 'Collected' : 'Pending'}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="bill-list">
+      <div class="list-header">
+        <h3>Expense Templates — ${prop.name}</h3>
+        <button class="btn-primary btn-sm" onclick="openExpenseModal()">+ Add Expense</button>
+      </div>
+      ${expRows || '<p class="empty">No expense templates yet.</p>'}
+    </div>`;
+}
+
+
+// ════════════════════════════════════════════════════
+//  SAVINGS
+// ════════════════════════════════════════════════════
+
+function getSavingsContribBills() {
+  const FREQ_LABELS = { weekly: "Weekly", biweekly: "Bi-Weekly", monthly: "Monthly" };
+  return state.savingsAccounts
+    .filter(a => a.contrib > 0)
+    .map(a => {
+      const freq = a.contribFreq || "monthly";
+      // For weekly/biweekly show per-contribution amount; for budget show monthly equivalent
+      const dispAmount = a.contrib;
+      const freqLabel = FREQ_LABELS[freq] || freq;
+      return {
+        id: "sav_" + a.id,
+        name: a.name + " — Savings (" + freqLabel + ")",
+        amount: dispAmount,
+        dueDay: a.contribDay || 1,
+        category: "savings",
+        frequency: freq === "monthly" ? "monthly" : "monthly", // always show in monthly budget
+        startMonth: 0,
+        startYear: 2020,
+        payMethod: "manual",
+        isRecurring: true,
+        isSavingsContrib: true,
+        contribFreq: freq,
+        savingsAccountId: a.id
+      };
+    });
+}
+
+function openSavingsAccountModal(id) {
+  state.editSavingsId = id || null;
+  const isEdit = !!id;
+  document.getElementById('savAcctModalTitle').textContent = isEdit ? 'Edit Account' : 'Add Savings Account';
+  document.getElementById('savAcctSaveBtn').textContent = isEdit ? 'Save Changes' : 'Add Account';
+  if (isEdit) {
+    const a = state.savingsAccounts.find(x => x.id === id);
+    if (!a) return;
+    document.getElementById('saName').value = a.name;
+    document.getElementById('saBank').value = a.bank || '';
+    document.getElementById('saBalance').value = a.balance;
+    document.getElementById('saAPY').value = a.apy || '';
+    document.getElementById('saContrib').value = a.contrib || '';
+    document.getElementById('saContribDay').value = a.contribDay || 1;
+    document.getElementById('saGoal').value = a.goal || '';
+    document.getElementById('saContribFreq').value = a.contribFreq || 'monthly';
+    document.getElementById('saContribDayRow').classList.toggle('hidden', (a.contribFreq||'monthly') !== 'monthly');
+    document.getElementById('saNotes').value = a.notes || '';
+  } else {
+    ['saName','saBank','saBalance','saAPY','saContrib','saGoal','saNotes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('saContribDay').value = '1';
+    document.getElementById('saContribFreq').value = 'monthly';
+    document.getElementById('saContribDayRow').classList.remove('hidden');
+  }
+  document.getElementById('savAcctModal').classList.remove('hidden');
+}
+
+function saveSavingsAcct() {
+  const name = document.getElementById('saName').value.trim();
+  if (!name) return;
+  const data = {
+    name,
+    bank: document.getElementById('saBank').value.trim(),
+    balance: parseFloat(document.getElementById('saBalance').value) || 0,
+    apy: parseFloat(document.getElementById('saAPY').value) || 0,
+    contrib: parseFloat(document.getElementById('saContrib').value) || 0,
+    contribDay: parseInt(document.getElementById('saContribDay').value) || 1,
+    contribFreq: document.getElementById('saContribFreq').value || 'monthly',
+    goal: parseFloat(document.getElementById('saGoal').value) || 0,
+    notes: document.getElementById('saNotes').value.trim()
+  };
+  if (state.editSavingsId) {
+    const a = state.savingsAccounts.find(x => x.id === state.editSavingsId);
+    if (a) Object.assign(a, data);
+  } else {
+    data.id = genId();
+    state.savingsAccounts.push(data);
+    if (!state.selectedSavingsId) state.selectedSavingsId = data.id;
+  }
+  saveState();
+  document.getElementById('savAcctModal').classList.add('hidden');
+  renderSavings();
+}
+
+function deleteSavingsAcct(id) {
+  if (!confirm('Delete this account and all its transactions?')) return;
+  state.savingsAccounts = state.savingsAccounts.filter(a => a.id !== id);
+  state.savingsTransactions = state.savingsTransactions.filter(t => t.accountId !== id);
+  if (state.selectedSavingsId === id) state.selectedSavingsId = state.savingsAccounts[0]?.id || null;
+  saveState(); renderSavings();
+}
+
+function selectSavingsAcct(id) { state.selectedSavingsId = id; saveState(); renderSavings(); }
+
+function openSavingsTxnModal(id) {
+  state.editSavingsTxnId = id || null;
+  const isEdit = !!id;
+  document.getElementById('savTxnModalTitle').textContent = isEdit ? 'Edit Transaction' : 'Add Transaction';
+  document.getElementById('savTxnSaveBtn').textContent = isEdit ? 'Save Changes' : 'Add Transaction';
+  if (isEdit) {
+    const t = state.savingsTransactions.find(x => x.id === id);
+    if (!t) return;
+    document.getElementById('stType').value = t.type;
+    document.getElementById('stAmount').value = t.amount;
+    document.getElementById('stDate').value = t.date;
+    document.getElementById('stNotes').value = t.notes || '';
+  } else {
+    document.getElementById('stType').value = 'deposit';
+    document.getElementById('stAmount').value = '';
+    document.getElementById('stDate').value = new Date().toISOString().slice(0,10);
+    document.getElementById('stNotes').value = '';
+  }
+  document.getElementById('savTxnModal').classList.remove('hidden');
+}
+
+function saveSavingsTxn() {
+  const amount = parseFloat(document.getElementById('stAmount').value);
+  const acctId = state.selectedSavingsId;
+  if (!amount || !acctId) return;
+  const type = document.getElementById('stType').value;
+  const date = document.getElementById('stDate').value;
+  const notes = document.getElementById('stNotes').value.trim();
+  const acct = state.savingsAccounts.find(a => a.id === acctId);
+  if (!acct) return;
+
+  if (state.editSavingsTxnId) {
+    const old = state.savingsTransactions.find(t => t.id === state.editSavingsTxnId);
+    if (old) {
+      // Reverse old balance effect
+      if (old.type === 'deposit' || old.type === 'interest') acct.balance -= old.amount;
+      else acct.balance += old.amount;
+      // Apply new
+      if (type === 'deposit' || type === 'interest') acct.balance += amount;
+      else acct.balance -= amount;
+      Object.assign(old, { type, amount, date, notes });
+    }
+  } else {
+    if (type === 'deposit' || type === 'interest') acct.balance += amount;
+    else acct.balance -= amount;
+    state.savingsTransactions.push({ id: genId(), accountId: acctId, type, amount, date, notes });
+  }
+  saveState();
+  document.getElementById('savTxnModal').classList.add('hidden');
+  renderSavings();
+}
+
+function deleteSavingsTxn(id) {
+  if (!confirm('Delete this transaction?')) return;
+  const t = state.savingsTransactions.find(x => x.id === id);
+  if (t) {
+    const acct = state.savingsAccounts.find(a => a.id === t.accountId);
+    if (acct) {
+      if (t.type === 'deposit' || t.type === 'interest') acct.balance -= t.amount;
+      else acct.balance += t.amount;
+    }
+    state.savingsTransactions = state.savingsTransactions.filter(x => x.id !== id);
+  }
+  saveState(); renderSavings();
+}
+
+function renderSavings() {
+  const el = document.getElementById('view-savings');
+  if (!el) return;
+
+  // Auto-select first account
+  if (!state.selectedSavingsId || !state.savingsAccounts.find(a => a.id === state.selectedSavingsId)) {
+    state.selectedSavingsId = state.savingsAccounts[0]?.id || null;
+  }
+
+  if (state.savingsAccounts.length === 0) {
+    el.innerHTML = `<div class="panel" style="text-align:center;padding:48px 24px">
+      <div style="font-size:48px;margin-bottom:12px">&#128176;</div>
+      <h2 style="margin-bottom:8px">No Savings Accounts Yet</h2>
+      <p style="color:#9ca3af;margin-bottom:24px">Track balances, interest, deposits and withdrawals.</p>
+      <button class="btn-primary" onclick="openSavingsAccountModal()">+ Add First Account</button>
+    </div>`;
+    return;
+  }
+
+  const MOS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const curY = state.currentYear;
+  const curM = state.currentMonth;
+  const acct = state.savingsAccounts.find(a => a.id === state.selectedSavingsId);
+  const totalBalance = state.savingsAccounts.reduce((s,a) => s + (a.balance||0), 0);
+  const totalContrib = state.savingsAccounts.reduce((s,a) => {
+    const freq = a.contribFreq || 'monthly';
+    const monthly = freq === 'weekly' ? (a.contrib||0)*52/12 : freq === 'biweekly' ? (a.contrib||0)*26/12 : (a.contrib||0);
+    return s + monthly;
+  }, 0);
+  const acctTxns = state.savingsTransactions
+    .filter(t => t.accountId === acct.id)
+    .sort((a,b) => new Date(b.date) - new Date(a.date));
+
+  // YTD stats
+  let ytdDep = 0, ytdWith = 0, ytdInt = 0;
+  acctTxns.forEach(t => {
+    const y = new Date(t.date + 'T12:00:00').getFullYear();
+    if (y === curY) {
+      if (t.type === 'deposit') ytdDep += t.amount;
+      else if (t.type === 'withdrawal') ytdWith += t.amount;
+      else if (t.type === 'interest') ytdInt += t.amount;
+    }
+  });
+  const estMonthlyInterest = acct.apy > 0 ? acct.balance * acct.apy / 100 / 12 : 0;
+
+  // Account cards
+  const acctCards = state.savingsAccounts.map(a => {
+    const isActive = a.id === state.selectedSavingsId;
+    const goalPct = a.goal > 0 ? Math.min(100, Math.round((a.balance / a.goal) * 100)) : 0;
+    const goalBar = a.goal > 0 ? `
+      <div class="goal-bar-wrap">
+        <div class="goal-bar-labels"><span>Goal progress</span><span>${goalPct}% of ${fmt(a.goal)}</span></div>
+        <div class="goal-bar-track"><div class="goal-bar-fill" style="width:${goalPct}%"></div></div>
+      </div>` : '';
+    return `<div class="savings-card${isActive ? ' active-acct' : ''}" onclick="selectSavingsAcct('${a.id}')">
+      <div class="sc-name">${a.name}</div>
+      <div class="sc-bank">${a.bank || 'No bank set'}</div>
+      <div class="sc-bal">${fmt(a.balance)}</div>
+      ${a.apy ? `<div class="sc-meta">APY ${a.apy}% &mdash; ~${fmt(estMonthlyInterest)}/mo interest</div>` : ''}
+      ${a.contrib ? `<div class="sc-contrib">&#128176; ${fmt(a.contrib)}/${({weekly:'wk',biweekly:'2wk',monthly:'mo'})[a.contribFreq||'monthly']||'mo'}${a.contribFreq==='monthly'||!a.contribFreq ? ' &middot; day '+(a.contribDay||1) : ''}</div>` : ''}
+      ${goalBar}
+    </div>`;
+  }).join('');
+
+  // Summary cards
+  const SC = (label, val, sub, color) =>
+    `<div class="summary-card" style="--accent:${color}"><div class="label">${label}</div><div class="value">${val}</div><div class="sub">${sub}</div></div>`;
+  const summaryCards = `<div class="summary-grid" style="margin-bottom:20px">
+    ${SC('Balance', fmt(acct.balance), acct.bank || 'current', '#10b981')}
+    ${SC('YTD Deposits', fmt(ytdDep), curY + ' contributions', '#4f46e5')}
+    ${SC('YTD Withdrawals', fmt(ytdWith), curY + ' taken out', '#ef4444')}
+    ${SC('YTD Interest', fmt(ytdInt), acct.apy ? acct.apy + '% APY' : 'earned', '#d97706')}
+    ${SC('All Accounts', fmt(totalBalance), state.savingsAccounts.length + ' accounts total', '#7c3aed')}
+    ${SC('Monthly Savings', fmt(totalContrib), 'monthly equivalent', '#0891b2')}
+  </div>`;
+
+  // Growth chart — running balance per month this year
+  const chartHTML = (() => {
+    // Work backwards from current balance to find start-of-year balance
+    let bal = acct.balance;
+    const futureAndThisYear = acctTxns.filter(t => new Date(t.date+'T12:00:00').getFullYear() >= curY);
+    // All txns in current year affect current balance; reverse them month by month
+    const byMonth = Array.from({length: 12}, () => []);
+    acctTxns.forEach(t => {
+      const d = new Date(t.date+'T12:00:00');
+      if (d.getFullYear() === curY) byMonth[d.getMonth()].push(t);
+    });
+    // Build end-of-month balances forward
+    let running = acct.balance;
+    // First subtract all year txns to get start-of-year balance
+    acctTxns.forEach(t => {
+      if (new Date(t.date+'T12:00:00').getFullYear() === curY) {
+        if (t.type==='deposit'||t.type==='interest') running -= t.amount;
+        else running += t.amount;
+      }
+    });
+    const monthBals = [];
+    for (let m = 0; m <= curM; m++) {
+      byMonth[m].forEach(t => {
+        if (t.type==='deposit'||t.type==='interest') running += t.amount;
+        else running -= t.amount;
+      });
+      monthBals.push({ mo: MOS[m], bal: Math.max(0, running) });
+    }
+    if (monthBals.length === 0) return '';
+    const maxBal = Math.max(...monthBals.map(b => b.bal), 1);
+    const bars = monthBals.map(b => {
+      const pct = Math.round((b.bal / maxBal) * 100);
+      return `<div class="sav-chart-bar-wrap">
+        <div style="font-size:9px;color:#6b7280;text-align:center">${b.bal >= 1000 ? '$'+(b.bal/1000).toFixed(1)+'k' : '$'+Math.round(b.bal)}</div>
+        <div class="sav-chart-bar-col"><div class="sav-chart-bar" style="height:${pct}%"></div></div>
+        <div class="sav-chart-label">${b.mo}</div>
+      </div>`;
+    }).join('');
+    return `<div class="panel" style="margin-bottom:20px">
+      <h3 style="margin-bottom:4px">Balance Growth &mdash; ${curY}</h3>
+      <p style="font-size:12px;color:#9ca3af;margin-bottom:12px">${acct.name}</p>
+      <div class="sav-chart-bars">${bars}</div>
+    </div>`;
+  })();
+
+  // Transaction rows
+  const TXN = { deposit: ['&#8679;','deposit'], withdrawal: ['&#8681;','withdrawal'], interest: ['&#11088;','interest'] };
+  const TLABEL = { deposit: 'Deposit', withdrawal: 'Withdrawal', interest: 'Interest Earned' };
+  const txnRows = acctTxns.map(t => {
+    const [icon, cls] = TXN[t.type] || ['$','deposit'];
+    const sign = t.type === 'withdrawal' ? '-' : '+';
+    return `<div class="txn-row">
+      <div class="txn-icon ${cls}">${icon}</div>
+      <div class="row-info">
+        <div class="row-name">${TLABEL[t.type]||t.type}${t.notes ? ' &mdash; ' + t.notes : ''}</div>
+        <div class="row-meta">${t.date}</div>
+      </div>
+      <div class="row-right" style="margin-right:8px">
+        <div class="txn-amt ${cls}">${sign}${fmt(t.amount)}</div>
+      </div>
+      <div class="bill-actions">
+        <button onclick="openSavingsTxnModal('${t.id}')" title="Edit">&#9998;</button>
+        <button onclick="deleteSavingsTxn('${t.id}')" title="Delete">&#128465;</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <h3 style="font-size:18px;font-weight:700">Savings Accounts</h3>
+      <div style="display:flex;gap:8px">
+        <button class="btn-secondary btn-sm" onclick="openSavingsAccountModal('${acct.id}')">&#9998; Edit</button>
+        <button class="btn-secondary btn-sm" style="color:#ef4444" onclick="deleteSavingsAcct('${acct.id}')">&#128465; Delete</button>
+        <button class="btn-primary btn-sm" onclick="openSavingsAccountModal()">+ Add Account</button>
+      </div>
+    </div>
+    <div class="savings-acct-grid">${acctCards}</div>
+    ${summaryCards}
+    ${chartHTML}
+    <div class="bill-list">
+      <div class="list-header">
+        <h3>Transactions &mdash; ${acct.name}</h3>
+        <button class="btn-primary btn-sm" onclick="openSavingsTxnModal()">+ Add Transaction</button>
+      </div>
+      ${txnRows || '<p class="empty">No transactions yet. Log deposits, withdrawals, or interest.</p>'}
+    </div>`;
+}
+
+
+
+// ════════════════════════════════════════════════════
+//  CLOUD SYNC  (JSONBlob.com + AES-256-GCM encryption)
+// ════════════════════════════════════════════════════
+const SYNC_KEY = 'billTracker_sync';
+
+function loadSyncConfig() {
+  try { return JSON.parse(localStorage.getItem(SYNC_KEY) || 'null') || {}; } catch(e) { return {}; }
+}
+function saveSyncConfig(cfg) {
+  try { localStorage.setItem(SYNC_KEY, JSON.stringify(cfg)); } catch(e) {}
+}
+
+let syncConfig = loadSyncConfig();
+let syncTimer = null;
+
+// ── Crypto helpers ────────────────────────────────────────────────────────────
+async function deriveCryptoKey(passphrase, saltHex) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw', enc.encode(passphrase), { name: 'PBKDF2' }, false, ['deriveKey']
+  );
+  const salt = hexToBytes(saltHex);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 250000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+function bytesToHex(buf) {
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+function hexToBytes(hex) {
+  const arr = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) arr[i/2] = parseInt(hex.slice(i, i+2), 16);
+  return arr;
+}
+
+async function encryptData(plaintext, passphrase, saltHex) {
+  const key = await deriveCryptoKey(passphrase, saltHex);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(plaintext);
+  const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+  // Store as: ivHex + ':' + ciphertextHex
+  return bytesToHex(iv) + ':' + bytesToHex(cipherBuf);
+}
+
+async function decryptData(payload, passphrase, saltHex) {
+  const [ivHex, cipherHex] = payload.split(':');
+  const key = await deriveCryptoKey(passphrase, saltHex);
+  const iv = hexToBytes(ivHex);
+  const cipher = hexToBytes(cipherHex);
+  const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher);
+  return new TextDecoder().decode(plainBuf);
+}
+
+// ── Status display ────────────────────────────────────────────────────────────
+function setSyncStatus(st, msg) {
+  const el  = document.getElementById('syncStatus');
+  const bar = document.getElementById('syncStatusBar');
+  const ICON = { syncing:'&#8635; ', ok:'&#10003; ', error:'&#10007; ', ready:'&#9729; ', off:'' };
+  const HCOL = { syncing:'rgba(255,255,255,0.2)', ok:'rgba(34,197,94,0.25)', error:'rgba(239,68,68,0.3)', ready:'rgba(255,255,255,0.15)', off:'' };
+  const BCOL = { syncing:'#eff6ff:#bfdbfe:#1d4ed8', ok:'#f0fdf4:#bbf7d0:#166534', error:'#fef2f2:#fecaca:#991b1b', ready:'#f0fdf4:#bbf7d0:#166534', off:'::' };
+  if (el) {
+    el.style.display = st === 'off' ? 'none' : 'flex';
+    el.style.background = HCOL[st] || '';
+    el.innerHTML = (ICON[st]||'') + (msg || { syncing:'Syncing…', ok:'Saved', error:'Sync error', ready:'Cloud sync on' }[st] || '');
+  }
+  if (bar && st !== 'off') {
+    const [bg, bd, cl] = (BCOL[st]||'::').split(':');
+    bar.style.cssText = bg ? `background:${bg};border:1px solid ${bd};color:${cl};padding:10px 14px;border-radius:10px;font-size:13px` : '';
+    bar.innerHTML = (ICON[st]||'') + (msg || '');
+  }
+}
+
+// ── Core sync operations ──────────────────────────────────────────────────────
+async function syncPush(silent) {
+  if (!syncConfig.blobId || !syncConfig.passphrase) return;
+  if (!silent) setSyncStatus('syncing');
+  try {
+    const plain = JSON.stringify(state);
+    const encrypted = await encryptData(plain, syncConfig.passphrase, syncConfig.salt);
+    const payload = JSON.stringify({ v: 1, d: encrypted });
+
+    const res = await fetch('https://jsonblob.com/api/jsonBlob/' + syncConfig.blobId, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: payload
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+
+    syncConfig.lastPush = new Date().toISOString();
+    saveSyncConfig(syncConfig);
+    const t = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+    setSyncStatus('ok', '&#10003; Saved ' + t);
+    if (!silent) setTimeout(() => setSyncStatus('ready'), 3000);
+  } catch(e) {
+    setSyncStatus('error', 'Push failed: ' + e.message);
+  }
+}
+
+async function syncPull() {
+  if (!syncConfig.blobId || !syncConfig.passphrase) { alert('Connect sync first.'); return; }
+  setSyncStatus('syncing');
+  try {
+    const res = await fetch('https://jsonblob.com/api/jsonBlob/' + syncConfig.blobId, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const envelope = await res.json();
+    if (!envelope || envelope.v !== 1 || !envelope.d) throw new Error('Unexpected data format');
+
+    let plain;
+    try {
+      plain = await decryptData(envelope.d, syncConfig.passphrase, syncConfig.salt);
+    } catch(e) {
+      throw new Error('Decryption failed — wrong passphrase?');
+    }
+    const data = JSON.parse(plain);
+    if (!data || !data.bills) throw new Error('Invalid data after decryption');
+
+    const nav = { currentMonth: state.currentMonth, currentYear: state.currentYear,
+      view: 'dashboard', filterCat: 'all', editId: null, editIncomeId: null,
+      editPropertyId: null, editExpenseId: null, editSavingsId: null, editSavingsTxnId: null };
+    Object.assign(state, data, nav);
+    saveState();
+    render();
+    if (state.view === 'rental')  renderRental();
+    if (state.view === 'savings') renderSavings();
+    const t = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+    setSyncStatus('ok', '&#10003; Pulled ' + t);
+    setTimeout(() => setSyncStatus('ready'), 3000);
+  } catch(e) {
+    setSyncStatus('error', e.message);
+  }
+}
+
+async function syncSetup() {
+  const passphrase = document.getElementById('syncPassphrase').value.trim();
+  const blobId     = document.getElementById('syncBlobId').value.trim();
+  if (!passphrase) { alert('Enter a passphrase first — you\'ll need the same one on every device.'); return; }
+  if (passphrase.length < 8) { alert('Use at least 8 characters for your passphrase.'); return; }
+
+  setSyncStatus('syncing');
+  const bar = document.getElementById('syncStatusBar');
+  if (bar) { bar.style.cssText = 'background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;padding:10px 14px;border-radius:10px;font-size:13px'; bar.textContent = 'Connecting…'; }
+
+  try {
+    // Generate a random salt (stays constant for this device's config)
+    const salt = syncConfig.salt || bytesToHex(crypto.getRandomValues(new Uint8Array(16)));
+    const plain = JSON.stringify(state);
+    const encrypted = await encryptData(plain, passphrase, salt);
+    const payload = JSON.stringify({ v: 1, d: encrypted });
+
+    let finalBlobId = blobId;
+    if (!finalBlobId) {
+      // Create new blob
+      const res = await fetch('https://jsonblob.com/api/jsonBlob', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: payload
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      // Blob ID is in the Location header: https://jsonblob.com/api/jsonBlob/{id}
+      const location = res.headers.get('Location') || '';
+      finalBlobId = location.split('/').pop();
+      if (!finalBlobId) throw new Error('Could not get blob ID from response');
+    } else {
+      // Update existing blob
+      const res = await fetch('https://jsonblob.com/api/jsonBlob/' + finalBlobId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: payload
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+    }
+
+    syncConfig = { blobId: finalBlobId, passphrase, salt, enabled: true, lastPush: new Date().toISOString() };
+    saveSyncConfig(syncConfig);
+
+    document.getElementById('syncBlobId').value = finalBlobId;
+    setSyncStatus('ok', '&#10003; Connected');
+    if (bar) {
+      bar.style.cssText = 'background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:10px 14px;border-radius:10px;font-size:13px';
+      bar.innerHTML = '&#10003; Connected! Share your <strong>Blob ID</strong> to other devices:<br>' +
+        '<code style="background:#fff;padding:3px 8px;border-radius:4px;font-size:12px;user-select:all;display:inline-block;margin-top:4px">' + finalBlobId + '</code>' +
+        '<br><span style="font-size:11px;color:#6b7280;margin-top:4px;display:block">Use the same passphrase + this ID on every device.</span>';
+    }
+    setTimeout(() => setSyncStatus('ready'), 4000);
+
+  } catch(e) {
+    setSyncStatus('error', 'Setup failed: ' + e.message);
+  }
+}
+
+function syncDisconnect() {
+  if (!confirm('Disconnect cloud sync? Your local data and the remote blob are kept.')) return;
+  syncConfig = {};
+  saveSyncConfig(syncConfig);
+  setSyncStatus('off');
+  const bar = document.getElementById('syncStatusBar');
+  if (bar) bar.innerHTML = '';
+  const pp = document.getElementById('syncPassphrase');
+  if (pp) pp.value = '';
+  const bi = document.getElementById('syncBlobId');
+  if (bi) bi.value = '';
+}
+
+function scheduleSyncPush() {
+  if (syncTimer) clearTimeout(syncTimer);
+  if (!syncConfig.blobId || !syncConfig.passphrase) return;
+  syncTimer = setTimeout(() => syncPush(true), 2000);
+}
+
+async function syncOnLoad() {
+  if (!syncConfig.enabled || !syncConfig.blobId || !syncConfig.passphrase) return;
+  setSyncStatus('syncing');
+  try {
+    const res = await fetch('https://jsonblob.com/api/jsonBlob/' + syncConfig.blobId, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const envelope = await res.json();
+    if (!envelope || envelope.v !== 1 || !envelope.d) throw new Error('Unexpected format');
+
+    let plain;
+    try { plain = await decryptData(envelope.d, syncConfig.passphrase, syncConfig.salt); }
+    catch(e) { throw new Error('Decryption failed — wrong passphrase?'); }
+
+    const data = JSON.parse(plain);
+    if (data && data.bills) {
+      const nav = { currentMonth: state.currentMonth, currentYear: state.currentYear,
+        view: 'dashboard', filterCat: 'all', editId: null, editIncomeId: null,
+        editPropertyId: null, editExpenseId: null, editSavingsId: null, editSavingsTxnId: null };
+      Object.assign(state, data, nav);
+      saveState();
+      render();
+    }
+    setSyncStatus('ready');
+  } catch(e) {
+    setSyncStatus('error', 'Auto-sync: ' + e.message);
+    setTimeout(() => setSyncStatus('ready'), 5000);
+  }
+}
+
+
+// Init
+initCategorySelect();
+render();
+checkAndNotify();
+startCheckInterval();
+if (syncConfig.enabled && syncConfig.blobId) setSyncStatus('ready');
+syncOnLoad();
+
+</script>
+</body>
+</html>
