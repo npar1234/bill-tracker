@@ -26,20 +26,92 @@
     --font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial;
   }
   body.light-mode {
-    --bg:      #f0f2f8;
-    --panel:   rgba(255,255,255,.92);
-    --panel2:  rgba(248,249,254,.96);
-    --panel3:  rgba(242,244,252,.98);
-    --text:    #1a1f35;
-    --muted:   #5a6482;
-    --border:  rgba(26,31,53,.12);
-    --shadow:  0 18px 60px rgba(0,0,0,.12);
-    --shadow2: 0 10px 34px rgba(0,0,0,.08);
+    --bg:      #dde2f0;
+    --panel:   rgba(255,255,255,.98);
+    --panel2:  rgba(248,249,255,.99);
+    --panel3:  rgba(242,244,252,1);
+    --text:    #0f1623;
+    --muted:   #475569;
+    --border:  rgba(15,22,35,.14);
+    --shadow:  0 18px 60px rgba(0,0,0,.16);
+    --shadow2: 0 10px 34px rgba(0,0,0,.11);
   }
   body.light-mode { background: radial-gradient(900px 500px at 15% -10%, rgba(124,58,237,.10), transparent 55%), radial-gradient(900px 500px at 100% 0%, rgba(34,211,238,.08), transparent 55%), var(--bg); }
-  body.light-mode input, body.light-mode select, body.light-mode textarea { background: rgba(255,255,255,.9) !important; color: var(--text) !important; border-color: var(--border) !important; }
-  body.light-mode .modal { background: #fff; }
-  body.light-mode .sidebar { background: linear-gradient(180deg,#fff,#f5f7ff); }
+
+  /* Core structure */
+  body.light-mode .main { background: transparent; }
+  body.light-mode .app-body { background: transparent; }
+  body.light-mode .topbar { background: rgba(255,255,255,.97); border-bottom: 1px solid rgba(15,22,35,.12); }
+  body.light-mode .topbar-title { color: #0f1623; }
+  body.light-mode .sidebar { background: linear-gradient(180deg,#fff,#eff1fb); border-right: 1px solid rgba(15,22,35,.12); }
+  body.light-mode .sidebar-brand h1 { color: #0f1623; }
+  body.light-mode .sidebar-brand p { color: #475569; }
+  body.light-mode .sidebar-month span { color: #0f1623; }
+
+  /* Nav */
+  body.light-mode .nav-item { color: #334155; }
+  body.light-mode .nav-item:hover { background: rgba(124,58,237,.08); color: #0f1623; }
+  body.light-mode .nav-item.active { background: rgba(124,58,237,.14); color: #6d28d9; }
+  body.light-mode .sidebar-nav-label { color: #94a3b8; }
+
+  /* Panels & cards */
+  body.light-mode .panel { background: #fff; border-color: rgba(15,22,35,.11); }
+  body.light-mode .panel h3 { color: #0f1623; }
+  body.light-mode .summary-card { background: #fff; border-color: rgba(15,22,35,.11); }
+  body.light-mode .summary-card .label { color: #64748b; }
+  body.light-mode .summary-card .value { color: #0f1623; }
+  body.light-mode .summary-card .sub { color: #64748b; }
+
+  /* Bills */
+  body.light-mode .bill-row { background: #fff; border-color: rgba(15,22,35,.09); }
+  body.light-mode .bill-row:hover { background: #f8f9ff; }
+  body.light-mode .bill-name { color: #0f1623; }
+  body.light-mode .bill-meta { color: #64748b; }
+  body.light-mode .bill-amount { color: #0f1623; }
+
+  /* Badges */
+  body.light-mode .badge-upcoming { background: #e0e7ff; color: #3730a3; }
+  body.light-mode .badge-soon     { background: #fef3c7; color: #78350f; }
+  body.light-mode .badge-overdue  { background: #fee2e2; color: #7f1d1d; }
+  body.light-mode .badge-paid     { background: #dcfce7; color: #14532d; }
+  body.light-mode .badge-autopay  { background: #dbeafe; color: #1e3a8a; }
+  body.light-mode .badge-manual   { background: #f1f5f9; color: #334155; }
+
+  /* Calendar */
+  body.light-mode .cal-cell { background: rgba(255,255,255,.85); border-color: rgba(15,22,35,.09); }
+  body.light-mode .cal-cell.today { background: rgba(124,58,237,.07); border-color: rgba(124,58,237,.35); }
+  body.light-mode .cal-day { color: #0f1623; }
+  body.light-mode .cal-header-cell { color: #475569; font-weight: 900; }
+  body.light-mode .cal-pip { color: #0f1623 !important; font-weight: 900; box-shadow: inset 0 0 0 1.5px rgba(0,0,0,.18) !important; }
+  body.light-mode .cal-pip.is-paid { opacity: .7; }
+  body.light-mode .cal-more { color: #6d28d9; }
+
+  /* Inputs */
+  body.light-mode input, body.light-mode select, body.light-mode textarea { background: #fff !important; color: #0f1623 !important; border-color: rgba(15,22,35,.18) !important; }
+  body.light-mode input::placeholder, body.light-mode textarea::placeholder { color: #94a3b8 !important; }
+
+  /* Modals */
+  body.light-mode .modal { background: #fff; border: 1px solid rgba(15,22,35,.12); }
+  body.light-mode .modal-header { border-bottom: 1px solid rgba(15,22,35,.10); }
+  body.light-mode .modal-header h3 { color: #0f1623; }
+  body.light-mode .settings-label { color: #0f1623; }
+  body.light-mode .settings-desc { color: #64748b; }
+  body.light-mode .settings-section h4 { color: #0f1623; }
+
+  /* Health sections — inline rgba backgrounds need override */
+  body.light-mode .health-section { background: #fff; border: 1px solid rgba(15,22,35,.08); border-radius: 18px; padding: 18px; margin-bottom: 16px; }
+  body.light-mode .health-section-title { color: #475569; }
+
+  /* Buttons */
+  body.light-mode .btn-icon { background: rgba(15,22,35,.06); color: #0f1623; border-color: rgba(15,22,35,.12); }
+  body.light-mode .btn-icon:hover { background: rgba(15,22,35,.10); }
+  body.light-mode .btn-secondary { background: rgba(15,22,35,.06); color: #0f1623; border-color: rgba(15,22,35,.15); }
+  body.light-mode .filter-btn { color: #0f1623; }
+
+  /* Misc text */
+  body.light-mode .empty { color: #94a3b8; }
+  body.light-mode .bottom-nav { background: rgba(255,255,255,.97); border-top-color: rgba(15,22,35,.12); }
+  body.light-mode .bottom-nav-btn { color: #64748b; }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: var(--font);
@@ -2645,8 +2717,8 @@ function render() {
         ${shown.map(ev => {
           if (ev.type === "bill") {
             const calCat = catInfo(ev.category);
-            const pipColor = ev.paid ? 'rgba(34,197,94,.25)' : calCat.color + '33';
-            const pipBorder = ev.paid ? 'rgba(34,197,94,.5)' : calCat.color + '99';
+            const pipColor = ev.paid ? 'rgba(34,197,94,.25)' : calCat.color + '2a';
+            const pipBorder = ev.paid ? 'rgba(34,197,94,.7)' : calCat.color + 'cc';
             return `<span class="cal-pip bill${ev.paid ? " is-paid" : ""}" style="background:${pipColor};border:1px solid ${pipBorder}" title="${ev.name}: ${fmt(ev.amount)} · ${calCat.label} (${ev.payMethod === 'autopay' ? 'Autopay' : 'Manual'})" onclick="togglePaid('${ev.id}')">${getBillDisplayIcon(ev)||calCat.icon||''}${ev.payMethod === 'autopay' ? '⚡' : ''} ${fmtShort(ev.amount)}</span>`;
           } else {
             return `<span class="cal-pip income" title="${ev.name}: ${fmt(ev.amount)}">+${fmtShort(ev.amount)} ${ev.name}</span>`;
@@ -3663,18 +3735,17 @@ function renderSavings() {
 
   // Growth chart — multi-year balance view
   const chartHTML = (() => {
-    // Collect all years present in transactions
-    const allYears = [...new Set(acctTxns.map(t => new Date(t.date+'T12:00:00').getFullYear()))].sort();
-    if (!allYears.includes(curY)) allYears.push(curY);
-    const selectedYears = allYears.slice(-3); // show last 3 years
+    const yearColors = ['#6366f1','#22d3ee','#10b981','#fbbf24'];
+    const acctColors = ['#22d3ee','#a78bfa','#10b981','#fbbf24','#fb7185','#f97316','#60a5fa'];
 
-    const buildYearBars = (yr) => {
-      const yearTxns = acctTxns.filter(t => new Date(t.date+'T12:00:00').getFullYear() === yr);
+    // Build per-year bars for a given account using its transactions + current balance
+    function buildYearBarsForAcct(targetAcctId, yr) {
+      const targetBal = computedBalance(targetAcctId);
+      const targetTxns = state.savingsTransactions.filter(t => t.accountId === targetAcctId);
+      const yearTxns = targetTxns.filter(t => new Date(t.date+'T12:00:00').getFullYear() === yr);
       const byMonth = Array.from({length:12}, () => []);
       yearTxns.forEach(t => { byMonth[new Date(t.date+'T12:00:00').getMonth()].push(t); });
-      // For current year: work backwards from current balance
-      // For past years: approximate from transactions
-      let running = yr === curY ? curBal : 0;
+      let running = yr === curY ? targetBal : 0;
       if (yr === curY) {
         yearTxns.forEach(t => {
           if (t.type==='deposit'||t.type==='interest') running -= t.amount;
@@ -3688,43 +3759,91 @@ function renderSavings() {
           if (t.type==='deposit'||t.type==='interest') running += t.amount;
           else running -= t.amount;
         });
-        bars.push({ mo: MOS[m], bal: Math.max(0, running), yr });
+        bars.push({ mo: MOS[m], bal: Math.max(0, running) });
       }
       return bars;
-    };
+    }
 
-    const allBars = selectedYears.flatMap(yr => buildYearBars(yr));
-    if (allBars.length === 0) return '';
-    const maxBal = Math.max(...allBars.map(b => b.bal), 1);
-    const yearColors = ['#6366f1','#22d3ee','#10b981','#fbbf24'];
-
-    const barGroups = selectedYears.map((yr, yi) => {
-      const bars = buildYearBars(yr);
-      return bars.map(b => {
-        const pct = Math.round((b.bal/maxBal)*100);
+    // ── Individual account chart ──────────────────────────────────────────
+    const indivHTML = (() => {
+      const allYears = [...new Set(acctTxns.map(t => new Date(t.date+'T12:00:00').getFullYear()))].sort();
+      if (!allYears.includes(curY)) allYears.push(curY);
+      const selectedYears = allYears.slice(-3);
+      const allBarsFlat = selectedYears.flatMap(yr => buildYearBarsForAcct(acct.id, yr));
+      if (allBarsFlat.length === 0) return '<p class="empty">No transactions yet.</p>';
+      const maxBal = Math.max(...allBarsFlat.map(b => b.bal), 1);
+      const barGroups = selectedYears.map((yr, yi) => {
+        const bars = buildYearBarsForAcct(acct.id, yr);
         const color = yearColors[yi % yearColors.length];
-        return `<div class="sav-chart-bar-wrap" title="${yr} ${b.mo}: ${fmt(b.bal)}">
-          <div style="font-size:9px;color:var(--muted);text-align:center">${b.bal>=1000?'$'+(b.bal/1000).toFixed(1)+'k':'$'+Math.round(b.bal)}</div>
-          <div class="sav-chart-bar-col"><div class="sav-chart-bar" style="height:${pct}%;background:${color}"></div></div>
-          <div class="sav-chart-label" style="color:var(--muted)">${b.mo}</div>
+        return { yr, color, html: bars.map(b => {
+          const pct = Math.round((b.bal/maxBal)*100);
+          return `<div class="sav-chart-bar-wrap" title="${yr} ${b.mo}: ${fmt(b.bal)}">
+            <div style="font-size:9px;color:var(--muted);text-align:center">${b.bal>=1000?'$'+(b.bal/1000).toFixed(1)+'k':'$'+Math.round(b.bal)}</div>
+            <div class="sav-chart-bar-col"><div class="sav-chart-bar" style="height:${pct}%;background:${color}"></div></div>
+            <div class="sav-chart-label" style="color:var(--muted)">${b.mo}</div>
+          </div>`;
+        }).join('') };
+      });
+      const legend = barGroups.map(g =>
+        `<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)"><span style="width:10px;height:10px;border-radius:3px;background:${g.color};display:inline-block"></span>${g.yr}</span>`
+      ).join('');
+      return `<div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:8px">${legend}</div>
+        ${barGroups.map(g => `<div style="margin-bottom:8px">
+          <div style="font-size:11px;font-weight:900;color:${g.color};margin-bottom:4px">${g.yr}</div>
+          <div class="sav-chart-bars">${g.html}</div>
+        </div>`).join('')}`;
+    })();
+
+    // ── All accounts combined chart ───────────────────────────────────────
+    const allAcctsHTML = (() => {
+      if (state.savingsAccounts.length < 2) return '<p class="empty" style="padding:8px 0">Add a second savings account to see combined view.</p>';
+      // Build combined monthly balance for current year across all accounts
+      const months = Array.from({length: curM+1}, (_,m) => m);
+      const acctData = state.savingsAccounts.map((a, ai) => ({
+        acct: a,
+        color: acctColors[ai % acctColors.length],
+        bars: buildYearBarsForAcct(a.id, curY),
+      }));
+      // For stacked bars: compute total per month
+      const totals = months.map(m => acctData.reduce((s, ad) => s + (ad.bars[m]?.bal || 0), 0));
+      const maxTotal = Math.max(...totals, 1);
+      const stackedBars = months.map(m => {
+        const total = totals[m];
+        const pct = Math.round((total/maxTotal)*100);
+        const segments = acctData.map(ad => {
+          const bal = ad.bars[m]?.bal || 0;
+          const segPct = total > 0 ? Math.round(bal/total*100) : 0;
+          return `<div style="width:100%;height:${segPct}%;background:${ad.color};min-height:${bal>0?2:0}px" title="${ad.acct.name}: ${fmt(bal)}"></div>`;
+        }).reverse().join(''); // reverse so first acct is on top
+        return `<div class="sav-chart-bar-wrap" title="${MOS[m]} total: ${fmt(total)}">
+          <div style="font-size:9px;color:var(--muted);text-align:center">${total>=1000?'$'+(total/1000).toFixed(1)+'k':'$'+Math.round(total)}</div>
+          <div class="sav-chart-bar-col" style="flex-direction:column;justify-content:flex-end;height:${pct}%;max-height:100px;border-radius:6px 6px 0 0;overflow:hidden">${segments}</div>
+          <div class="sav-chart-label" style="color:var(--muted)">${MOS[m]}</div>
         </div>`;
       }).join('');
-    });
+      const legend = acctData.map(ad =>
+        `<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)"><span style="width:10px;height:10px;border-radius:3px;background:${ad.color};display:inline-block"></span>${escHtml(ad.acct.name)}</span>`
+      ).join('');
+      return `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">${legend}</div>
+        <div style="font-size:11px;font-weight:900;color:#22d3ee;margin-bottom:4px">${curY} — All Accounts Combined</div>
+        <div class="sav-chart-bars" style="height:120px">${stackedBars}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">Total: <strong style="color:var(--text)">${fmt(totals[curM])}</strong> across ${state.savingsAccounts.length} accounts</div>`;
+    })();
 
-    const legend = selectedYears.map((yr,yi) =>
-      `<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)"><span style="width:10px;height:10px;border-radius:3px;background:${yearColors[yi%yearColors.length]};display:inline-block"></span>${yr}</span>`
-    ).join('');
-
+    // ── Tabbed panel ─────────────────────────────────────────────────────
+    const tabId = 'savChartTab';
     return `<div class="panel" style="margin-bottom:20px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <h3>Balance Growth</h3>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">${legend}</div>
+        <div style="display:flex;gap:4px;background:rgba(255,255,255,.06);border-radius:10px;padding:3px">
+          <button id="${tabId}-single" onclick="document.getElementById('${tabId}-single').style.background='var(--accent)';document.getElementById('${tabId}-single').style.color='#fff';document.getElementById('${tabId}-all').style.background='transparent';document.getElementById('${tabId}-all').style.color='var(--muted)';document.getElementById('${tabId}-spanel').style.display='block';document.getElementById('${tabId}-apanel').style.display='none'"
+            style="padding:4px 12px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:900;background:var(--accent);color:#fff;transition:all .15s">This Account</button>
+          <button id="${tabId}-all" onclick="document.getElementById('${tabId}-all').style.background='var(--accent)';document.getElementById('${tabId}-all').style.color='#fff';document.getElementById('${tabId}-single').style.background='transparent';document.getElementById('${tabId}-single').style.color='var(--muted)';document.getElementById('${tabId}-apanel').style.display='block';document.getElementById('${tabId}-spanel').style.display='none'"
+            style="padding:4px 12px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:900;background:transparent;color:var(--muted);transition:all .15s">All Accounts</button>
+        </div>
       </div>
-      <p style="font-size:12px;color:var(--muted);margin-bottom:12px">${acct.name} &mdash; last ${selectedYears.length} year${selectedYears.length!==1?'s':''}</p>
-      ${selectedYears.map((yr,yi) => `<div style="margin-bottom:8px">
-        <div style="font-size:11px;font-weight:900;color:${yearColors[yi%yearColors.length]};margin-bottom:4px">${yr}</div>
-        <div class="sav-chart-bars">${barGroups[yi]}</div>
-      </div>`).join('')}
+      <div id="${tabId}-spanel">${indivHTML}</div>
+      <div id="${tabId}-apanel" style="display:none">${allAcctsHTML}</div>
     </div>`;
   })();
 
@@ -4403,7 +4522,7 @@ function renderHealth() {
     const monthlyTakeHome = takeHome/12;
 
     // Compare to tracked bills
-    const billsCoverage = monthlyIncome > 0 ? Math.round(totalMonthlyBills/monthlyIncome*100) : 0;
+    const billsCoverage = monthlyIncome > 0 ? Math.round(monthlyBillsEq/monthlyIncome*100) : 0;
 
     return `<div style="padding:16px;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:18px">
       <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">
@@ -5053,7 +5172,7 @@ function openPartnerModal() {
   document.getElementById('prtName').value    = p.name    || '';
   document.getElementById('prtIncome').value  = p.income  || '';
   document.getElementById('prtSplit').value   = p.split   || '50';
-  // Rebuild button area dynamically since partner may have changed
+  document.getElementById('removePartnerBtn').style.display = state.partner ? 'inline-flex' : 'none';
   document.getElementById('partnerModal').classList.remove('hidden');
 }
 function closePartnerModal() { document.getElementById('partnerModal').classList.add('hidden'); }
@@ -5514,9 +5633,8 @@ syncOnLoad();
         </select>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
-        ${(()=>{ return ''; })()}
         <button class="btn-secondary" onclick="closePartnerModal()">Cancel</button>
-        ${state.partner ? `<button class="btn-secondary" style="color:#fb7185" onclick="removePartner()">Remove Partner</button>` : ''}
+        <button id="removePartnerBtn" class="btn-secondary" style="color:#fb7185;display:none" onclick="removePartner()">Remove Partner</button>
         <button class="btn-primary" onclick="savePartner()">Save</button>
       </div>
     </div>
