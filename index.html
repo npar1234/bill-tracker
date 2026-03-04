@@ -3007,6 +3007,21 @@ function renderSavings() {
       else if (t.type === 'interest') ytdInt += t.amount;
     }
   });
+
+  // Cross-account YTD totals (all accounts combined)
+  let allYtdDep = 0, allYtdInt = 0, allYtdWith = 0;
+  state.savingsAccounts.forEach(a => {
+    allYtdDep += (a.ytdDepSeed || 0);
+    allYtdInt += (a.ytdIntSeed || 0);
+    state.savingsTransactions.filter(t => t.accountId === a.id).forEach(t => {
+      const y = new Date(t.date + 'T12:00:00').getFullYear();
+      if (y === curY) {
+        if (t.type === 'deposit') allYtdDep += t.amount;
+        else if (t.type === 'withdrawal') allYtdWith += t.amount;
+        else if (t.type === 'interest') allYtdInt += t.amount;
+      }
+    });
+  });
   const curBal = computedBalance(acct.id);
   const estMonthlyInterest = acct.apy > 0 ? curBal * acct.apy / 100 / 12 : 0;
 
@@ -3041,6 +3056,12 @@ function renderSavings() {
     ${SC('YTD Interest', fmt(ytdInt), (acct.ytdIntSeed ? 'incl. $' + acct.ytdIntSeed.toFixed(2) + ' pre-tracking' : acct.apy ? acct.apy + '% APY' : 'earned'), '#d97706')}
     ${SC('All Accounts', fmt(totalBalance), state.savingsAccounts.length + ' accounts total', '#7c3aed')}
     ${SC('Monthly Savings', fmt(totalContrib), 'monthly equivalent', '#0891b2')}
+  </div>
+  <div class="summary-grid" style="margin-bottom:20px">
+    ${SC('All Accts YTD Deposits', fmt(allYtdDep), curY + ' across ' + state.savingsAccounts.length + ' account' + (state.savingsAccounts.length !== 1 ? 's' : ''), '#4f46e5')}
+    ${SC('All Accts YTD Interest', fmt(allYtdInt), curY + ' interest earned', '#d97706')}
+    ${SC('All Accts YTD Withdrawals', fmt(allYtdWith), curY + ' taken out', '#ef4444')}
+    ${SC('All Accts YTD Net', fmt(allYtdDep + allYtdInt - allYtdWith), 'deposits + interest − withdrawals', allYtdDep + allYtdInt - allYtdWith >= 0 ? '#10b981' : '#ef4444')}
   </div>`;
 
   // Growth chart — running balance per month this year
