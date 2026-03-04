@@ -25,6 +25,21 @@
     --radius2: 14px;
     --font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial;
   }
+  body.light-mode {
+    --bg:      #f0f2f8;
+    --panel:   rgba(255,255,255,.92);
+    --panel2:  rgba(248,249,254,.96);
+    --panel3:  rgba(242,244,252,.98);
+    --text:    #1a1f35;
+    --muted:   #5a6482;
+    --border:  rgba(26,31,53,.12);
+    --shadow:  0 18px 60px rgba(0,0,0,.12);
+    --shadow2: 0 10px 34px rgba(0,0,0,.08);
+  }
+  body.light-mode { background: radial-gradient(900px 500px at 15% -10%, rgba(124,58,237,.10), transparent 55%), radial-gradient(900px 500px at 100% 0%, rgba(34,211,238,.08), transparent 55%), var(--bg); }
+  body.light-mode input, body.light-mode select, body.light-mode textarea { background: rgba(255,255,255,.9) !important; color: var(--text) !important; border-color: var(--border) !important; }
+  body.light-mode .modal { background: #fff; }
+  body.light-mode .sidebar { background: linear-gradient(180deg,#fff,#f5f7ff); }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: var(--font);
@@ -259,11 +274,35 @@
     .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(6px); z-index: 99; }
     .sidebar-overlay.open { display: block; }
     .topbar { padding: 0 16px; }
-    .main { padding: 16px 14px 48px; }
+    .main { padding: 16px 14px 80px; }
     .summary-grid { grid-template-columns: repeat(2, 1fr); }
     .cal-cell { min-height: 60px; padding: 4px; }
     .cal-pip { font-size: 9px; padding: 1px 4px; }
+    .bottom-nav { display: flex !important; }
   }
+
+  /* ── Mobile bottom nav ── */
+  .bottom-nav {
+    display: none;
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+    background: var(--panel2);
+    border-top: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+    padding: 6px 0 env(safe-area-inset-bottom, 6px);
+    justify-content: space-around;
+    align-items: center;
+  }
+  .bottom-nav-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 4px 8px; border-radius: 10px; border: none;
+    background: transparent; color: var(--muted); cursor: pointer;
+    font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .4px;
+    transition: color .15s;
+    min-width: 48px;
+  }
+  .bottom-nav-btn .bn-icon { font-size: 20px; line-height: 1; }
+  .bottom-nav-btn.active { color: var(--accent2); }
+  .bottom-nav-btn.active .bn-icon { filter: drop-shadow(0 0 6px var(--accent2)); }
 
   /* Card base */
   .card-base {
@@ -599,6 +638,16 @@
   .proj-card .pc-sub   { font-size:11px; color:var(--muted); margin-top:4px; }
 
   .payoff-row { display:flex; align-items:center; gap:10px; padding:10px 14px; border:1px solid var(--border); border-radius:var(--radius2); background:rgba(255,255,255,.03); margin-bottom:6px; }
+
+  /* ── Retirement metrics ── */
+  .ret-ring-wrap   { position:relative; width:120px; height:120px; flex-shrink:0; }
+  .ret-ring-wrap svg { transform:rotate(-90deg); }
+  .ret-ring-label  { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; }
+  .ret-milestone   { display:flex; align-items:center; gap:10px; padding:10px 14px; border:1px solid var(--border); border-radius:12px; background:rgba(255,255,255,.03); margin-bottom:6px; }
+  .ret-milestone .rm-age  { font-size:20px; font-weight:900; width:36px; text-align:center; flex-shrink:0; }
+  .ret-milestone .rm-label{ font-size:13px; font-weight:700; color:var(--text); }
+  .ret-milestone .rm-val  { font-size:12px; color:var(--muted); margin-top:1px; }
+  .ret-milestone .rm-badge{ margin-left:auto; font-size:10px; font-weight:900; padding:3px 8px; border-radius:999px; }
   .payoff-row .pr-name { flex:1; font-size:13px; font-weight:900; color:var(--text); }
   .payoff-row .pr-bal  { font-size:13px; font-weight:900; color:var(--bad); }
   .payoff-row .pr-date { font-size:11px; color:var(--muted); }
@@ -700,7 +749,11 @@
     <div class="topbar-title" id="topbarTitle">Dashboard</div>
     <div class="topbar-actions">
       <div id="syncStatus" style="display:none;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 11px;border-radius:8px;background:rgba(124,58,237,.14);color:#c4b5fd;cursor:pointer" onclick="openSettingsModal()" title="Sync Status"></div>
-      <button class="btn-icon" onclick="exportData()" title="Export backup" style="font-size:15px">⬇️</button>
+      <button class="btn-icon" onclick="openWhatIf()" title="What-If Scenario Builder" style="font-size:15px">🔮</button>
+      <button class="btn-icon" onclick="openPartnerModal()" title="Partner/Spouse Mode" style="font-size:15px">👥</button>
+      <button class="btn-icon" onclick="toggleTheme()" id="themeBtn" title="Toggle dark/light mode" style="font-size:16px">🌙</button>
+      <button class="btn-icon" onclick="exportData()" title="Export JSON backup" style="font-size:15px">⬇️</button>
+      <button class="btn-icon" onclick="exportCSV()" title="Export CSV (bills, payments, income, savings)" style="font-size:13px;font-weight:900;letter-spacing:-.3px">CSV</button>
       <button class="btn-icon" onclick="document.getElementById('importFileInput').click()" title="Import backup" style="font-size:15px">⬆️</button>
       <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="importData(event)">
       <button class="btn-icon" onclick="openSettingsModal()" id="settingsBtn" title="Settings">
@@ -910,6 +963,25 @@
     </div>
 
     <div class="settings-section" style="border-top:1px solid var(--border);padding-top:20px;margin-top:4px">
+      <h4>🏖️ Retirement Settings</h4>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Powers the Retirement Readiness section in Financial Health.</p>
+      <div class="form-row">
+        <div class="form-group"><label style="font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Current Age</label>
+          <input id="sCurrentAge" type="number" min="18" max="80" placeholder="e.g. 35" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:12px;font-size:14px;background:rgba(255,255,255,.06);color:var(--text)" onchange="saveSettings()"></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Target Retirement Age</label>
+          <input id="sRetirementAge" type="number" min="40" max="80" placeholder="e.g. 67" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:12px;font-size:14px;background:rgba(255,255,255,.06);color:var(--text)" onchange="saveSettings()"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label style="font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Desired Monthly Retirement Income ($)</label>
+          <input id="sDesiredIncome" type="number" step="100" placeholder="e.g. 5000" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:12px;font-size:14px;background:rgba(255,255,255,.06);color:var(--text)" onchange="saveSettings()"></div>
+        <div class="form-group"><label style="font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Est. Monthly Social Security ($) <span style="font-weight:400;font-size:11px">optional</span></label>
+          <input id="sSocialSecurity" type="number" step="100" placeholder="e.g. 1800" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:12px;font-size:14px;background:rgba(255,255,255,.06);color:var(--text)" onchange="saveSettings()"></div>
+      </div>
+      <div class="form-group"><label style="font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Assumed Inflation Rate (%)</label>
+        <input id="sInflationRate" type="number" step="0.1" placeholder="3.0" style="width:200px;padding:9px 12px;border:1px solid var(--border);border-radius:12px;font-size:14px;background:rgba(255,255,255,.06);color:var(--text)" onchange="saveSettings()"></div>
+    </div>
+
+    <div class="settings-section" style="border-top:1px solid var(--border);padding-top:20px;margin-top:4px">
       <h4>🏦 Accounts &amp; Categories</h4>
       <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Manage the accounts and categories used across your bills.</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -964,6 +1036,17 @@
     <div class="form-row">
       <div class="form-group"><label>Est. Market Value ($) <span style="font-weight:400;color:var(--muted);font-size:11px">— for net worth</span></label><input id="pMarketValue" type="number" step="1" placeholder="e.g. 350000"></div>
       <div class="form-group"><label>Mortgage Balance ($) <span style="font-weight:400;color:var(--muted);font-size:11px">— optional, for equity</span></label><input id="pMortgageBalance" type="number" step="1" placeholder="e.g. 210000"></div>
+    </div>
+    <div style="border:1px solid rgba(251,191,36,.2);border-radius:var(--radius2);padding:14px;background:rgba(251,191,36,.04);margin-bottom:12px">
+      <div style="font-size:11px;font-weight:900;color:#fbbf24;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🏖️ Retirement Sale</div>
+      <div class="form-row" style="margin-bottom:8px">
+        <div class="form-group" style="margin-bottom:0"><label>Annual Appreciation (%)</label><input id="pAppreciation" type="number" step="0.1" placeholder="e.g. 3.5" value="3"></div>
+        <div class="form-group" style="margin-bottom:0"><label>Selling Costs (%) <span style="font-weight:400;color:var(--muted);font-size:11px">realtor, closing</span></label><input id="pSellingCosts" type="number" step="0.1" placeholder="e.g. 6" value="6"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <label class="toggle"><input type="checkbox" id="pIncludeInRetirement" checked><span class="toggle-slider"></span></label>
+        <span style="font-size:13px;color:var(--muted)">Include sale proceeds in retirement projections</span>
+      </div>
     </div>
     <div class="form-group"><label>Notes</label><textarea id="pNotes" rows="2" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;outline:none" placeholder="Lease end date, special terms..."></textarea></div>
     <div class="form-actions">
@@ -1262,7 +1345,11 @@ function defaultState() {
     selectedInvestmentId: null,
     editInvestmentId: null,
     accounts: [],
-    categories: JSON.parse(JSON.stringify(CATEGORIES))
+    categories: JSON.parse(JSON.stringify(CATEGORIES)),
+    netWorthHistory: [],
+    billPriceHistory: {},
+    savingsChallenges: [],
+    partner: null,
   };
 }
 
@@ -1274,7 +1361,13 @@ function defaultSettings() {
     checkFrequency: 3600000,
     manualOnly: true,
     pushEnabled: false,
-    lastNotified: {}
+    lastNotified: {},
+    // Retirement
+    currentAge: '',
+    retirementAge: 67,
+    desiredMonthlyIncome: '',
+    socialSecurityEstimate: '',
+    inflationRate: 3,
   };
 }
 
@@ -1292,6 +1385,10 @@ function loadState() {
       if (!parsed.savingsAccounts) parsed.savingsAccounts = [];
       if (!parsed.savingsTransactions) parsed.savingsTransactions = [];
       if (!parsed.investmentAccounts) parsed.investmentAccounts = [];
+      if (!parsed.netWorthHistory)   parsed.netWorthHistory = [];
+      if (!parsed.billPriceHistory)  parsed.billPriceHistory = {};
+      if (!parsed.savingsChallenges) parsed.savingsChallenges = [];
+      if (!parsed.partner)           parsed.partner = null;
       // Migrate: ensure every savings account has a balanceAsOf date
       parsed.savingsAccounts = parsed.savingsAccounts.map(a =>
         a.balanceAsOf ? a : { ...a, balanceAsOf: new Date().toISOString().slice(0,10) }
@@ -1305,7 +1402,25 @@ function loadState() {
   } catch(e) {}
   return defaultState();
 }
-function saveState() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {} scheduleSyncPush(); }
+function saveState() {
+  // Snapshot net worth monthly
+  const today = new Date().toISOString().slice(0,7); // YYYY-MM
+  const tSav  = (state.savingsAccounts||[]).reduce((s,a) => s+computedBalance(a.id), 0);
+  const tInv  = totalInvestmentBalance();
+  const tProp = (state.properties||[]).reduce((s,p) => s+(p.marketValue||0), 0);
+  const tDebt = (state.bills||[]).filter(b=>isLoanCategory(b.category)&&b.payoffBalance>0)
+                  .reduce((s,b) => s+(computePayoffBalance(b)||b.payoffBalance), 0)
+                + (state.properties||[]).reduce((s,p) => s+(p.mortgageBalance||0), 0);
+  const nw = tSav + tInv + tProp - tDebt;
+  if (!state.netWorthHistory) state.netWorthHistory = [];
+  const existing = state.netWorthHistory.findIndex(h => h.month === today);
+  if (existing >= 0) state.netWorthHistory[existing] = { month: today, nw, tSav, tInv, tProp, tDebt };
+  else state.netWorthHistory.push({ month: today, nw, tSav, tInv, tProp, tDebt });
+  // Keep last 36 months
+  if (state.netWorthHistory.length > 36) state.netWorthHistory = state.netWorthHistory.slice(-36);
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+  scheduleSyncPush();
+}
 
 // ===== EXPORT / IMPORT =====
 function exportData() {
@@ -1323,6 +1438,54 @@ function exportData() {
   a.download = `bill-tracker-backup-${dateStr}.json`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function exportCSV() {
+  const dateStr = new Date().toISOString().slice(0,10);
+  const csvFiles = [];
+
+  // --- Bills ---
+  const billRows = [['Name','Category','Amount','Frequency','Due Day','Pay Method','Biller','Account','Autopay']];
+  state.bills.forEach(b => {
+    const cat = catInfo(b.category);
+    billRows.push([b.name, cat.label, b.amount.toFixed(2), b.frequency||'monthly', b.dueDay,
+      b.payMethod||'manual', b.biller||'', getAccountName(b.accountId)||'', b.payMethod==='autopay'?'Yes':'No']);
+  });
+  csvFiles.push({ name: `bills-${dateStr}.csv`, rows: billRows });
+
+  // --- Payments ---
+  const payRows = [['Bill Name','Amount','Month','Year','Date Paid']];
+  state.payments.forEach(p => {
+    const bill = state.bills.find(b => b.id === p.billId);
+    payRows.push([bill?.name||p.billId, bill?.amount?.toFixed(2)||'', MONTHS[p.month], p.year,
+      p.paidDate||`${p.year}-${String(p.month+1).padStart(2,'0')}-01`]);
+  });
+  csvFiles.push({ name: `payments-${dateStr}.csv`, rows: payRows });
+
+  // --- Income ---
+  const incRows = [['Name','Amount','Frequency','Pay Day']];
+  state.incomes.forEach(i => incRows.push([i.name, i.amount.toFixed(2), i.frequency||'monthly', i.payDay||'']));
+  csvFiles.push({ name: `income-${dateStr}.csv`, rows: incRows });
+
+  // --- Savings Transactions ---
+  const txnRows = [['Account','Type','Amount','Date','Notes']];
+  state.savingsTransactions.forEach(t => {
+    const acct = state.savingsAccounts.find(a => a.id === t.accountId);
+    txnRows.push([acct?.name||t.accountId, t.type, t.amount.toFixed(2), t.date, t.notes||'']);
+  });
+  csvFiles.push({ name: `savings-transactions-${dateStr}.csv`, rows: txnRows });
+
+  // Download each as a separate file with small delay
+  csvFiles.forEach((file, i) => {
+    setTimeout(() => {
+      const content = file.rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+      const blob = new Blob([content], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = file.name; a.click();
+      URL.revokeObjectURL(url);
+    }, i * 300);
+  });
 }
 
 function importData(event) {
@@ -1387,12 +1550,18 @@ function loadSettings() {
   return defaultSettings();
 }
 function saveSettings() {
-  settings.showOverdue = document.getElementById("sOverdue").checked;
+  settings.showOverdue  = document.getElementById("sOverdue").checked;
   settings.showUpcoming = document.getElementById("sUpcoming").checked;
-  settings.manualOnly = document.getElementById("sManualOnly").checked;
+  settings.manualOnly   = document.getElementById("sManualOnly").checked;
+  settings.currentAge             = parseInt(document.getElementById("sCurrentAge").value)      || '';
+  settings.retirementAge          = parseInt(document.getElementById("sRetirementAge").value)   || 67;
+  settings.desiredMonthlyIncome   = parseFloat(document.getElementById("sDesiredIncome").value) || '';
+  settings.socialSecurityEstimate = parseFloat(document.getElementById("sSocialSecurity").value)|| '';
+  settings.inflationRate          = parseFloat(document.getElementById("sInflationRate").value) ?? 3;
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch(e) {}
   startCheckInterval();
   renderAlerts();
+  if (state.view === 'health') renderHealth();
 }
 
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -1433,9 +1602,21 @@ function isPaid(billId, month, year) {
 function badgeHTML(paid, dueDate) {
   if (paid) return '<span class="badge badge-paid">Paid</span>';
   const d = daysUntil(dueDate);
-  if (d < 0) return '<span class="badge badge-overdue">Overdue</span>';
-  if (d <= 3) return '<span class="badge badge-soon">Due Soon</span>';
-  return '<span class="badge badge-upcoming">Upcoming</span>';
+  if (d < 0)  return `<span class="badge badge-overdue">${Math.abs(d)}d overdue</span>`;
+  if (d === 0) return '<span class="badge badge-overdue">Due today</span>';
+  if (d === 1) return '<span class="badge badge-soon">Due tomorrow</span>';
+  if (d <= 3) return `<span class="badge badge-soon">${d} days</span>`;
+  if (d <= 7) return `<span class="badge badge-upcoming">${d} days</span>`;
+  return `<span class="badge badge-upcoming">Due ${MONTHS[new Date(dueDate+'T00:00:00').getMonth()]} ${new Date(dueDate+'T00:00:00').getDate()}</span>`;
+}
+
+function getYTDSpend(billId) {
+  const curY = state.currentYear;
+  return state.payments.filter(p => p.billId === billId && p.year === curY)
+    .reduce((s, p) => {
+      const bill = state.bills.find(b => b.id === billId);
+      return s + (bill?.amount || 0);
+    }, 0);
 }
 
 function getMonthlyIncome() {
@@ -1640,6 +1821,11 @@ function openSettingsModal() {
   document.getElementById("sOverdue").checked = settings.showOverdue;
   document.getElementById("sUpcoming").checked = settings.showUpcoming;
   document.getElementById("sManualOnly").checked = settings.manualOnly;
+  document.getElementById("sCurrentAge").value      = settings.currentAge || '';
+  document.getElementById("sRetirementAge").value   = settings.retirementAge || 67;
+  document.getElementById("sDesiredIncome").value   = settings.desiredMonthlyIncome || '';
+  document.getElementById("sSocialSecurity").value  = settings.socialSecurityEstimate || '';
+  document.getElementById("sInflationRate").value   = settings.inflationRate ?? 3;
   renderReminderChips();
   renderFreqChips();
   updateNotifStatus();
@@ -1655,8 +1841,8 @@ function openSettingsModal() {
   }
   document.getElementById("settingsModal").classList.remove("hidden");
 }
-function closeSettingsModal(e) { if (e.target === e.currentTarget) document.getElementById("settingsModal").classList.add("hidden"); }
-function closeSettingsModalDirect() { document.getElementById("settingsModal").classList.add("hidden"); }
+function closeSettingsModal(e) { if (e.target === e.currentTarget) { document.getElementById("settingsModal").classList.add("hidden"); saveSettings(); } }
+function closeSettingsModalDirect() { document.getElementById("settingsModal").classList.add("hidden"); saveSettings(); }
 
 function renderReminderChips() {
   document.getElementById("reminderChips").innerHTML = REMINDER_OPTIONS.map(o =>
@@ -1697,6 +1883,23 @@ function nextMonth() {
   render();
 }
 function switchView(v) { state.view = v; render(); closeSidebar(); }
+
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light-mode');
+  document.getElementById('themeBtn').textContent = isLight ? '☀️' : '🌙';
+  try { localStorage.setItem('billTracker_theme', isLight ? 'light' : 'dark'); } catch(e) {}
+}
+// Apply saved theme on load
+(function() {
+  try {
+    if (localStorage.getItem('billTracker_theme') === 'light') {
+      document.body.classList.add('light-mode');
+      document.addEventListener('DOMContentLoaded', () => {
+        const b = document.getElementById('themeBtn'); if (b) b.textContent = '☀️';
+      });
+    }
+  } catch(e) {}
+})();
 
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
@@ -1812,7 +2015,22 @@ function saveBill() {
   if (!name || isNaN(amount)) return;
   if (state.editId) {
     const bill = state.bills.find(b => b.id === state.editId);
-    if (bill) Object.assign(bill, { name, amount, dueDay, category, isRecurring, frequency, startMonth, payMethod, biller, accountId, payoffBalance, interestRate, payoffAsOf });
+    if (bill) {
+      // Track price change
+      if (bill.amount !== amount && bill.amount > 0) {
+        if (!state.billPriceHistory) state.billPriceHistory = {};
+        if (!state.billPriceHistory[state.editId]) state.billPriceHistory[state.editId] = [];
+        state.billPriceHistory[state.editId].push({
+          date: new Date().toISOString().slice(0,10),
+          oldAmount: bill.amount,
+          newAmount: amount,
+        });
+        // Keep last 12 changes
+        if (state.billPriceHistory[state.editId].length > 12)
+          state.billPriceHistory[state.editId] = state.billPriceHistory[state.editId].slice(-12);
+      }
+      Object.assign(bill, { name, amount, dueDay, category, isRecurring, frequency, startMonth, payMethod, biller, accountId, payoffBalance, interestRate, payoffAsOf });
+    }
   } else {
     state.bills.push({ id: genId(), name, amount, dueDay, category, isRecurring, frequency, startMonth, payMethod, biller, accountId, payoffBalance, interestRate, payoffAsOf });
   }
@@ -2286,6 +2504,7 @@ function render() {
   document.getElementById("monthLabel").textContent = `${MONTHS[state.currentMonth]} ${state.currentYear}`;
   // Update sidebar active state
   document.querySelectorAll(".nav-item").forEach(t => t.classList.toggle("active", t.dataset.view === state.view));
+  document.querySelectorAll(".bottom-nav-btn").forEach(t => t.classList.toggle("active", t.dataset.view === state.view));
   // Update topbar title
   const tb = document.getElementById("topbarTitle");
   if (tb) tb.textContent = VIEW_TITLES[state.view] || 'Bill Tracker';
@@ -2317,6 +2536,7 @@ function render() {
     const barColor = expPct > 90 ? "#fb7185" : expPct > 70 ? "#fbbf24" : "#22d3ee";
 
     document.getElementById("view-dashboard").innerHTML = `
+      ${partnerBannerHTML()}
       <div class="summary-grid">
         ${[
           { label: "Income", value: fmt(totalIncome), sub: `${state.incomes.length} sources`, accent: "#3b82f6" },
@@ -2331,6 +2551,31 @@ function render() {
             <div class="sub">${c.sub}</div>
           </div>`).join("")}
       </div>
+      ${(() => {
+        const tSav  = state.savingsAccounts.reduce((s,a) => s+computedBalance(a.id), 0);
+        const tInv  = totalInvestmentBalance();
+        const tProp = state.properties.reduce((s,p) => s+(p.marketValue||0), 0);
+        const tDebt = state.bills.filter(b=>isLoanCategory(b.category)&&b.payoffBalance>0)
+                        .reduce((s,b) => s+(computePayoffBalance(b)||b.payoffBalance), 0)
+                      + state.properties.reduce((s,p) => s+(p.mortgageBalance||0), 0);
+        const nw = tSav + tInv + tProp - tDebt;
+        const hasData = tSav > 0 || tInv > 0 || tProp > 0;
+        if (!hasData) return '';
+        const nwColor = nw >= 0 ? '#a78bfa' : '#fb7185';
+        return `<div style="display:flex;align-items:center;gap:16px;padding:14px 18px;background:linear-gradient(135deg,rgba(124,58,237,.10),rgba(34,211,238,.06));border:1px solid rgba(124,58,237,.22);border-radius:16px;margin-bottom:16px;flex-wrap:wrap;cursor:pointer" onclick="switchView('health')" title="Open Financial Health">
+          <div>
+            <div style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.7px;color:var(--muted)">Est. Net Worth</div>
+            <div style="font-size:28px;font-weight:900;color:${nwColor};line-height:1.1">${fmt(nw)}</div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            ${tSav>0?`<div style="text-align:center;padding:6px 10px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--border)"><div style="font-size:9px;font-weight:900;text-transform:uppercase;color:var(--muted)">💧 Savings</div><div style="font-size:13px;font-weight:900;color:#10b981">${fmt(tSav)}</div></div>`:''}
+            ${tInv>0?`<div style="text-align:center;padding:6px 10px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--border)"><div style="font-size:9px;font-weight:900;text-transform:uppercase;color:var(--muted)">📈 Invested</div><div style="font-size:13px;font-weight:900;color:#22d3ee">${fmt(tInv)}</div></div>`:''}
+            ${tProp>0?`<div style="text-align:center;padding:6px 10px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--border)"><div style="font-size:9px;font-weight:900;text-transform:uppercase;color:var(--muted)">🏠 Property</div><div style="font-size:13px;font-weight:900;color:#fbbf24">${fmt(tProp)}</div></div>`:''}
+            ${tDebt>0?`<div style="text-align:center;padding:6px 10px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--border)"><div style="font-size:9px;font-weight:900;text-transform:uppercase;color:var(--muted)">💳 Debt</div><div style="font-size:13px;font-weight:900;color:#fb7185">−${fmt(tDebt)}</div></div>`:''}
+          </div>
+          <div style="margin-left:auto;font-size:11px;color:var(--muted)">View details →</div>
+        </div>`;
+      })()}
       ${totalIncome > 0 ? `
       <div class="budget-bar-wrap">
         <div class="budget-labels"><span style="font-weight:600">Budget Used</span><span style="color:#6b7280">${fmt(monthTotal)} of ${fmt(totalIncome)}</span></div>
@@ -2400,7 +2645,9 @@ function render() {
         ${shown.map(ev => {
           if (ev.type === "bill") {
             const calCat = catInfo(ev.category);
-            return `<span class="cal-pip bill${ev.paid ? " is-paid" : ""}" title="${ev.name}: ${fmt(ev.amount)} (${ev.payMethod === 'autopay' ? 'Autopay' : 'Manual'})" onclick="togglePaid('${ev.id}')">${getBillDisplayIcon(ev)||calCat.icon||''}${ev.payMethod === 'autopay' ? '⚡' : ''} ${fmtShort(ev.amount)}</span>`;
+            const pipColor = ev.paid ? 'rgba(34,197,94,.25)' : calCat.color + '33';
+            const pipBorder = ev.paid ? 'rgba(34,197,94,.5)' : calCat.color + '99';
+            return `<span class="cal-pip bill${ev.paid ? " is-paid" : ""}" style="background:${pipColor};border:1px solid ${pipBorder}" title="${ev.name}: ${fmt(ev.amount)} · ${calCat.label} (${ev.payMethod === 'autopay' ? 'Autopay' : 'Manual'})" onclick="togglePaid('${ev.id}')">${getBillDisplayIcon(ev)||calCat.icon||''}${ev.payMethod === 'autopay' ? '⚡' : ''} ${fmtShort(ev.amount)}</span>`;
           } else {
             return `<span class="cal-pip income" title="${ev.name}: ${fmt(ev.amount)}">+${fmtShort(ev.amount)} ${ev.name}</span>`;
           }
@@ -2414,8 +2661,8 @@ function render() {
         <h3 style="margin-bottom:4px">${FULL_MONTHS[state.currentMonth]} ${state.currentYear}</h3>
         <p style="font-size:13px;color:#9ca3af;margin-bottom:16px">Click a bill to toggle paid status</p>
         <div class="cal-grid">${cells}</div>
-        <div style="display:flex;gap:16px;margin-top:14px;font-size:12px;color:#6b7280;flex-wrap:wrap">
-          <span><span class="badge badge-overdue" style="font-size:10px;padding:1px 8px">Red</span> = Bill due</span>
+        <div style="display:flex;gap:16px;margin-top:14px;font-size:12px;color:var(--muted);flex-wrap:wrap">
+          <span>🎨 Color = bill category</span>
           <span><span class="badge badge-paid" style="font-size:10px;padding:1px 8px">Green</span> = Paid</span>
           <span><span style="background:#dbeafe;color:#1e40af;padding:1px 8px;border-radius:6px;font-size:10px;font-weight:600">Blue</span> = Income</span>
           <span>⚡ = Autopay</span>
@@ -2464,6 +2711,8 @@ function render() {
               <div class="bill-info" style="flex:1;min-width:0">
                 <div class="bill-name${paid?" struck":""}">${b.name}</div>
                 <div class="bill-meta">${cat.label} &middot; ${b.frequency === "quarterly" ? "Quarterly · " : b.frequency === "yearly" ? "Yearly · " : ""}Due ${MONTHS[b.frequency === "yearly" || b.frequency === "quarterly" ? (b.startMonth||0) : state.currentMonth]} ${b.dueDay}${b.biller ? " &middot; " + b.biller : ""}${b.accountId ? " &middot; &#x1F4B3; " + getAccountName(b.accountId) : ""} &middot; <span class="badge ${b.payMethod === 'autopay' ? 'badge-autopay' : 'badge-manual'}">${b.payMethod === 'autopay' ? 'Autopay' : 'Manual'}</span></div>
+                ${!isSav && (b.frequency === 'monthly' || b.frequency === 'quarterly') ? (() => { const ytd = getYTDSpend(b.id); return ytd > 0 ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">YTD ${state.currentYear}: <strong style="color:var(--text)">${fmt(ytd)}</strong> paid across ${state.payments.filter(p=>p.billId===b.id&&p.year===state.currentYear).length} month${state.payments.filter(p=>p.billId===b.id&&p.year===state.currentYear).length!==1?'s':''}</div>` : ''; })() : ''}
+                ${(() => { const hist = (state.billPriceHistory||{})[b.id]; if (!hist || !hist.length) return ''; const last = hist[hist.length-1]; const diff = last.newAmount - last.oldAmount; const pct = Math.round(Math.abs(diff)/last.oldAmount*100); return `<div style="font-size:11px;margin-top:2px;color:${diff>0?'#fb7185':'#22c55e'}">⚠️ Price ${diff>0?'increased':'decreased'} ${fmt(Math.abs(diff))}/mo (${pct}%) on ${last.date}</div>`; })()}
                 ${payoffBar}
               </div>
               <div class="bill-right">
@@ -2603,6 +2852,9 @@ function openPropertyModal(id) {
     document.getElementById("pRentDay").value = p.rentDay;
     document.getElementById("pMarketValue").value     = p.marketValue || "";
     document.getElementById("pMortgageBalance").value = p.mortgageBalance || "";
+    document.getElementById("pAppreciation").value    = p.appreciation ?? 3;
+    document.getElementById("pSellingCosts").value    = p.sellingCosts ?? 6;
+    document.getElementById("pIncludeInRetirement").checked = p.includeInRetirement !== false;
     document.getElementById("pNotes").value = p.notes || "";
   } else {
     document.getElementById("pName").value = "";
@@ -2612,6 +2864,9 @@ function openPropertyModal(id) {
     document.getElementById("pRentDay").value = "1";
     document.getElementById("pMarketValue").value     = "";
     document.getElementById("pMortgageBalance").value = "";
+    document.getElementById("pAppreciation").value    = "3";
+    document.getElementById("pSellingCosts").value    = "6";
+    document.getElementById("pIncludeInRetirement").checked = true;
     document.getElementById("pNotes").value = "";
   }
   document.getElementById("propertyModal").classList.remove("hidden");
@@ -2627,9 +2882,12 @@ function saveProperty() {
     address:         document.getElementById("pAddress").value.trim(),
     tenant:          document.getElementById("pTenant").value.trim(),
     rentDay:         parseInt(document.getElementById("pRentDay").value) || 1,
-    marketValue:     parseFloat(document.getElementById("pMarketValue").value) || 0,
-    mortgageBalance: parseFloat(document.getElementById("pMortgageBalance").value) || 0,
-    notes:           document.getElementById("pNotes").value.trim(),
+    marketValue:        parseFloat(document.getElementById("pMarketValue").value) || 0,
+    mortgageBalance:    parseFloat(document.getElementById("pMortgageBalance").value) || 0,
+    appreciation:       parseFloat(document.getElementById("pAppreciation").value) ?? 3,
+    sellingCosts:       parseFloat(document.getElementById("pSellingCosts").value) ?? 6,
+    includeInRetirement: document.getElementById("pIncludeInRetirement").checked,
+    notes:              document.getElementById("pNotes").value.trim(),
   };
   if (state.editPropertyId) {
     const p = state.properties.find(x => x.id === state.editPropertyId);
@@ -2805,6 +3063,17 @@ function renderRental() {
   const ytdRentCollected = ytdRentPayments.length * prop.rent;
   const ytdNet = ytdRentCollected - ytdExpTotal;
 
+  // Prior year YoY comparison
+  const prevYear = state.currentYear - 1;
+  const prevYtdRent = state.rentalPayments.filter(p => p.propId === prop.id && p.year === prevYear && p.month <= state.currentMonth).length * prop.rent;
+  let prevYtdExp = 0;
+  for (let m = 0; m <= state.currentMonth; m++) {
+    propExpenses.forEach(e => { if (expApplies(e, m, prevYear)) prevYtdExp += e.amount; });
+  }
+  const prevYtdNet = prevYtdRent - prevYtdExp;
+  const yoyNetDiff = ytdNet - prevYtdNet;
+  const yoyHasData = prevYtdRent > 0 || prevYtdExp > 0;
+
   // Property tabs
   const propTabs = state.properties.map(p => `
     <button class="property-tab-btn${p.id === state.selectedProperty ? ' active' : ''}" onclick="selectProperty('${p.id}')">
@@ -2819,6 +3088,7 @@ function renderRental() {
     { label: 'YTD Income', value: fmt(ytdRentCollected), sub: `${ytdRentPayments.length} months`, accent: '#3b82f6' },
     { label: 'YTD Expenses', value: fmt(ytdExpTotal), sub: ytdExpCount + ' occurrences', accent: '#8b5cf6' },
     { label: 'YTD Net', value: fmt(ytdNet), sub: state.currentYear, accent: ytdNet >= 0 ? '#16a34a' : '#ef4444' },
+    ...(yoyHasData ? [{ label: 'vs '+prevYear+' (YTD)', value: (yoyNetDiff>=0?'+':'')+fmt(yoyNetDiff), sub: yoyNetDiff>=0?'↑ better than last year':'↓ behind last year', accent: yoyNetDiff>=0?'#16a34a':'#ef4444' }] : []),
   ].map(c => `<div class="summary-card" style="--accent:${c.accent}"><div class="label">${c.label}</div><div class="value" style="font-size:18px">${c.value}</div><div class="sub">${c.sub}</div></div>`).join('');
 
   // Expense breakdown by category
@@ -3391,48 +3661,70 @@ function renderSavings() {
     ${SC('Liquid + Invested', fmt(totalBalance + totalInvested), 'total assets tracked', '#a78bfa')}
   </div>` : ''}`;
 
-  // Growth chart — running balance per month this year
+  // Growth chart — multi-year balance view
   const chartHTML = (() => {
-    // Work backwards from current balance to find start-of-year balance
-    let bal = curBal;
-    const futureAndThisYear = acctTxns.filter(t => new Date(t.date+'T12:00:00').getFullYear() >= curY);
-    // All txns in current year affect current balance; reverse them month by month
-    const byMonth = Array.from({length: 12}, () => []);
-    acctTxns.forEach(t => {
-      const d = new Date(t.date+'T12:00:00');
-      if (d.getFullYear() === curY) byMonth[d.getMonth()].push(t);
-    });
-    // Build end-of-month balances forward
-    let running = curBal;
-    // First subtract all year txns to get start-of-year balance
-    acctTxns.forEach(t => {
-      if (new Date(t.date+'T12:00:00').getFullYear() === curY) {
-        if (t.type==='deposit'||t.type==='interest') running -= t.amount;
-        else running += t.amount;
+    // Collect all years present in transactions
+    const allYears = [...new Set(acctTxns.map(t => new Date(t.date+'T12:00:00').getFullYear()))].sort();
+    if (!allYears.includes(curY)) allYears.push(curY);
+    const selectedYears = allYears.slice(-3); // show last 3 years
+
+    const buildYearBars = (yr) => {
+      const yearTxns = acctTxns.filter(t => new Date(t.date+'T12:00:00').getFullYear() === yr);
+      const byMonth = Array.from({length:12}, () => []);
+      yearTxns.forEach(t => { byMonth[new Date(t.date+'T12:00:00').getMonth()].push(t); });
+      // For current year: work backwards from current balance
+      // For past years: approximate from transactions
+      let running = yr === curY ? curBal : 0;
+      if (yr === curY) {
+        yearTxns.forEach(t => {
+          if (t.type==='deposit'||t.type==='interest') running -= t.amount;
+          else running += t.amount;
+        });
       }
+      const maxMo = yr === curY ? curM : 11;
+      const bars = [];
+      for (let m = 0; m <= maxMo; m++) {
+        byMonth[m].forEach(t => {
+          if (t.type==='deposit'||t.type==='interest') running += t.amount;
+          else running -= t.amount;
+        });
+        bars.push({ mo: MOS[m], bal: Math.max(0, running), yr });
+      }
+      return bars;
+    };
+
+    const allBars = selectedYears.flatMap(yr => buildYearBars(yr));
+    if (allBars.length === 0) return '';
+    const maxBal = Math.max(...allBars.map(b => b.bal), 1);
+    const yearColors = ['#6366f1','#22d3ee','#10b981','#fbbf24'];
+
+    const barGroups = selectedYears.map((yr, yi) => {
+      const bars = buildYearBars(yr);
+      return bars.map(b => {
+        const pct = Math.round((b.bal/maxBal)*100);
+        const color = yearColors[yi % yearColors.length];
+        return `<div class="sav-chart-bar-wrap" title="${yr} ${b.mo}: ${fmt(b.bal)}">
+          <div style="font-size:9px;color:var(--muted);text-align:center">${b.bal>=1000?'$'+(b.bal/1000).toFixed(1)+'k':'$'+Math.round(b.bal)}</div>
+          <div class="sav-chart-bar-col"><div class="sav-chart-bar" style="height:${pct}%;background:${color}"></div></div>
+          <div class="sav-chart-label" style="color:var(--muted)">${b.mo}</div>
+        </div>`;
+      }).join('');
     });
-    const monthBals = [];
-    for (let m = 0; m <= curM; m++) {
-      byMonth[m].forEach(t => {
-        if (t.type==='deposit'||t.type==='interest') running += t.amount;
-        else running -= t.amount;
-      });
-      monthBals.push({ mo: MOS[m], bal: Math.max(0, running) });
-    }
-    if (monthBals.length === 0) return '';
-    const maxBal = Math.max(...monthBals.map(b => b.bal), 1);
-    const bars = monthBals.map(b => {
-      const pct = Math.round((b.bal / maxBal) * 100);
-      return `<div class="sav-chart-bar-wrap">
-        <div style="font-size:9px;color:#6b7280;text-align:center">${b.bal >= 1000 ? '$'+(b.bal/1000).toFixed(1)+'k' : '$'+Math.round(b.bal)}</div>
-        <div class="sav-chart-bar-col"><div class="sav-chart-bar" style="height:${pct}%"></div></div>
-        <div class="sav-chart-label">${b.mo}</div>
-      </div>`;
-    }).join('');
+
+    const legend = selectedYears.map((yr,yi) =>
+      `<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)"><span style="width:10px;height:10px;border-radius:3px;background:${yearColors[yi%yearColors.length]};display:inline-block"></span>${yr}</span>`
+    ).join('');
+
     return `<div class="panel" style="margin-bottom:20px">
-      <h3 style="margin-bottom:4px">Balance Growth &mdash; ${curY}</h3>
-      <p style="font-size:12px;color:#9ca3af;margin-bottom:12px">${acct.name}</p>
-      <div class="sav-chart-bars">${bars}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:8px">
+        <h3>Balance Growth</h3>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">${legend}</div>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px">${acct.name} &mdash; last ${selectedYears.length} year${selectedYears.length!==1?'s':''}</p>
+      ${selectedYears.map((yr,yi) => `<div style="margin-bottom:8px">
+        <div style="font-size:11px;font-weight:900;color:${yearColors[yi%yearColors.length]};margin-bottom:4px">${yr}</div>
+        <div class="sav-chart-bars">${barGroups[yi]}</div>
+      </div>`).join('')}
     </div>`;
   })();
 
@@ -3486,6 +3778,7 @@ function renderSavings() {
       <button class="btn-primary btn-sm" style="background:linear-gradient(135deg,#0891b2,#22d3ee)" onclick="openInvestModal()">+ Add Investment Account</button>
     </div>`}
     ${summaryCards}
+    ${challengesHTML()}
     ${chartHTML}
     <div class="bill-list">
       <div class="list-header">
@@ -3701,6 +3994,497 @@ function renderHealth() {
       <div><div class="ha-title">${title}</div><div class="ha-body">${body}</div></div>
     </div>`;
   }
+
+  // ── Retirement Metrics ───────────────────────────────────────────────────
+  const retAcctTypes  = ['401k','403b','ira','roth_ira','hsa'];
+  const retAccounts   = state.investmentAccounts.filter(a => retAcctTypes.includes(a.type));
+  const retBalance    = retAccounts.reduce((s,a) => s + a.balance, 0);
+  const retMonthly    = retAccounts.reduce((s,a) => s + (a.contrib||0) + monthlyEmployerMatch(a), 0);
+
+  const curAge        = parseInt(settings.currentAge) || 0;
+  const retAge        = parseInt(settings.retirementAge) || 67;
+  const yearsToRet    = curAge > 0 ? Math.max(0, retAge - curAge) : null;
+  const desiredIncome = parseFloat(settings.desiredMonthlyIncome) || 0;
+  const ssEstimate    = parseFloat(settings.socialSecurityEstimate) || 0;
+  const inflRate      = (parseFloat(settings.inflationRate) || 3) / 100;
+
+  const avgRetReturn  = retAccounts.length
+    ? retAccounts.reduce((s,a) => s+(a.annualReturn||7),0)/retAccounts.length : 7;
+  const realReturn    = avgRetReturn / 100 - inflRate; // inflation-adjusted
+
+  // Project retirement balance at target age
+  function projectRetBalance(years, nominal) {
+    const r = nominal ? (avgRetReturn/100/12) : (realReturn/12);
+    const fvBal = retBalance * Math.pow(1+r, years*12);
+    const fvCon = r > 0
+      ? retMonthly * ((Math.pow(1+r,years*12)-1)/r)
+      : retMonthly * years * 12;
+    return fvBal + fvCon;
+  }
+
+  const projRetBal    = yearsToRet != null ? projectRetBalance(yearsToRet, true)  : 0;
+  const projRetBalReal= yearsToRet != null ? projectRetBalance(yearsToRet, false) : 0;
+
+  // Property sale proceeds at retirement
+  const retirementProps = state.properties.filter(p => p.marketValue > 0 && p.includeInRetirement !== false);
+  const propSaleProceeds = yearsToRet != null ? retirementProps.reduce((s, p) => {
+    const futureValue    = p.marketValue * Math.pow(1 + (p.appreciation ?? 3) / 100, yearsToRet);
+    const sellingCostPct = (p.sellingCosts ?? 6) / 100;
+    // Project remaining mortgage: simple amortization using the linked loan bill if available
+    const mortgageBill   = state.bills.find(b => isLoanCategory(b.category) &&
+      b.payoffBalance > 0 && b.name.toLowerCase().includes(p.name.toLowerCase().split(' ')[0].toLowerCase()));
+    let remainingMortgage = p.mortgageBalance || 0;
+    if (mortgageBill && remainingMortgage > 0) {
+      remainingMortgage = Math.max(0, computePayoffBalance(mortgageBill) || remainingMortgage);
+      // Further reduce by scheduled payments over years to retirement
+      const r = (mortgageBill.interestRate || 0) / 100 / 12;
+      let bal = remainingMortgage;
+      for (let m = 0; m < yearsToRet * 12 && bal > 0; m++) {
+        bal = bal * (1 + r) - mortgageBill.amount;
+      }
+      remainingMortgage = Math.max(0, bal);
+    } else if (remainingMortgage > 0 && yearsToRet > 0) {
+      // No linked bill: assume 30yr at 7% to estimate paydown
+      const r = 0.07 / 12;
+      const pmt = remainingMortgage * r / (1 - Math.pow(1+r, -360));
+      let bal = remainingMortgage;
+      for (let m = 0; m < yearsToRet * 12 && bal > 0; m++) {
+        bal = bal * (1 + r) - pmt;
+      }
+      remainingMortgage = Math.max(0, bal);
+    }
+    const netProceeds = futureValue * (1 - sellingCostPct) - remainingMortgage;
+    return s + Math.max(0, netProceeds);
+  }, 0) : 0;
+
+  // Total retirement portfolio including property proceeds
+  const totalProjRetBal = projRetBal + propSaleProceeds;
+  const safeWithdrawalMonthly = totalProjRetBal * 0.04 / 12;
+  const totalRetIncome        = safeWithdrawalMonthly + ssEstimate;
+  const incomeGap             = desiredIncome > 0 ? Math.max(0, desiredIncome - totalRetIncome) : 0;
+  const incomeGapReal         = desiredIncome > 0 ? Math.max(0, desiredIncome - (projRetBalReal*0.04/12 + ssEstimate)) : 0;
+  const onTrack               = desiredIncome > 0 ? totalRetIncome >= desiredIncome : null;
+
+  // Nest egg target based on desired income minus SS
+  const portfolioNeeded = desiredIncome > 0 ? Math.max(0, (desiredIncome - ssEstimate) * 12 / 0.04) : 0;
+  const retProgress     = portfolioNeeded > 0 ? Math.min(100, Math.round(totalProjRetBal/portfolioNeeded*100)) : 0;
+
+  // Extra monthly contribution needed to close the income gap
+  function extraNeededToClose() {
+    if (!incomeGap || yearsToRet == null || yearsToRet <= 0) return 0;
+    const addlNeeded = incomeGap * 12 / 0.04;
+    const r = avgRetReturn / 100 / 12;
+    if (r <= 0) return addlNeeded / (yearsToRet * 12);
+    return addlNeeded * r / (Math.pow(1+r, yearsToRet*12) - 1);
+  }
+  const extraNeeded = extraNeededToClose();
+
+  // Fidelity age milestones (multiples of current annual income)
+  const annualIncome  = monthlyIncome * 12;
+  const fidelityMilestones = [
+    { age:30, mult:1 },{ age:35, mult:2 },{ age:40, mult:3 },
+    { age:45, mult:4 },{ age:50, mult:6 },{ age:55, mult:7 },
+    { age:60, mult:8 },{ age:67, mult:10 },
+  ];
+  const nextMilestone = curAge > 0
+    ? fidelityMilestones.find(m => m.age > curAge) || fidelityMilestones[fidelityMilestones.length-1]
+    : null;
+  const currentMilestone = curAge > 0
+    ? [...fidelityMilestones].reverse().find(m => m.age <= curAge)
+    : null;
+  const currentTarget = currentMilestone && annualIncome > 0 ? currentMilestone.mult * annualIncome : 0;
+  const milestoneStatus = currentTarget > 0
+    ? (retBalance >= currentTarget ? 'ahead' : retBalance >= currentTarget*0.8 ? 'close' : 'behind') : null;
+
+  // Roth vs Traditional split
+  const rothBalance  = state.investmentAccounts.filter(a=>a.type==='roth_ira').reduce((s,a)=>s+a.balance,0);
+  const tradBalance  = state.investmentAccounts.filter(a=>a.type==='ira'||a.type==='401k'||a.type==='403b').reduce((s,a)=>s+a.balance,0);
+  const rothPct      = retBalance > 0 ? Math.round(rothBalance/retBalance*100) : 0;
+  const tradPct      = retBalance > 0 ? Math.round(tradBalance/retBalance*100) : 0;
+
+  // Contribution rate as % of income
+  const retContribRate = monthlyIncome > 0 ? (retMonthly / monthlyIncome * 100) : 0;
+  const totalMatchAnn  = retAccounts.reduce((s,a) => s + annualEmployerMatch(a), 0);
+
+  // Compounding impact — what does $100/mo extra do?
+  const extraImpact100 = (() => {
+    if (!yearsToRet) return 0;
+    const r = avgRetReturn/100/12;
+    return r > 0 ? 100*((Math.pow(1+r,yearsToRet*12)-1)/r) : 100*yearsToRet*12;
+  })();
+
+  // Build the retirement section HTML
+  const retSection = (() => {
+    const hasAge = curAge > 0;
+    const hasRetAccts = retAccounts.length > 0;
+    const hasDesired  = desiredIncome > 0;
+
+    if (!hasAge || !hasRetAccts) {
+      return `<div style="padding:20px;border:1px dashed rgba(251,191,36,.3);border-radius:18px;text-align:center;color:var(--muted)">
+        <div style="font-size:28px;margin-bottom:8px">🏖️</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">Set up Retirement Tracking</div>
+        <div style="font-size:13px;margin-bottom:16px;line-height:1.6">
+          ${!hasAge ? '• Open <strong>Settings ⚙️</strong> and enter your current age and target retirement age.<br>' : ''}
+          ${!hasRetAccts ? '• Add a <strong>401k, IRA, or Roth IRA</strong> in the Savings tab to unlock projections.<br>' : ''}
+        </div>
+        <button class="btn-primary btn-sm" onclick="openSettingsModal()">⚙️ Open Settings</button>
+      </div>`;
+    }
+
+    // Progress ring
+    const RC = 2*Math.PI*46, rDash = Math.min(100,retProgress)/100*RC;
+    const ringColor = retProgress >= 80 ? '#22c55e' : retProgress >= 50 ? '#fbbf24' : retProgress >= 25 ? '#f97316' : '#fb7185';
+
+    const ring = `<div class="ret-ring-wrap">
+      <svg width="120" height="120" viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r="46" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="10"/>
+        <circle cx="60" cy="60" r="46" fill="none" stroke="${ringColor}" stroke-width="10"
+          stroke-dasharray="${rDash.toFixed(1)} ${RC.toFixed(1)}" stroke-linecap="round"/>
+      </svg>
+      <div class="ret-ring-label">
+        <div style="font-size:22px;font-weight:900;color:${ringColor};line-height:1">${retProgress}%</div>
+        <div style="font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">funded</div>
+      </div>
+    </div>`;
+
+    // Header card
+    const header = `<div style="display:flex;gap:20px;align-items:center;padding:18px 20px;background:linear-gradient(135deg,rgba(251,191,36,.09),rgba(251,191,36,.03));border:1px solid rgba(251,191,36,.22);border-radius:18px;margin-bottom:16px;flex-wrap:wrap">
+      ${ring}
+      <div style="flex:1;min-width:180px">
+        <div style="font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.7px;color:#fbbf24;margin-bottom:4px">Retirement at Age ${retAge}</div>
+        <div style="font-size:28px;font-weight:900;color:var(--text);line-height:1.1">${fmt(totalProjRetBal)}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">
+          📈 ${fmt(projRetBal)} investments${propSaleProceeds > 0 ? ` + 🏠 ${fmt(propSaleProceeds)} property proceeds` : ''}<br>
+          ${fmt(projRetBalReal)} in today's dollars
+        </div>
+        ${hasDesired ? `<div style="margin-top:10px;padding:8px 12px;border-radius:10px;background:${onTrack?'rgba(34,197,94,.1)':'rgba(251,113,133,.1)'};border:1px solid ${onTrack?'rgba(34,197,94,.25)':'rgba(251,113,133,.25)'}">
+          <span style="font-size:12px;font-weight:900;color:${onTrack?'#22c55e':'#fb7185'}">${onTrack?'✅ On track':'⚠️ Gap detected'}</span>
+          <span style="font-size:12px;color:var(--muted)"> — ${fmt(totalRetIncome)}/mo projected vs ${fmt(desiredIncome)}/mo desired</span>
+        </div>` : `<div style="font-size:12px;color:var(--muted);margin-top:6px">Add a desired income in Settings to see gap analysis.</div>`}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;min-width:140px">
+        <div style="padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--muted);font-weight:900;text-transform:uppercase">Years to Retire</div>
+          <div style="font-size:20px;font-weight:900;color:#fbbf24">${yearsToRet}</div>
+        </div>
+        <div style="padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--muted);font-weight:900;text-transform:uppercase">4% Safe Withdrawal</div>
+          <div style="font-size:20px;font-weight:900;color:#22d3ee">${fmt(safeWithdrawalMonthly)}<span style="font-size:11px;font-weight:400">/mo</span></div>
+        </div>
+        ${ssEstimate > 0 ? `<div style="padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--muted);font-weight:900;text-transform:uppercase">Total w/ SS</div>
+          <div style="font-size:20px;font-weight:900;color:#a78bfa">${fmt(totalRetIncome)}<span style="font-size:11px;font-weight:400">/mo</span></div>
+        </div>` : ''}
+      </div>
+    </div>`;
+
+    // Key metrics grid
+    const metricsGrid = `<div class="health-metric-grid" style="margin-bottom:16px">
+      ${HM('Retirement Balance', fmt(retBalance), retAccounts.length+' retirement account'+(retAccounts.length!==1?'s':''), retProgress, ringColor)}
+      ${HM('Contribution Rate', retContribRate.toFixed(1)+'%', retContribRate>=15?'✅ 15%+ — well funded':retContribRate>=10?'👍 On track — push to 15%':'⚠️ Under 10% — aim higher', Math.min(100,retContribRate*6), invTrafficColor(retContribRate,15,10))}
+      ${HM('Monthly Contributions', fmt(retMonthly), totalMatchAnn>0?'incl. '+fmt(totalMatchAnn/12)+'/mo employer match':'your contributions only', undefined)}
+      ${HM('Employer Match / Year', totalMatchAnn>0?fmt(totalMatchAnn):'—', totalMatchAnn>0?'free compensation captured':'no match accounts set up', undefined)}
+      ${HM('Roth %', rothPct+'%', tradPct+'% traditional &middot; tax-free vs tax-deferred split', rothPct, '#a78bfa')}
+      ${hasDesired && incomeGap > 0 ? HM('Monthly Income Gap', fmt(incomeGap), 'extra '+fmt(extraNeeded)+'/mo would close it by age '+retAge, Math.min(100,Math.round(totalRetIncome/desiredIncome*100)), '#fb7185') : ''}
+    </div>`;
+
+    // Fidelity milestones
+    const milestonesHTML = annualIncome > 0 ? `<div style="margin-bottom:16px">
+      <div style="font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Fidelity Age Milestones <span style="font-weight:400;font-style:italic">(× annual income of ${fmt(annualIncome)})</span></div>
+      ${fidelityMilestones.map(m => {
+        const target = m.mult * annualIncome;
+        const isCurrent = currentMilestone && m.age === currentMilestone.age;
+        const isNext    = nextMilestone    && m.age === nextMilestone.age;
+        const isPast    = curAge > m.age;
+        const isFuture  = curAge < m.age && !isNext;
+        const met       = retBalance >= target;
+        const pct       = Math.min(100, Math.round(retBalance/target*100));
+        const bgColor   = isCurrent ? 'rgba(251,191,36,.08)' : isNext ? 'rgba(34,211,238,.06)' : 'rgba(255,255,255,.02)';
+        const bdColor   = isCurrent ? 'rgba(251,191,36,.3)' : isNext ? 'rgba(34,211,238,.2)' : 'var(--border)';
+        const ageColor  = met ? '#22c55e' : isCurrent ? '#fbbf24' : isNext ? '#22d3ee' : 'var(--muted)';
+        return `<div class="ret-milestone" style="background:${bgColor};border-color:${bdColor};opacity:${isFuture&&!isNext?.55:1}">
+          <div class="rm-age" style="color:${ageColor}">${m.age}</div>
+          <div><div class="rm-label">${m.mult}× salary = ${fmt(target)}</div>
+            <div class="rm-val">${isPast||isCurrent?`${met?'✅ Met':'⚠️ Behind'} — you have ${fmt(retBalance)} (${pct}% of target)`:`~${fmt(projectRetBalance(Math.max(0,m.age-curAge),true))} projected`}</div>
+          </div>
+          <div class="rm-badge" style="background:${met?'rgba(34,197,94,.15)':isCurrent?'rgba(251,191,36,.15)':'rgba(255,255,255,.06)'};color:${met?'#22c55e':isCurrent?'#fbbf24':'var(--muted)'}">${isCurrent?'NOW':isNext?'NEXT':isPast?'PAST':'AGE '+m.age}</div>
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
+    // Property sale breakdown
+    const propSaleCard = retirementProps.length > 0 ? `<div style="padding:16px;background:linear-gradient(180deg,rgba(245,158,11,.08),rgba(245,158,11,.03));border:1px solid rgba(245,158,11,.22);border-radius:18px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:900;color:#fbbf24;margin-bottom:12px">🏠 Property Sale Proceeds at Age ${retAge}</div>
+      ${retirementProps.map(p => {
+        const futureValue = p.marketValue * Math.pow(1 + (p.appreciation ?? 3) / 100, yearsToRet);
+        const sellingCostPct = (p.sellingCosts ?? 6) / 100;
+        const sellingCostAmt = futureValue * sellingCostPct;
+        // Simplified remaining mortgage for display
+        let remMortgage = p.mortgageBalance || 0;
+        if (remMortgage > 0 && yearsToRet > 0) {
+          const r = 0.07 / 12;
+          const pmt = remMortgage * r / (1 - Math.pow(1+r, -360));
+          let bal = remMortgage;
+          for (let m = 0; m < yearsToRet * 12 && bal > 0; m++) bal = bal*(1+r) - pmt;
+          remMortgage = Math.max(0, bal);
+        }
+        const net = Math.max(0, futureValue * (1 - sellingCostPct) - remMortgage);
+        return `<div style="padding:10px 14px;border:1px solid rgba(245,158,11,.15);border-radius:12px;background:rgba(255,255,255,.02);margin-bottom:8px">
+          <div style="font-size:13px;font-weight:900;color:var(--text);margin-bottom:8px">🏠 ${escHtml(p.name)}</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px">
+            <div><div style="color:var(--muted)">Today's Value</div><div style="font-weight:900;color:var(--text)">${fmt(p.marketValue)}</div></div>
+            <div><div style="color:var(--muted)">At ${retAge} (${(p.appreciation??3)}%/yr)</div><div style="font-weight:900;color:#fbbf24">${fmt(futureValue)}</div></div>
+            <div><div style="color:var(--muted)">Selling Costs (${p.sellingCosts??6}%)</div><div style="font-weight:900;color:#fb7185">−${fmt(sellingCostAmt)}</div></div>
+            ${remMortgage > 0 ? `<div><div style="color:var(--muted)">Remaining Mortgage</div><div style="font-weight:900;color:#fb7185">−${fmt(remMortgage)}</div></div>` : ''}
+            <div style="margin-left:auto"><div style="color:var(--muted)">Net Proceeds</div><div style="font-weight:900;color:#22c55e;font-size:15px">${fmt(net)}</div></div>
+          </div>
+        </div>`;
+      }).join('')}
+      <div style="display:flex;justify-content:space-between;padding:10px 14px;border-radius:12px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);font-size:13px;font-weight:900">
+        <span style="color:var(--text)">Total Property Proceeds</span>
+        <span style="color:#fbbf24">${fmt(propSaleProceeds)}</span>
+      </div>
+    </div>` : '';
+
+    // Income projection table
+    const incomeTable = `<div style="padding:16px;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:18px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:900;color:var(--text);margin-bottom:12px">📊 Retirement Income Breakdown at Age ${retAge}</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(34,211,238,.07);border-radius:10px;border:1px solid rgba(34,211,238,.15)">
+          <span style="font-size:13px;color:var(--text)">📈 Investment Portfolio (4% of ${fmt(projRetBal)})</span>
+          <span style="font-size:13px;font-weight:900;color:#22d3ee">${fmt(projRetBal*0.04/12)}/mo</span>
+        </div>
+        ${propSaleProceeds > 0 ? `<div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(245,158,11,.07);border-radius:10px;border:1px solid rgba(245,158,11,.15)">
+          <span style="font-size:13px;color:var(--text)">🏠 Property Sale Proceeds (4% of ${fmt(propSaleProceeds)})</span>
+          <span style="font-size:13px;font-weight:900;color:#fbbf24">${fmt(propSaleProceeds*0.04/12)}/mo</span>
+        </div>` : ''}
+        ${ssEstimate > 0 ? `<div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(167,139,250,.07);border-radius:10px;border:1px solid rgba(167,139,250,.15)">
+          <span style="font-size:13px;color:var(--text)">🏛️ Social Security (estimated)</span>
+          <span style="font-size:13px;font-weight:900;color:#a78bfa">${fmt(ssEstimate)}/mo</span>
+        </div>` : ''}
+        ${desiredIncome > 0 ? `<div style="display:flex;justify-content:space-between;padding:8px 12px;background:${onTrack?'rgba(34,197,94,.07)':'rgba(251,113,133,.07)'};border-radius:10px;border:1px solid ${onTrack?'rgba(34,197,94,.15)':'rgba(251,113,133,.15)'}">
+          <span style="font-size:13px;color:var(--text);font-weight:900">Total vs Desired</span>
+          <span style="font-size:13px;font-weight:900;color:${onTrack?'#22c55e':'#fb7185'}">${fmt(totalRetIncome)} / ${fmt(desiredIncome)}</span>
+        </div>` : ''}
+        ${incomeGap > 0 ? `<div style="padding:10px 12px;background:rgba(251,113,133,.06);border-radius:10px;border:1px solid rgba(251,113,133,.15);font-size:12px;color:var(--muted)">
+          💡 To close the ${fmt(incomeGap)}/mo gap, you'd need to save an extra <strong style="color:#fb7185">${fmt(extraNeeded)}/mo</strong> starting today, or build an additional <strong style="color:#fb7185">${fmt(incomeGap*12/0.04)}</strong> in your portfolio.
+        </div>` : incomeGap === 0 && desiredIncome > 0 ? `<div style="padding:10px 12px;background:rgba(34,197,94,.07);border-radius:10px;font-size:12px;color:#86efac">
+          🎉 You're on track — projected income covers your desired retirement income!
+        </div>` : ''}
+      </div>
+    </div>`;
+
+    // $100/mo compounding insight
+    const compoundInsight = extraImpact100 > 0 ? `<div style="padding:12px 16px;background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.18);border-radius:14px;margin-bottom:16px;font-size:13px;color:var(--muted)">
+      💡 <strong style="color:var(--text)">Compounding insight:</strong> An extra $100/mo invested today at ${avgRetReturn.toFixed(1)}% grows to <strong style="color:#a78bfa">${fmt(extraImpact100)}</strong> by age ${retAge} — generating <strong style="color:#a78bfa">${fmt(extraImpact100*0.04/12)}/mo</strong> in retirement income.
+    </div>` : '';
+
+    // Inflation toggle note
+    const inflNote = `<div style="font-size:11px;color:var(--muted);padding:4px 2px">
+      Projections use ${avgRetReturn.toFixed(1)}% avg return &middot; ${(inflRate*100).toFixed(1)}% inflation &middot; 4% safe withdrawal rate. Today's dollar figure assumes ${(inflRate*100).toFixed(1)}%/yr inflation over ${yearsToRet} years.
+    </div>`;
+
+    return header + metricsGrid + milestonesHTML + propSaleCard + incomeTable + compoundInsight + inflNote;
+  })();
+
+  // ── Debt Payoff Strategy ─────────────────────────────────────────────────
+  const payoffStrategyHTML = loanBills.length >= 2 ? (() => {
+    function totalInterestPaid(loans, strategy) {
+      // Returns total interest for the strategy across all loans
+      let balances = loans.map(b => ({ id: b.id, bal: computePayoffBalance(b)||b.payoffBalance, rate: (b.interestRate||0)/100/12, pmt: b.amount, name: b.name }));
+      let totalInt = 0, month = 0, extraPool = 0;
+      while (balances.some(l => l.bal > 0) && month < 600) {
+        // Sort each month by strategy
+        if (strategy === 'avalanche') balances.sort((a,b) => b.rate - a.rate);
+        else balances.sort((a,b) => a.bal - b.bal);
+        // Collect freed payments from paid-off loans
+        balances.forEach(l => {
+          if (l.bal <= 0) extraPool += l.pmt;
+        });
+        balances = balances.filter(l => l.bal > 0);
+        if (!balances.length) break;
+        // Apply minimum payments to all, extra to first
+        let extra = extraPool;
+        balances.forEach((l, i) => {
+          const int = l.bal * l.rate;
+          totalInt += int;
+          const principal = Math.min(l.bal, l.pmt - int + (i === 0 ? extra : 0));
+          l.bal = Math.max(0, l.bal - principal);
+          if (i === 0) extra = 0;
+        });
+        month++;
+      }
+      return { totalInt, months: month };
+    }
+    const aval = totalInterestPaid(loanBills, 'avalanche');
+    const snow = totalInterestPaid(loanBills, 'snowball');
+    const diff = Math.abs(aval.totalInt - snow.totalInt);
+    const avalWins = aval.totalInt <= snow.totalInt;
+
+    // Avalanche order
+    const avalOrder = [...loanBills].sort((a,b) => (b.interestRate||0)-(a.interestRate||0));
+    const snowOrder = [...loanBills].sort((a,b) => {
+      const ba = computePayoffBalance(a)||a.payoffBalance, bb = computePayoffBalance(b)||b.payoffBalance;
+      return ba - bb;
+    });
+
+    const stratRow = (b, rank, style) => {
+      const bal = computePayoffBalance(b)||b.payoffBalance;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.03);margin-bottom:4px">
+        <div style="width:22px;height:22px;border-radius:50%;background:${style};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:#fff;flex-shrink:0">${rank}</div>
+        <div style="flex:1"><div style="font-size:13px;font-weight:700">${escHtml(b.name)}</div><div style="font-size:11px;color:var(--muted)">${fmt(bal)} at ${(b.interestRate||0).toFixed(2)}%</div></div>
+        <div style="font-size:11px;color:var(--muted)">${fmt(b.amount)}/mo</div>
+      </div>`;
+    };
+
+    return `<div style="padding:16px;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:18px">
+      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px;padding:14px;border-radius:14px;background:${avalWins?'rgba(34,197,94,.08)':'rgba(255,255,255,.04)'};border:1px solid ${avalWins?'rgba(34,197,94,.25)':'var(--border)'}">
+          <div style="font-size:12px;font-weight:900;color:${avalWins?'#22c55e':'var(--muted)'};margin-bottom:4px">🏔️ Avalanche ${avalWins?'✓ Saves most':''}  </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Pay highest interest rate first</div>
+          <div style="font-size:18px;font-weight:900;color:var(--text)">${fmt(aval.totalInt)}</div>
+          <div style="font-size:11px;color:var(--muted)">total interest &middot; ~${Math.round(aval.months/12)} yrs</div>
+        </div>
+        <div style="flex:1;min-width:200px;padding:14px;border-radius:14px;background:${!avalWins?'rgba(34,197,94,.08)':'rgba(255,255,255,.04)'};border:1px solid ${!avalWins?'rgba(34,197,94,.25)':'var(--border)'}">
+          <div style="font-size:12px;font-weight:900;color:${!avalWins?'#22c55e':'var(--muted)'};margin-bottom:4px">⛄ Snowball ${!avalWins?'✓ Saves most':''}</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Pay smallest balance first</div>
+          <div style="font-size:18px;font-weight:900;color:var(--text)">${fmt(snow.totalInt)}</div>
+          <div style="font-size:11px;color:var(--muted)">total interest &middot; ~${Math.round(snow.months/12)} yrs</div>
+        </div>
+      </div>
+      <div style="font-size:12px;padding:10px 14px;border-radius:10px;background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.18);color:var(--text);margin-bottom:14px">
+        💡 ${avalWins?'Avalanche':'Snowball'} saves <strong style="color:#fbbf24">${fmt(diff)}</strong> in interest. ${avalWins?'Snowball gives quicker psychological wins by eliminating small debts first.':'Avalanche minimizes total interest mathematically.'}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><div style="font-size:11px;font-weight:900;color:#fb7185;margin-bottom:6px;text-transform:uppercase">🏔️ Avalanche Order</div>${avalOrder.map((b,i)=>stratRow(b,i+1,'#fb7185')).join('')}</div>
+        <div><div style="font-size:11px;font-weight:900;color:#60a5fa;margin-bottom:6px;text-transform:uppercase">⛄ Snowball Order</div>${snowOrder.map((b,i)=>stratRow(b,i+1,'#60a5fa')).join('')}</div>
+      </div>
+    </div>`;
+  })() : (loanBills.length === 1 ? `<div style="padding:14px;border-radius:14px;border:1px solid var(--border);color:var(--muted);font-size:13px">Add a second loan to compare Avalanche vs Snowball strategies.</div>` : '<p class="empty">No loans tracked. Add payoff balances to your Loans &amp; Debt bills.</p>');
+
+  // ── Income Tax Estimator ─────────────────────────────────────────────────
+  const taxHTML = (() => {
+    const grossAnnual = monthlyIncome * 12;
+    if (grossAnnual <= 0) return `<div style="padding:14px;border-radius:14px;border:1px solid var(--border);color:var(--muted);font-size:13px">Add income sources to estimate your tax bracket.</div>`;
+
+    // 2025 federal brackets (single filer)
+    const brackets = [
+      { max: 11925,   rate: .10 },
+      { max: 48475,   rate: .12 },
+      { max: 103350,  rate: .22 },
+      { max: 197300,  rate: .24 },
+      { max: 250525,  rate: .32 },
+      { max: 626350,  rate: .35 },
+      { max: Infinity,rate: .37 },
+    ];
+    const stdDeduction = 15000;
+    const taxableIncome = Math.max(0, grossAnnual - stdDeduction);
+
+    // Pre-tax 401k/403b contributions
+    const preTax401k = state.investmentAccounts
+      .filter(a => a.type==='401k'||a.type==='403b')
+      .reduce((s,a) => s + (a.contrib||0)*12, 0);
+    const taxableWithContribs = Math.max(0, taxableIncome - preTax401k);
+
+    let tax = 0, prev = 0;
+    const bracketRows = [];
+    for (const b of brackets) {
+      const chunk = Math.min(Math.max(0, taxableWithContribs - prev), b.max - prev);
+      const t = chunk * b.rate;
+      if (chunk > 0) bracketRows.push({ rate: b.rate, chunk, tax: t });
+      tax += t;
+      prev = b.max;
+      if (taxableWithContribs <= b.max) break;
+    }
+    const marginalRate = bracketRows.length ? bracketRows[bracketRows.length-1].rate : 0;
+    const effectiveRate = grossAnnual > 0 ? tax/grossAnnual : 0;
+    const monthlyTax = tax/12;
+    const takeHome = grossAnnual - tax;
+    const monthlyTakeHome = takeHome/12;
+
+    // Compare to tracked bills
+    const billsCoverage = monthlyIncome > 0 ? Math.round(totalMonthlyBills/monthlyIncome*100) : 0;
+
+    return `<div style="padding:16px;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:18px">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+        ${HM('Gross Income', fmt(grossAnnual)+'/yr', fmt(monthlyIncome)+'/mo', undefined)}
+        ${HM('Est. Federal Tax', fmt(tax)+'/yr', fmt(monthlyTax)+'/mo · '+Math.round(effectiveRate*100)+'% effective', undefined)}
+        ${HM('Est. Take-Home', fmt(takeHome)+'/yr', fmt(monthlyTakeHome)+'/mo after tax', undefined)}
+        ${HM('Marginal Rate', Math.round(marginalRate*100)+'%', 'tax on next dollar earned', undefined)}
+      </div>
+      <div style="margin-bottom:12px">
+        ${bracketRows.map(r => {
+          const pct = Math.round(r.chunk/taxableWithContribs*100)||0;
+          return `<div style="display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:8px;margin-bottom:3px;background:rgba(255,255,255,.02)">
+            <div style="width:40px;font-size:11px;font-weight:900;color:#fbbf24">${Math.round(r.rate*100)}%</div>
+            <div style="flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,.06)"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#fbbf24,#f97316);border-radius:4px"></div></div>
+            <div style="font-size:11px;color:var(--muted);text-align:right;min-width:90px">${fmt(r.chunk)} taxed → ${fmt(r.tax)}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      ${preTax401k>0?`<div style="font-size:12px;color:#22c55e;padding:8px 12px;border-radius:10px;background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.18);margin-bottom:10px">✅ ${fmt(preTax401k)}/yr in 401k/403b contributions reduces your taxable income — saving ~${fmt(preTax401k*marginalRate)}/yr in taxes.</div>`:''}
+      <div style="font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:10px">
+        Estimate only. Uses 2025 single-filer brackets + ${fmt(stdDeduction)} standard deduction. Does not include state tax, FICA, itemized deductions, or other credits.
+        Your tracked bills use ${billsCoverage}% of gross monthly income (${Math.round(billsCoverage*(1-effectiveRate))}% of take-home).
+      </div>
+    </div>`;
+  })();
+
+  // ── Net Worth History Chart ───────────────────────────────────────────────
+  const nwHistoryHTML = (() => {
+    const hist = (state.netWorthHistory||[]).slice(-18); // last 18 months
+    if (hist.length < 2) return `<div style="padding:14px;border-radius:14px;border:1px solid var(--border);color:var(--muted);font-size:13px">Net worth snapshots are taken automatically each time you save data. Come back next month to see your trend.</div>`;
+    const vals = hist.map(h => h.nw);
+    const minV = Math.min(...vals);
+    const maxV = Math.max(...vals, 1);
+    const range = maxV - minV || 1;
+    const W = 600, H = 120, PAD = 10;
+    const pts = hist.map((h, i) => {
+      const x = PAD + (i/(hist.length-1)) * (W-PAD*2);
+      const y = H - PAD - ((h.nw - minV)/range)*(H-PAD*2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    const first = hist[0], last2 = hist[hist.length-1];
+    const change = last2.nw - first.nw;
+    const pctChange = first.nw !== 0 ? Math.round(change/Math.abs(first.nw)*100) : 0;
+    const lineColor = change >= 0 ? '#22c55e' : '#fb7185';
+
+    // Area path
+    const areaStart = `${(PAD).toFixed(1)},${H-PAD}`;
+    const areaEnd   = `${(PAD+(hist.length-1)/(hist.length-1)*(W-PAD*2)).toFixed(1)},${H-PAD}`;
+    const area = `M ${areaStart} L ${pts.split(' ').map(p => p).join(' L ')} L ${areaEnd} Z`;
+
+    return `<div style="padding:16px;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:18px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:13px;font-weight:900;color:var(--text)">Net Worth Over Time</div>
+          <div style="font-size:11px;color:var(--muted)">${hist.length} monthly snapshots</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:18px;font-weight:900;color:${lineColor}">${change>=0?'+':''}${fmt(change)}</div>
+          <div style="font-size:11px;color:var(--muted)">${pctChange>=0?'+':''}${pctChange}% over period</div>
+        </div>
+      </div>
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100px">
+        <defs>
+          <linearGradient id="nwGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="${lineColor}" stop-opacity=".25"/>
+            <stop offset="100%" stop-color="${lineColor}" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d="${area}" fill="url(#nwGrad)"/>
+        <polyline points="${pts}" fill="none" stroke="${lineColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        ${hist.map((h,i) => {
+          const x = PAD + (i/(hist.length-1))*(W-PAD*2);
+          const y = H - PAD - ((h.nw-minV)/range)*(H-PAD*2);
+          return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${lineColor}"/>`;
+        }).join('')}
+      </svg>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px">
+        <span>${hist[0].month}</span><span>${hist[Math.floor(hist.length/2)].month}</span><span>${hist[hist.length-1].month}</span>
+      </div>
+    </div>`;
+  })();
 
   // ── Score Ring ───────────────────────────────────────────────────────────
   const R = 60, C = 2*Math.PI*R;
@@ -4035,6 +4819,11 @@ function renderHealth() {
       ${fireSection}
     </div>
 
+    <div class="health-section">
+      <div class="health-section-title">🏖️ Retirement Readiness</div>
+      ${retSection}
+    </div>
+
     ${taxAdvAccounts.length > 0 ? `<div class="health-section">
       <div class="health-section-title">🏛️ Tax-Advantaged Account Usage</div>
       ${taxAdvSection}
@@ -4067,6 +4856,21 @@ function renderHealth() {
     </div>
 
     <div class="health-section">
+      <div class="health-section-title">🏔️ Debt Payoff Strategy — Avalanche vs Snowball</div>
+      ${payoffStrategyHTML}
+    </div>
+
+    <div class="health-section">
+      <div class="health-section-title">🧾 Income Tax Estimator</div>
+      ${taxHTML}
+    </div>
+
+    <div class="health-section">
+      <div class="health-section-title">📈 Net Worth History</div>
+      ${nwHistoryHTML}
+    </div>
+
+    <div class="health-section">
       <div class="health-section-title">Hidden Drains &amp; Alerts</div>
       ${alerts.join('')}
     </div>
@@ -4083,6 +4887,228 @@ function renderHealth() {
     </div>`;
 }
 
+
+// ════════════════════════════════════════════════════
+//  WHAT-IF SCENARIOS
+// ════════════════════════════════════════════════════
+function openWhatIf() {
+  document.getElementById('wiIncome').value = 0;
+  document.getElementById('wiDebt').value = 0;
+  document.getElementById('wiSav').value = 0;
+  document.getElementById('wiNoSubs').checked = false;
+  updateWhatIf();
+  document.getElementById('whatIfModal').classList.remove('hidden');
+}
+function closeWhatIf() { document.getElementById('whatIfModal').classList.add('hidden'); }
+function updateWhatIf() {
+  const incAdj   = parseInt(document.getElementById('wiIncome').value) || 0;
+  const extraDebt= parseInt(document.getElementById('wiDebt').value) || 0;
+  const extraSav = parseInt(document.getElementById('wiSav').value) || 0;
+  const noSubs   = document.getElementById('wiNoSubs').checked;
+  document.getElementById('wiIncomeVal').textContent = (incAdj>=0?'+':'')+fmt(incAdj);
+  document.getElementById('wiDebtVal').textContent   = '+'+fmt(extraDebt);
+  document.getElementById('wiSavVal').textContent    = '+'+fmt(extraSav);
+
+  const baseIncome = getMonthlyIncome();
+  const allBillsNow = state.bills.concat(getSavingsContribBills()).filter(b => isDueThisMonth(b));
+  const subTotal = allBillsNow.filter(b => b.category==='subscriptions').reduce((s,b)=>s+b.amount,0);
+  const baseBills = allBillsNow.reduce((s,b)=>s+b.amount,0) - (noSubs ? subTotal : 0);
+  const loanBills2 = state.bills.filter(b=>isLoanCategory(b.category)&&b.payoffBalance>0);
+  const totalDebt2 = loanBills2.reduce((s,b)=>s+(computePayoffBalance(b)||b.payoffBalance),0);
+  const weightedR  = loanBills2.length ? loanBills2.reduce((s,b)=>{const bal=computePayoffBalance(b)||b.payoffBalance;return s+(b.interestRate||0)/100*bal;},0)/Math.max(totalDebt2,1) : 0;
+
+  const newIncome  = baseIncome + incAdj;
+  const newBills   = baseBills + extraDebt + extraSav;
+  const newSurplus = newIncome - newBills;
+  const oldSurplus = baseIncome - baseBills;
+  const surplusDiff = newSurplus - oldSurplus;
+
+  // Payoff acceleration
+  const oldMonthly = loanBills2.reduce((s,b)=>s+b.amount,0);
+  const newMonthly = oldMonthly + extraDebt;
+  const moOld = totalDebt2 > 0 ? payoffMonths(totalDebt2, oldMonthly, weightedR*100) : null;
+  const moNew = totalDebt2 > 0 && newMonthly > oldMonthly ? payoffMonths(totalDebt2, newMonthly, weightedR*100) : null;
+  const moSaved = (moOld!=null&&moNew!=null) ? moOld - moNew : null;
+
+  // 5-year savings impact
+  const avgAPY = state.savingsAccounts.length > 0
+    ? state.savingsAccounts.reduce((s,a)=>s+(a.apy||0),0)/state.savingsAccounts.length/100 : 0.045;
+  const fv5 = extraSav > 0 ? extraSav * ((Math.pow(1+avgAPY/12,60)-1)/(avgAPY/12)) : 0;
+
+  const el = document.getElementById('whatIfResults');
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div style="padding:10px;border-radius:10px;background:rgba(255,255,255,.04)">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:900">Monthly Surplus</div>
+        <div style="font-size:18px;font-weight:900;color:${newSurplus>=0?'#22c55e':'#fb7185'}">${fmt(newSurplus)}</div>
+        <div style="font-size:11px;color:${surplusDiff>=0?'#22c55e':'#fb7185'}">${surplusDiff>=0?'+':''}${fmt(surplusDiff)} vs now</div>
+      </div>
+      <div style="padding:10px;border-radius:10px;background:rgba(255,255,255,.04)">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:900">New Income</div>
+        <div style="font-size:18px;font-weight:900;color:var(--text)">${fmt(newIncome)}</div>
+        <div style="font-size:11px;color:var(--muted)">${fmt(newBills)} in bills</div>
+      </div>
+    </div>
+    ${noSubs?`<div style="font-size:12px;color:#fbbf24;margin-bottom:8px">🚫 Eliminating subscriptions saves ${fmt(subTotal)}/mo (${fmt(subTotal*12)}/yr)</div>`:''}
+    ${moSaved!=null&&moSaved>0?`<div style="font-size:12px;color:#22d3ee;margin-bottom:8px">💳 Extra ${fmt(extraDebt)}/mo cuts debt payoff by ${moSaved} month${moSaved!==1?'s':''}</div>`:''}
+    ${extraSav>0?`<div style="font-size:12px;color:#10b981;margin-bottom:8px">💰 Extra ${fmt(extraSav)}/mo in savings → ${fmt(fv5)} in 5 years</div>`:''}
+    ${incAdj>0?`<div style="font-size:12px;color:#a78bfa">📈 ${fmt(incAdj)}/mo raise = ${fmt(incAdj*12)}/yr = ${fmt(incAdj*12*10)} over 10 years uninvested</div>`:''}
+  `;
+}
+
+// ════════════════════════════════════════════════════
+//  SAVINGS CHALLENGES
+// ════════════════════════════════════════════════════
+function openChallengeModal() {
+  updateChallengePreview();
+  document.getElementById('challengeModal').classList.remove('hidden');
+}
+function closeChallengeModal() { document.getElementById('challengeModal').classList.add('hidden'); }
+function updateChallengePreview() {
+  const type = document.getElementById('chType').value;
+  const custom = document.getElementById('chCustomFields');
+  custom.style.display = type === 'custom' ? 'flex' : 'none';
+  const previews = {
+    '52week': 'Save $1 in week 1, $2 in week 2 … $52 in week 52. Total: <strong style="color:#22c55e">$1,378</strong> in one year.',
+    '100day': 'Save $1/day for 100 days. Total: <strong style="color:#22c55e">$5,050</strong> (or use any fixed daily amount).',
+    'nospend': 'Commit to zero discretionary spending for one month. Track every exception.',
+    'custom':  'Set your own goal amount and timeframe.',
+  };
+  document.getElementById('chPreview').innerHTML = previews[type] || '';
+}
+function saveChallenge() {
+  const type = document.getElementById('chType').value;
+  const name = document.getElementById('chName').value.trim() || ({ '52week':'52-Week Challenge','100day':'100-Day Challenge','nospend':'No-Spend Month','custom':'Custom Challenge' }[type]);
+  const startDate = new Date().toISOString().slice(0,10);
+  let totalWeeks = 52, targetAmount = 1378;
+  if (type==='52week') { totalWeeks=52; targetAmount=1378; }
+  else if (type==='100day') { totalWeeks=15; targetAmount=5050; }
+  else if (type==='nospend') { totalWeeks=4; targetAmount=0; }
+  else { targetAmount=parseFloat(document.getElementById('chGoal').value)||500; totalWeeks=parseInt(document.getElementById('chWeeks').value)||12; }
+  const ch = { id: genId(), type, name, startDate, totalWeeks, targetAmount, completedWeeks: [], notes: '' };
+  if (!state.savingsChallenges) state.savingsChallenges = [];
+  state.savingsChallenges.push(ch);
+  saveState();
+  closeChallengeModal();
+  if (state.view==='savings') renderSavings();
+}
+function toggleChallengeWeek(chId, week) {
+  const ch = (state.savingsChallenges||[]).find(c=>c.id===chId);
+  if (!ch) return;
+  const idx = ch.completedWeeks.indexOf(week);
+  if (idx>=0) ch.completedWeeks.splice(idx,1);
+  else ch.completedWeeks.push(week);
+  saveState();
+  if (state.view==='savings') renderSavings();
+}
+function deleteChallenge(chId) {
+  if (!confirm('Delete this challenge?')) return;
+  state.savingsChallenges = (state.savingsChallenges||[]).filter(c=>c.id!==chId);
+  saveState();
+  if (state.view==='savings') renderSavings();
+}
+function challengesHTML() {
+  const challenges = state.savingsChallenges || [];
+  const COLORS = ['#22d3ee','#a78bfa','#22c55e','#fbbf24','#fb7185'];
+  const cards = challenges.map((ch, ci) => {
+    const color = COLORS[ci % COLORS.length];
+    const done = ch.completedWeeks.length;
+    const pct = ch.totalWeeks > 0 ? Math.min(100, Math.round(done/ch.totalWeeks*100)) : 0;
+    const weeksSince = Math.ceil((Date.now() - new Date(ch.startDate+'T00:00:00').getTime()) / (7*86400000));
+    const onTrack = done >= Math.min(weeksSince, ch.totalWeeks);
+    // For 52-week: saved amount = sum of week numbers
+    const savedAmt = ch.type==='52week' ? ch.completedWeeks.reduce((s,w)=>s+w,0) : ch.type==='100day' ? done*Math.ceil(ch.targetAmount/ch.totalWeeks/7) : 0;
+    const weeks = Array.from({length: Math.min(ch.totalWeeks, 52)}, (_,i)=>i+1);
+    return `<div style="padding:16px;border:1px solid ${color}33;border-radius:16px;background:${color}08;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div><div style="font-size:14px;font-weight:900;color:var(--text)">${escHtml(ch.name)}</div><div style="font-size:11px;color:var(--muted)">Started ${ch.startDate} &middot; ${ch.totalWeeks} weeks &middot; ${onTrack?'✅ On track':'⚠️ Behind'}</div></div>
+        <button onclick="deleteChallenge('${ch.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px">✕</button>
+      </div>
+      <div style="height:6px;border-radius:3px;background:rgba(255,255,255,.08);margin-bottom:6px"><div style="height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width .4s"></div></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${done}/${ch.totalWeeks} weeks complete (${pct}%)${savedAmt>0?' &middot; '+fmt(savedAmt)+' saved':''}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">
+        ${weeks.map(w => {
+          const done2 = ch.completedWeeks.includes(w);
+          const wAmt = ch.type==='52week' ? w : null;
+          return `<button onclick="toggleChallengeWeek('${ch.id}',${w})" style="width:28px;height:28px;border-radius:6px;border:1px solid ${done2?color:'var(--border)'};background:${done2?color+'33':'transparent'};color:${done2?color:'var(--muted)'};font-size:9px;font-weight:900;cursor:pointer" title="Week ${w}${wAmt?' — $'+wAmt:''}">${w}</button>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+  return `<div style="margin-bottom:20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 style="font-size:16px;font-weight:700">🏆 Savings Challenges</h3>
+      <button class="btn-primary btn-sm" onclick="openChallengeModal()">+ New Challenge</button>
+    </div>
+    ${challenges.length ? cards : '<div style="padding:14px;border:1px dashed rgba(255,255,255,.15);border-radius:12px;text-align:center;color:var(--muted);font-size:13px">No challenges yet. Start a 52-week challenge or create your own!</div>'}
+  </div>`;
+}
+
+// ════════════════════════════════════════════════════
+//  PARTNER / SPOUSE MODE
+// ════════════════════════════════════════════════════
+function openPartnerModal() {
+  const p = state.partner || {};
+  document.getElementById('prtMyName').value  = p.myName  || '';
+  document.getElementById('prtName').value    = p.name    || '';
+  document.getElementById('prtIncome').value  = p.income  || '';
+  document.getElementById('prtSplit').value   = p.split   || '50';
+  // Rebuild button area dynamically since partner may have changed
+  document.getElementById('partnerModal').classList.remove('hidden');
+}
+function closePartnerModal() { document.getElementById('partnerModal').classList.add('hidden'); }
+function savePartner() {
+  state.partner = {
+    myName:  document.getElementById('prtMyName').value.trim() || 'Me',
+    name:    document.getElementById('prtName').value.trim(),
+    income:  parseFloat(document.getElementById('prtIncome').value) || 0,
+    split:   document.getElementById('prtSplit').value,
+  };
+  if (!state.partner.name) { state.partner = null; }
+  saveState(); closePartnerModal(); render();
+}
+function removePartner() {
+  if (!confirm('Remove partner?')) return;
+  state.partner = null;
+  saveState(); closePartnerModal(); render();
+}
+function partnerBannerHTML() {
+  const p = state.partner;
+  if (!p || !p.name) return '';
+  const myIncome = getMonthlyIncome();
+  const combinedIncome = myIncome + p.income;
+  const allBillsNow = state.bills.concat(getSavingsContribBills()).filter(b=>isDueThisMonth(b));
+  const totalBills = allBillsNow.reduce((s,b)=>s+b.amount,0);
+  let myShare, partnerShare;
+  if (p.split === '50') { myShare = partnerShare = totalBills/2; }
+  else if (p.split === 'income') {
+    const myPct = combinedIncome > 0 ? myIncome/combinedIncome : 0.5;
+    myShare = totalBills * myPct; partnerShare = totalBills * (1-myPct);
+  } else { myShare = totalBills; partnerShare = 0; }
+  const mySurplus = myIncome - myShare;
+  const partnerSurplus = p.income - partnerShare;
+  return `<div style="padding:14px 18px;border-radius:16px;background:linear-gradient(135deg,rgba(167,139,250,.1),rgba(34,211,238,.06));border:1px solid rgba(167,139,250,.22);margin-bottom:16px">
+    <div style="font-size:11px;font-weight:900;color:#a78bfa;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">👥 Household — ${escHtml(p.myName||'Me')} &amp; ${escHtml(p.name)}</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap">
+      <div style="flex:1;min-width:140px">
+        <div style="font-size:10px;color:var(--muted);font-weight:900;text-transform:uppercase">Combined Income</div>
+        <div style="font-size:18px;font-weight:900;color:var(--text)">${fmt(combinedIncome)}/mo</div>
+        <div style="font-size:11px;color:var(--muted)">${fmt(myIncome)} + ${fmt(p.income)}</div>
+      </div>
+      <div style="flex:1;min-width:140px">
+        <div style="font-size:10px;color:var(--muted);font-weight:900;text-transform:uppercase">${escHtml(p.myName||'My')} Share</div>
+        <div style="font-size:18px;font-weight:900;color:${mySurplus>=0?'#22c55e':'#fb7185'}">${fmt(mySurplus)} surplus</div>
+        <div style="font-size:11px;color:var(--muted)">${fmt(myShare)} bills of ${fmt(myIncome)}</div>
+      </div>
+      <div style="flex:1;min-width:140px">
+        <div style="font-size:10px;color:var(--muted);font-weight:900;text-transform:uppercase">${escHtml(p.name)}'s Share</div>
+        <div style="font-size:18px;font-weight:900;color:${partnerSurplus>=0?'#22c55e':'#fb7185'}">${fmt(partnerSurplus)} surplus</div>
+        <div style="font-size:11px;color:var(--muted)">${fmt(partnerShare)} bills of ${fmt(p.income)}</div>
+      </div>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:var(--muted)">Split: ${p.split==='50'?'50/50':p.split==='income'?'Proportional to income':'You pay all bills'} &nbsp;·&nbsp; <button onclick="openPartnerModal()" style="background:none;border:none;color:#a78bfa;cursor:pointer;font-size:11px;padding:0">Edit ✏️</button></div>
+  </div>`;
+}
 
 // ════════════════════════════════════════════════════
 //  CLOUD SYNC  (GitHub Gist + AES-256-GCM encryption)
@@ -4412,5 +5438,99 @@ syncOnLoad();
     </div>
   </div>
 </div>
+<!-- What-If Modal -->
+<div id="whatIfModal" class="modal-overlay hidden" onclick="if(event.target===this)closeWhatIf()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:560px">
+    <div class="modal-header"><h3>🔮 What-If Scenario Builder</h3><button class="modal-close" onclick="closeWhatIf()">&times;</button></div>
+    <div style="padding:0 20px 20px">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Adjust the sliders to see how changes affect your monthly finances.</p>
+      <div class="form-group">
+        <label>Income change ($/mo) <span id="wiIncomeVal" style="color:#22d3ee;font-weight:900">+$0</span></label>
+        <input type="range" id="wiIncome" min="-2000" max="5000" step="100" value="0" oninput="updateWhatIf()" style="width:100%">
+      </div>
+      <div class="form-group">
+        <label>Extra debt payment ($/mo) <span id="wiDebtVal" style="color:#fb7185;font-weight:900">+$0</span></label>
+        <input type="range" id="wiDebt" min="0" max="2000" step="50" value="0" oninput="updateWhatIf()" style="width:100%">
+      </div>
+      <div class="form-group">
+        <label>Extra savings ($/mo) <span id="wiSavVal" style="color:#10b981;font-weight:900">+$0</span></label>
+        <input type="range" id="wiSav" min="0" max="2000" step="50" value="0" oninput="updateWhatIf()" style="width:100%">
+      </div>
+      <div class="form-group">
+        <label>Eliminate subscriptions</label>
+        <label class="toggle" style="margin-top:4px"><input type="checkbox" id="wiNoSubs" onchange="updateWhatIf()"><span class="toggle-slider"></span></label>
+      </div>
+      <div id="whatIfResults" style="margin-top:16px;padding:16px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--border)"></div>
+      <div style="margin-top:16px;display:flex;justify-content:flex-end">
+        <button class="btn-secondary" onclick="closeWhatIf()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Savings Challenge Modal -->
+<div id="challengeModal" class="modal-overlay hidden" onclick="if(event.target===this)closeChallengeModal()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:480px">
+    <div class="modal-header"><h3>🏆 New Savings Challenge</h3><button class="modal-close" onclick="closeChallengeModal()">&times;</button></div>
+    <div style="padding:0 20px 20px">
+      <div class="form-group"><label>Challenge Type</label>
+        <select id="chType" onchange="updateChallengePreview()" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.06);color:var(--text)">
+          <option value="52week">52-Week Challenge ($1 → $52 per week)</option>
+          <option value="100day">100-Day Challenge ($1/day for 100 days)</option>
+          <option value="nospend">No-Spend Month</option>
+          <option value="custom">Custom Goal</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Name</label><input id="chName" placeholder="e.g. Holiday Fund" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.06);color:var(--text)"></div>
+      <div id="chCustomFields" class="form-row" style="display:none">
+        <div class="form-group"><label>Goal Amount ($)</label><input id="chGoal" type="number" placeholder="500" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.06);color:var(--text)"></div>
+        <div class="form-group"><label>Duration (weeks)</label><input id="chWeeks" type="number" placeholder="12" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.06);color:var(--text)"></div>
+      </div>
+      <div id="chPreview" style="padding:12px;border-radius:12px;background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);font-size:13px;color:var(--muted);margin-bottom:16px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn-secondary" onclick="closeChallengeModal()">Cancel</button>
+        <button class="btn-primary" onclick="saveChallenge()">Start Challenge</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Partner Mode Modal -->
+<div id="partnerModal" class="modal-overlay hidden" onclick="if(event.target===this)closePartnerModal()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:480px">
+    <div class="modal-header"><h3>👥 Partner / Spouse Mode</h3><button class="modal-close" onclick="closePartnerModal()">&times;</button></div>
+    <div style="padding:0 20px 20px">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Track combined household finances with a second person's income and bill contributions.</p>
+      <div class="form-row">
+        <div class="form-group"><label>Your Name</label><input id="prtMyName" placeholder="e.g. Alex" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.06);color:var(--text)"></div>
+        <div class="form-group"><label>Partner's Name</label><input id="prtName" placeholder="e.g. Jordan" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.06);color:var(--text)"></div>
+      </div>
+      <div class="form-group"><label>Partner's Monthly Income ($)</label><input id="prtIncome" type="number" step="100" placeholder="e.g. 3500" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.06);color:var(--text)"></div>
+      <div class="form-group"><label>Bill Split</label>
+        <select id="prtSplit" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.06);color:var(--text)">
+          <option value="50">50/50 — split evenly</option>
+          <option value="income">Income-proportional — each pays based on income</option>
+          <option value="mine">I pay all bills (partner contributes to savings)</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+        ${(()=>{ return ''; })()}
+        <button class="btn-secondary" onclick="closePartnerModal()">Cancel</button>
+        ${state.partner ? `<button class="btn-secondary" style="color:#fb7185" onclick="removePartner()">Remove Partner</button>` : ''}
+        <button class="btn-primary" onclick="savePartner()">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Mobile bottom nav -->
+<nav class="bottom-nav" id="bottomNav">
+  <button class="bottom-nav-btn" data-view="dashboard" onclick="switchView('dashboard')"><span class="bn-icon">📊</span>Home</button>
+  <button class="bottom-nav-btn" data-view="bills"     onclick="switchView('bills')"    ><span class="bn-icon">📋</span>Bills</button>
+  <button class="bottom-nav-btn" data-view="calendar"  onclick="switchView('calendar')" ><span class="bn-icon">📅</span>Calendar</button>
+  <button class="bottom-nav-btn" data-view="savings"   onclick="switchView('savings')"  ><span class="bn-icon">💰</span>Savings</button>
+  <button class="bottom-nav-btn" data-view="health"    onclick="switchView('health')"   ><span class="bn-icon">❤️</span>Health</button>
+</nav>
+
 </body>
 </html>
