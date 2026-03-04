@@ -2604,8 +2604,10 @@ function render() {
     const catBreakdown = getCats().map(c => ({...c, total: catMap[c.id]||0})).filter(c => c.total > 0).sort((a,b) => b.total - a.total);
     const barMax = catBreakdown.length > 0 ? catBreakdown[0].total : 1;
     const upcoming = bills.filter(b => !isPaid(b.id)).map(b => ({...b, dueDate: getDueDate(b), daysLeft: daysUntil(getDueDate(b))})).sort((a,b) => a.daysLeft - b.daysLeft).slice(0,5);
-    const expPct = totalIncome > 0 ? Math.min(100, Math.round((monthTotal / totalIncome) * 100)) : 0;
-    const barColor = expPct > 90 ? "#fb7185" : expPct > 70 ? "#fbbf24" : "#22d3ee";
+    const expPct = monthTotal > 0 ? Math.min(100, Math.round((paidTotal / monthTotal) * 100)) : 0;
+    const remainPct = monthTotal > 0 ? Math.min(100, Math.round((unpaidTotal / monthTotal) * 100)) : 0;
+    const barColor = expPct >= 100 ? "#22c55e" : expPct > 70 ? "#22d3ee" : expPct > 40 ? "#fbbf24" : "#fb7185";
+    const incomeRatio = totalIncome > 0 ? Math.round((monthTotal / totalIncome) * 100) : 0;
 
     document.getElementById("view-dashboard").innerHTML = `
       ${partnerBannerHTML()}
@@ -2648,10 +2650,17 @@ function render() {
           <div style="margin-left:auto;font-size:11px;color:var(--muted)">View details →</div>
         </div>`;
       })()}
-      ${totalIncome > 0 ? `
+      ${totalIncome > 0 || monthTotal > 0 ? `
       <div class="budget-bar-wrap">
-        <div class="budget-labels"><span style="font-weight:600">Budget Used</span><span style="color:#6b7280">${fmt(monthTotal)} of ${fmt(totalIncome)}</span></div>
-        <div class="budget-track"><div class="budget-fill-expense" style="width:${expPct}%;background:${barColor}"></div><div class="budget-pct">${expPct}%</div></div>
+        <div class="budget-labels">
+          <span style="font-weight:600">Bills Paid This Month</span>
+          <span style="color:var(--muted)">${fmt(paidTotal)} of ${fmt(monthTotal)} &middot; <span style="color:var(--muted);font-size:11px">${incomeRatio}% of income</span></span>
+        </div>
+        <div class="budget-track">
+          <div style="height:100%;width:${expPct}%;background:${barColor};border-radius:999px;transition:width .4s;float:left"></div>
+          <div style="height:100%;width:${remainPct}%;background:rgba(251,113,133,.25);border-radius:0 999px 999px 0;transition:width .4s;float:left"></div>
+          <div class="budget-pct">${expPct}%</div>
+        </div>
       </div>` : ""}
       <div class="progress-card">
         <div class="progress-header"><span>Payment Progress</span><span>${paidCount}/${bills.length} paid</span></div>
