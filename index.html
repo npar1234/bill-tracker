@@ -675,14 +675,20 @@
       <select id="fCategory"></select>
     </div>
     <div class="form-group">
-      <label>Biller / Payee Name <span style="font-weight:400;color:#9ca3af">(optional)</span></label>
+      <label>Biller / Payee Name <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
       <input id="fBiller" placeholder="e.g. Comcast, Duke Energy, Chase Bank" list="billersList">
       <datalist id="billersList"></datalist>
     </div>
     <div class="form-group">
-      <label>Paid From Account <span style="font-weight:400;color:#9ca3af">(optional)</span></label>
-      <input id="fAccount" placeholder="e.g. Chase Checking, Visa Sapphire" list="accountsList">
-      <datalist id="accountsList"></datalist>
+      <label>Paid From Account <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+      <select id="fAccount" onchange="handleAccountSelect(this)"></select>
+      <div id="fAccountNewWrap" style="display:none;margin-top:8px;display:none">
+        <div style="display:flex;gap:8px">
+          <input id="fAccountNew" placeholder="Account name, e.g. Chase Checking" style="flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius2);background:rgba(255,255,255,.06);color:var(--text);font-size:13px;outline:none">
+          <button type="button" onclick="confirmNewAccount()" style="padding:9px 14px;border-radius:var(--radius2);border:1px solid rgba(124,58,237,.35);background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:900;font-size:13px;cursor:pointer;white-space:nowrap">Add</button>
+          <button type="button" onclick="cancelNewAccount()" style="padding:9px 12px;border-radius:var(--radius2);border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--muted);font-weight:900;font-size:13px;cursor:pointer">✕</button>
+        </div>
+      </div>
     </div>
     <div class="form-row">
       <div class="form-group" style="margin-bottom:0">
@@ -690,6 +696,7 @@
         <select id="fFrequency" onchange="toggleStartMonth()">
           <option value="monthly">Monthly</option>
           <option value="quarterly">Quarterly</option>
+          <option value="yearly">Yearly</option>
           <option value="once">One-Time</option>
         </select>
       </div>
@@ -702,13 +709,22 @@
       </div>
     </div>
     <div class="form-group hidden" id="fStartMonthWrap">
-      <label>First Due Month</label>
+      <label id="fStartMonthLabel">First Due Month</label>
       <select id="fStartMonth">
         <option value="0">January</option><option value="1">February</option><option value="2">March</option>
         <option value="3">April</option><option value="4">May</option><option value="5">June</option>
         <option value="6">July</option><option value="7">August</option><option value="8">September</option>
         <option value="9">October</option><option value="10">November</option><option value="11">December</option>
       </select>
+    </div>
+    <!-- Loan payoff tracking — shown only for loans & housing categories -->
+    <div id="fLoanSection" class="hidden" style="border:1px solid rgba(124,58,237,.25);border-radius:var(--radius2);padding:14px;background:rgba(124,58,237,.05);margin-bottom:4px">
+      <div style="font-size:11px;font-weight:900;color:#c4b5fd;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">📊 Payoff Tracking</div>
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom:0"><label>Current Balance Owed ($)</label><input id="fPayoffBalance" type="number" step="0.01" placeholder="e.g. 12500.00"></div>
+        <div class="form-group" style="margin-bottom:0"><label>Interest Rate (APR %)</label><input id="fInterestRate" type="number" step="0.01" placeholder="e.g. 6.99"></div>
+      </div>
+      <div class="form-group" style="margin-bottom:0;margin-top:10px"><label>Balance As Of <span style="font-weight:400;color:var(--muted);font-size:11px">— date this balance was accurate</span></label><input id="fPayoffAsOf" type="date"></div>
     </div>
     <div class="form-actions">
       <button class="btn-secondary" onclick="closeModalDirect()">Cancel</button>
@@ -744,6 +760,7 @@
         <option value="monthly">Monthly</option>
         <option value="biweekly">Bi-Weekly</option>
         <option value="weekly">Weekly</option>
+        <option value="yearly">Yearly</option>
         <option value="one-time">One-Time</option>
       </select>
     </div>
@@ -811,6 +828,15 @@
           <div class="settings-desc">Only remind me about bills I pay manually</div>
         </div>
         <label class="toggle"><input type="checkbox" id="sManualOnly" onchange="saveSettings()"><span class="toggle-slider"></span></label>
+      </div>
+    </div>
+
+    <div class="settings-section" style="border-top:1px solid var(--border);padding-top:20px;margin-top:4px">
+      <h4>🏦 Accounts &amp; Categories</h4>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Manage the accounts and categories used across your bills.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn-primary btn-sm" onclick="openAccountsModal()">Manage Accounts</button>
+        <button class="btn-secondary btn-sm" onclick="openCategoriesModal()">Manage Categories</button>
       </div>
     </div>
 
@@ -927,7 +953,16 @@
     <div class="form-group"><label>Account Name</label><input id="saName" placeholder="e.g. Emergency Fund, HYSA"></div>
     <div class="form-group"><label>Bank / Institution</label><input id="saBank" placeholder="e.g. Ally, Marcus, Chase"></div>
     <div class="form-row">
-      <div class="form-group"><label>Current Balance ($)</label><input id="saBalance" type="number" step="0.01" placeholder="0.00"></div>
+      <div class="form-group"><label>Starting Balance ($) <span style="font-weight:400;color:var(--muted);font-size:11px">— balance before tracked transactions</span></label><input id="saBalance" type="number" step="0.01" placeholder="0.00"></div>
+      <div class="form-group"><label>Balance As Of <span style="font-weight:400;color:var(--muted);font-size:11px">— transactions before this date won't affect the balance</span></label><input id="saBalanceAsOf" type="date"></div>
+      <div style="border:1px solid var(--border);border-radius:var(--radius2);padding:14px;margin-bottom:4px;background:rgba(255,255,255,.02)">
+        <div style="font-size:11px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Year-To-Date Totals (before tracking started)</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Enter amounts deposited or earned this year <em>before</em> your tracking start date so year-end totals are accurate.</div>
+        <div class="form-row" style="margin-bottom:0">
+          <div class="form-group" style="margin-bottom:0"><label>Prior Deposits This Year ($)</label><input id="saYtdDep" type="number" step="0.01" placeholder="0.00"></div>
+          <div class="form-group" style="margin-bottom:0"><label>Prior Interest This Year ($)</label><input id="saYtdInt" type="number" step="0.01" placeholder="0.00"></div>
+        </div>
+      </div>
       <div class="form-group"><label>APY (%)</label><input id="saAPY" type="number" step="0.01" placeholder="e.g. 4.50"></div>
     </div>
     <div class="form-row">
@@ -937,6 +972,7 @@
           <option value="weekly">Weekly</option>
           <option value="biweekly">Bi-Weekly (every 2 weeks)</option>
           <option value="monthly" selected>Monthly</option>
+          <option value="yearly">Yearly</option>
         </select>
       </div>
     </div>
@@ -1065,7 +1101,9 @@ function defaultState() {
     savingsTransactions: [],
     selectedSavingsId: null,
     editSavingsId: null,
-    editSavingsTxnId: null
+    editSavingsTxnId: null,
+    accounts: [],
+    categories: JSON.parse(JSON.stringify(CATEGORIES))
   };
 }
 
@@ -1094,7 +1132,13 @@ function loadState() {
       if (!parsed.rentalExpPayments) parsed.rentalExpPayments = [];
       if (!parsed.savingsAccounts) parsed.savingsAccounts = [];
       if (!parsed.savingsTransactions) parsed.savingsTransactions = [];
+      // Migrate: ensure every savings account has a balanceAsOf date
+      parsed.savingsAccounts = parsed.savingsAccounts.map(a =>
+        a.balanceAsOf ? a : { ...a, balanceAsOf: new Date().toISOString().slice(0,10) }
+      );
       if (parsed.selectedProperty === undefined) parsed.selectedProperty = null;
+      if (!parsed.accounts) parsed.accounts = [];
+      if (!parsed.categories) parsed.categories = JSON.parse(JSON.stringify(CATEGORIES));
       parsed.bills = (parsed.bills || []).map(b => ({ biller: "", accountId: "", frequency: b.isRecurring === false ? "once" : "monthly", startMonth: 0, ...b }));
       return parsed;
     }
@@ -1193,7 +1237,7 @@ function saveSettings() {
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 function fmt(n) { return "$" + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
 function fmtShort(n) { return "$" + (n >= 1000 ? (n/1000).toFixed(1).replace(/\.0$/,"") + "k" : Number(n).toFixed(0)); }
-function catInfo(id) { return CATEGORIES.find(c => c.id === id) || CATEGORIES[CATEGORIES.length-1]; }
+// catInfo defined below with getCats()
 
 function daysUntil(dateStr) {
   const today = new Date(); today.setHours(0,0,0,0);
@@ -1210,6 +1254,12 @@ function isPaid(billId, month, year) {
   const y = year !== undefined ? year : state.currentYear;
   if (billId && billId.startsWith('sav_')) {
     const acctId = billId.slice(4);
+    const acct = state.savingsAccounts.find(a => a.id === acctId);
+    // Months before balanceAsOf are already captured in the starting balance — treat as paid
+    if (acct && acct.balanceAsOf) {
+      const thisDue = `${y}-${String(m+1).padStart(2,'0')}-01`;
+      if (thisDue < acct.balanceAsOf) return true;
+    }
     return state.savingsTransactions.some(t => {
       if (t.accountId !== acctId || t.type !== 'deposit') return false;
       const d = new Date(t.date + 'T12:00:00');
@@ -1232,6 +1282,7 @@ function getMonthlyIncome() {
     if (inc.frequency === "monthly") return sum + inc.amount;
     if (inc.frequency === "biweekly") return sum + (inc.amount * 26 / 12);
     if (inc.frequency === "weekly") return sum + (inc.amount * 52 / 12);
+    if (inc.frequency === "yearly") return sum + (inc.amount / 12);
     if (inc.frequency === "one-time") return sum + inc.amount;
     return sum;
   }, 0);
@@ -1512,8 +1563,13 @@ function togglePaid(billId) {
 
 // Bill Modal
 function toggleStartMonth() {
+function toggleStartMonth() {
   const freq = document.getElementById("fFrequency").value;
-  document.getElementById("fStartMonthWrap").classList.toggle("hidden", freq !== "quarterly");
+  const show = freq === "quarterly" || freq === "yearly";
+  document.getElementById("fStartMonthWrap").classList.toggle("hidden", !show);
+  const lbl = document.getElementById("fStartMonthLabel");
+  if (lbl) lbl.textContent = freq === "yearly" ? "Due Month" : "First Due Month";
+}
 }
 function openAddModal() {
   state.editId = null;
@@ -1521,14 +1577,22 @@ function openAddModal() {
   document.getElementById("fName").value = "";
   document.getElementById("fAmount").value = "";
   document.getElementById("fDay").value = "1";
+  initCategorySelect();
   document.getElementById("fCategory").value = "utilities";
   document.getElementById("fFrequency").value = "monthly";
   document.getElementById("fStartMonth").value = new Date().getMonth();
   document.getElementById("fStartMonthWrap").classList.add("hidden");
   document.getElementById("fPayMethod").value = "manual";
   document.getElementById("fBiller").value = "";
+  populateAccountSelect();
   document.getElementById("fAccount").value = "";
+  document.getElementById("fAccountNewWrap").style.display = "none";
   populateBillerDataLists();
+  document.getElementById("fPayoffBalance").value = "";
+  document.getElementById("fInterestRate").value = "";
+  document.getElementById("fPayoffAsOf").value = new Date().toISOString().slice(0,10);
+  document.getElementById("fLoanSection").classList.add("hidden");
+  document.getElementById("fCategory").addEventListener("change", toggleLoanSection);
   document.getElementById("billSaveBtn").textContent = "Add Bill";
   document.getElementById("modal").classList.remove("hidden");
 }
@@ -1540,15 +1604,26 @@ function openEditModal(id) {
   document.getElementById("fName").value = bill.name;
   document.getElementById("fAmount").value = bill.amount;
   document.getElementById("fDay").value = bill.dueDay;
+  initCategorySelect();
   document.getElementById("fCategory").value = bill.category;
   const freq = bill.frequency || (bill.isRecurring === false ? "once" : "monthly");
   document.getElementById("fFrequency").value = freq;
   document.getElementById("fStartMonth").value = bill.startMonth !== undefined ? bill.startMonth : 0;
-  document.getElementById("fStartMonthWrap").classList.toggle("hidden", freq !== "quarterly");
+  document.getElementById("fStartMonthWrap").classList.toggle("hidden", freq !== "quarterly" && freq !== "yearly");
+  const lbl = document.getElementById("fStartMonthLabel");
+  if (lbl) lbl.textContent = freq === "yearly" ? "Due Month" : "First Due Month";
   document.getElementById("fPayMethod").value = bill.payMethod || "manual";
   document.getElementById("fBiller").value = bill.biller || "";
+  populateAccountSelect();
   document.getElementById("fAccount").value = bill.accountId || "";
+  document.getElementById("fAccountNewWrap").style.display = "none";
   populateBillerDataLists();
+  // Loan payoff fields
+  document.getElementById("fPayoffBalance").value = bill.payoffBalance || "";
+  document.getElementById("fInterestRate").value = bill.interestRate || "";
+  document.getElementById("fPayoffAsOf").value = bill.payoffAsOf || new Date().toISOString().slice(0,10);
+  toggleLoanSection();
+  document.getElementById("fCategory").addEventListener("change", toggleLoanSection);
   document.getElementById("billSaveBtn").textContent = "Save Changes";
   document.getElementById("modal").classList.remove("hidden");
 }
@@ -1562,16 +1637,23 @@ function saveBill() {
   const category = document.getElementById("fCategory").value;
   const payMethod = document.getElementById("fPayMethod").value;
   const frequency = document.getElementById("fFrequency").value;
-  const startMonth = frequency === "quarterly" ? parseInt(document.getElementById("fStartMonth").value) : 0;
+  const startMonth = (frequency === "quarterly" || frequency === "yearly") ? parseInt(document.getElementById("fStartMonth").value) : 0;
   const isRecurring = frequency !== "once";
   const biller = document.getElementById("fBiller").value.trim();
-  const accountId = document.getElementById("fAccount").value.trim();
+  const accountId = (() => {
+    const v = document.getElementById("fAccount").value.trim();
+    return (v === "__new__") ? "" : v;
+  })();
+  const isLoanCat = isLoanCategory(document.getElementById("fCategory").value);
+  const payoffBalance = isLoanCat ? (parseFloat(document.getElementById("fPayoffBalance").value) || 0) : 0;
+  const interestRate  = isLoanCat ? (parseFloat(document.getElementById("fInterestRate").value)  || 0) : 0;
+  const payoffAsOf    = isLoanCat ? (document.getElementById("fPayoffAsOf").value || new Date().toISOString().slice(0,10)) : "";
   if (!name || isNaN(amount)) return;
   if (state.editId) {
     const bill = state.bills.find(b => b.id === state.editId);
-    if (bill) Object.assign(bill, { name, amount, dueDay, category, isRecurring, frequency, startMonth, payMethod, biller, accountId });
+    if (bill) Object.assign(bill, { name, amount, dueDay, category, isRecurring, frequency, startMonth, payMethod, biller, accountId, payoffBalance, interestRate, payoffAsOf });
   } else {
-    state.bills.push({ id: genId(), name, amount, dueDay, category, isRecurring, frequency, startMonth, payMethod, biller, accountId });
+    state.bills.push({ id: genId(), name, amount, dueDay, category, isRecurring, frequency, startMonth, payMethod, biller, accountId, payoffBalance, interestRate, payoffAsOf });
   }
   saveState(); closeModalDirect(); render();
 }
@@ -1624,7 +1706,7 @@ function openPayeeHistory(billId) {
 
   document.getElementById('payeeHistoryContent').innerHTML = `
     <div class="payee-history-header">
-      <div class="payee-history-icon" style="background:${cat.color}38">${cat.icon || '●'}</div>
+      <div class="payee-history-icon" style="background:${cat.color}38">${billIcon(bill)}</div>
       <div>
         <div style="font-size:16px;font-weight:700">${bill.name}</div>
         <div style="font-size:13px;color:#6b7280">${cat.label} &middot; ${fmt(bill.amount)}/mo &middot; Due day ${bill.dueDay}</div>
@@ -1692,10 +1774,335 @@ function deleteIncome(id) {
 
 function setFilter(cat) { state.filterCat = cat; render(); }
 
-function initCategorySelect() {
-  document.getElementById("fCategory").innerHTML = CATEGORIES.map(c => `<option value="${c.id}">${c.label}</option>`).join("");
+function getCats() { return state.categories || CATEGORIES; }
+
+// Categories that get payoff tracking
+const LOAN_CATEGORIES = ['loans', 'housing'];
+function isLoanCategory(catId) {
+  if (LOAN_CATEGORIES.includes(catId)) return true;
+  // Also match custom categories that start with 'loans' or 'housing' id prefix
+  const cat = getCats().find(c => c.id === catId);
+  return cat && (cat.label.toLowerCase().includes('loan') || cat.label.toLowerCase().includes('heloc') ||
+    cat.label.toLowerCase().includes('credit') || cat.label.toLowerCase().includes('mortgage') ||
+    cat.label.toLowerCase().includes('debt'));
 }
 
+function toggleLoanSection() {
+  const cat = document.getElementById("fCategory") && document.getElementById("fCategory").value;
+  const show = cat && isLoanCategory(cat);
+  const sec = document.getElementById("fLoanSection");
+  if (sec) sec.classList.toggle("hidden", !show);
+}
+
+// Compute remaining payoff balance accounting for payments since payoffAsOf
+function computePayoffBalance(bill) {
+  if (!bill.payoffBalance || bill.payoffBalance <= 0) return null;
+  const asOf = bill.payoffAsOf || '1970-01-01';
+  const monthlyRate = (bill.interestRate || 0) / 100 / 12;
+  // Gather payments (marks as paid) since asOf date — each payment = bill.amount
+  const paymentDates = state.payments
+    .filter(p => p.billId === bill.id)
+    .map(p => {
+      const d = new Date(p.year, p.month, bill.dueDay || 1);
+      return d;
+    })
+    .filter(d => d.toISOString().slice(0,10) >= asOf)
+    .sort((a,b) => a - b);
+
+  let balance = bill.payoffBalance;
+  let lastDate = new Date(asOf + 'T12:00:00');
+  for (const pd of paymentDates) {
+    const months = (pd.getFullYear() - lastDate.getFullYear()) * 12 + (pd.getMonth() - lastDate.getMonth());
+    if (months > 0 && monthlyRate > 0) balance *= Math.pow(1 + monthlyRate, months);
+    balance = Math.max(0, balance - bill.amount);
+    lastDate = pd;
+  }
+  // Accrue interest from last payment to now
+  const now = new Date();
+  const monthsToNow = (now.getFullYear() - lastDate.getFullYear()) * 12 + (now.getMonth() - lastDate.getMonth());
+  if (monthsToNow > 0 && monthlyRate > 0) balance *= Math.pow(1 + monthlyRate, monthsToNow);
+  return Math.max(0, balance);
+}
+
+// Estimate months to payoff at current payment amount
+function payoffMonths(balance, monthlyPayment, annualRate) {
+  if (balance <= 0) return 0;
+  if (!monthlyPayment || monthlyPayment <= 0) return null;
+  const r = annualRate / 100 / 12;
+  if (r <= 0) return Math.ceil(balance / monthlyPayment);
+  if (monthlyPayment <= balance * r) return null; // payment doesn't cover interest
+  return Math.ceil(-Math.log(1 - (balance * r) / monthlyPayment) / Math.log(1 + r));
+}
+
+function catInfo(id) { return getCats().find(c => c.id === id) || getCats()[getCats().length-1]; }
+
+// Bill-name keyword → icon override (case-insensitive)
+const BILL_ICON_OVERRIDES = [
+  { words: ['pool'],                    icon: '🏊' },
+  { words: ['trash','binz','bin','garbage','waste','junk','rubbish'], icon: '__trash__' },
+  { words: ['rv','camper','motorhome'], icon: '🚐' },
+  { words: ['heloc','home equity','equity line'], icon: '🏠' },
+  { words: ['mortgage','rent','hoa'],   icon: '🏠' },
+  { words: ['electric','power','energy','pge','duke','con ed'], icon: '⚡' },
+  { words: ['water','sewer','irrigation'], icon: '💧' },
+  { words: ['gas','propane'],           icon: '🔥' },
+  { words: ['internet','wifi','cable','comcast','xfinity','spectrum','cox'], icon: '📡' },
+  { words: ['phone','mobile','cell','verizon','tmobile','at&t','sprint'], icon: '📱' },
+  { words: ['netflix','hulu','disney','streaming','spotify','apple','amazon prime'], icon: '📺' },
+  { words: ['car','auto','vehicle','truck','lease'],   icon: '🚗' },
+  { words: ['insurance','insur'],       icon: '🛡️' },
+  { words: ['loan','debt','credit','card','amex','visa','mastercard'], icon: '💳' },
+  { words: ['gym','fitness','planet'],  icon: '🏋️' },
+  { words: ['lawn','landscape','yard','mow','gardening'], icon: '🌿' },
+  { words: ['pest','exterminator','termite'], icon: '🐜' },
+  { words: ['security','alarm','adt'],  icon: '🔒' },
+  { words: ['storage','unit','pods'],   icon: '📦' },
+  { words: ['dog','pet','vet','veterinary'], icon: '🐾' },
+  { words: ['doctor','medical','dental','vision','health'], icon: '🏥' },
+];
+
+function getBillDisplayIcon(bill) {
+  if (!bill || !bill.name) return null;
+  const name = bill.name.toLowerCase();
+  for (const rule of BILL_ICON_OVERRIDES) {
+    if (rule.words.some(w => name.includes(w))) return rule.icon;
+  }
+  return null; // fall back to category icon
+}
+
+// Outdoor wheeled trash bin SVG (rendered inline in icon badge)
+const TRASH_BIN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="17" height="17" fill="currentColor" style="display:inline-block;vertical-align:middle;margin-top:-2px"><path d="M6 7l.8 12.1A1 1 0 007.8 20h8.4a1 1 0 001-.9L18 7H6zm4 2h1l.4 7h-1L10 9zm3 0h1l-.4 7h-1L13 9z"/><rect x="4" y="5" width="16" height="2" rx="1"/><rect x="9" y="2" width="6" height="2" rx="1"/><ellipse cx="19.5" cy="17" rx="3.5" ry="3.5" fill="rgba(0,0,0,.0)"/><circle cx="19.5" cy="17" r="3" fill="rgba(255,255,255,.12)" stroke="currentColor" stroke-width="1.2"/><path d="M18 17l1 1 2-2" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>`;
+
+function billIcon(bill) {
+  const raw = getBillDisplayIcon(bill) || catInfo(bill.category).icon || '●';
+  return raw === '__trash__' ? TRASH_BIN_SVG : raw;
+}
+
+function initCategorySelect() {
+  const el = document.getElementById("fCategory");
+  if (el) el.innerHTML = getCats().map(c => `<option value="${c.id}">${c.icon ? c.icon + ' ' : ''}${c.label}</option>`).join("");
+}
+
+function populateAccountSelect() {
+  const el = document.getElementById("fAccount");
+  if (!el) return;
+  const cur = el.value;
+  const accounts = state.accounts || [];
+  el.innerHTML =
+    `<option value="">— None —</option>` +
+    accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join("") +
+    `<option value="__new__">＋ Add new account…</option>`;
+  // Restore selection if possible
+  if (cur && cur !== "__new__") el.value = cur;
+}
+
+function handleAccountSelect(sel) {
+  const wrap = document.getElementById("fAccountNewWrap");
+  if (sel.value === "__new__") {
+    wrap.style.display = "block";
+    setTimeout(() => document.getElementById("fAccountNew").focus(), 30);
+  } else {
+    wrap.style.display = "none";
+  }
+}
+
+function confirmNewAccount() {
+  const input = document.getElementById("fAccountNew");
+  const name = input.value.trim();
+  if (!name) return;
+  const id = "acct_" + Date.now();
+  if (!state.accounts) state.accounts = [];
+  // Avoid duplicates by name
+  if (state.accounts.some(a => a.name.toLowerCase() === name.toLowerCase())) {
+    input.style.borderColor = "var(--bad)";
+    setTimeout(() => input.style.borderColor = "", 1500);
+    return;
+  }
+  state.accounts.push({ id, name });
+  saveState();
+  populateAccountSelect();
+  document.getElementById("fAccount").value = id;
+  document.getElementById("fAccountNewWrap").style.display = "none";
+  input.value = "";
+}
+
+function cancelNewAccount() {
+  document.getElementById("fAccountNewWrap").style.display = "none";
+  document.getElementById("fAccountNew").value = "";
+  // Revert select to none
+  const el = document.getElementById("fAccount");
+  if (el) el.value = "";
+}
+
+function populateBillerDataLists() {
+  const billers = [...new Set(state.bills.map(b => b.biller).filter(Boolean))];
+  const bEl = document.getElementById("billersList");
+  if (bEl) bEl.innerHTML = billers.map(b => `<option value="${b}">`).join("");
+}
+
+// ── Account Manager ──────────────────────────────────────────────────────────
+function openAccountsModal() {
+  renderAccountList();
+  document.getElementById("accountsModal").classList.remove("hidden");
+}
+function closeAccountsModal() {
+  document.getElementById("accountsModal").classList.add("hidden");
+}
+
+function renderAccountList() {
+  const accounts = state.accounts || [];
+  const el = document.getElementById("accountListEl");
+  if (!accounts.length) {
+    el.innerHTML = `<p style="font-size:13px;color:var(--muted);padding:8px 0">No accounts yet. Add one below.</p>`;
+    return;
+  }
+  el.innerHTML = accounts.map((a, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius2);background:rgba(255,255,255,.04);margin-bottom:6px">
+      <span style="flex:1;font-size:13px;font-weight:900;color:var(--text)" id="acctLabel_${a.id}">${escHtml(a.name)}</span>
+      <input id="acctEdit_${a.id}" value="${escHtml(a.name)}" style="display:none;flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.06);color:var(--text);font-size:13px;outline:none" onkeydown="if(event.key==='Enter')saveAccountEdit('${a.id}');if(event.key==='Escape')cancelAccountEdit('${a.id}')">
+      <button onclick="startAccountEdit('${a.id}')" title="Rename" style="background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:9px;padding:5px 9px;cursor:pointer;color:var(--muted);font-size:13px">✏️</button>
+      <button onclick="saveAccountEdit('${a.id}')" id="acctSaveBtn_${a.id}" style="display:none;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:9px;padding:5px 10px;cursor:pointer;color:#fff;font-size:12px;font-weight:900">Save</button>
+      <button onclick="deleteAccount('${a.id}')" title="Delete" style="background:rgba(251,113,133,.10);border:1px solid rgba(251,113,133,.20);border-radius:9px;padding:5px 9px;cursor:pointer;color:var(--bad);font-size:13px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="currentColor" style="vertical-align:middle;margin-top:-2px"><path d="M6 7l.8 12.1A1 1 0 007.8 20h8.4a1 1 0 001-.9L18 7H6zm4 2h1l.4 7h-1L10 9zm3 0h1l-.4 7h-1L13 9z"/><rect x="4" y="5" width="16" height="2" rx="1"/><rect x="9" y="2" width="6" height="2" rx="1"/><path d="M17.5 14a3.5 3.5 0 100 7 3.5 3.5 0 000-7zm-1 3.5l.8.8 1.7-1.7.7.7-2.4 2.4-1.5-1.5.7-.7z" fill="currentColor"/></svg></button>
+    </div>`).join("");
+}
+
+function addAccountFromModal() {
+  const input = document.getElementById("newAccountInput");
+  const name = input.value.trim();
+  if (!name) return;
+  if (!state.accounts) state.accounts = [];
+  if (state.accounts.some(a => a.name.toLowerCase() === name.toLowerCase())) {
+    input.style.borderColor = "var(--bad)"; setTimeout(() => input.style.borderColor = "", 1500); return;
+  }
+  state.accounts.push({ id: "acct_" + Date.now(), name });
+  saveState();
+  input.value = "";
+  renderAccountList();
+  populateAccountSelect();
+}
+
+function startAccountEdit(id) {
+  document.getElementById("acctLabel_" + id).style.display = "none";
+  document.getElementById("acctEdit_" + id).style.display = "block";
+  document.getElementById("acctSaveBtn_" + id).style.display = "inline-block";
+  document.getElementById("acctEdit_" + id).focus();
+}
+
+function cancelAccountEdit(id) {
+  const acct = (state.accounts || []).find(a => a.id === id);
+  if (acct) document.getElementById("acctEdit_" + id).value = acct.name;
+  document.getElementById("acctLabel_" + id).style.display = "";
+  document.getElementById("acctEdit_" + id).style.display = "none";
+  document.getElementById("acctSaveBtn_" + id).style.display = "none";
+}
+
+function saveAccountEdit(id) {
+  const newName = document.getElementById("acctEdit_" + id).value.trim();
+  if (!newName) return;
+  const acct = (state.accounts || []).find(a => a.id === id);
+  if (acct) { acct.name = newName; saveState(); }
+  renderAccountList();
+  populateAccountSelect();
+}
+
+function deleteAccount(id) {
+  const inUse = state.bills.some(b => b.accountId === id);
+  if (inUse && !confirm("This account is used by one or more bills. Delete it anyway? (Bills will show no account.)")) return;
+  state.accounts = (state.accounts || []).filter(a => a.id !== id);
+  // Clear from bills
+  state.bills.forEach(b => { if (b.accountId === id) b.accountId = ""; });
+  saveState();
+  renderAccountList();
+  populateAccountSelect();
+}
+
+// ── Category Manager ─────────────────────────────────────────────────────────
+function openCategoriesModal() {
+  renderCategoryList();
+  document.getElementById("categoriesModal").classList.remove("hidden");
+}
+function closeCategoriesModal() {
+  document.getElementById("categoriesModal").classList.add("hidden");
+}
+
+function renderCategoryList() {
+  const cats = getCats();
+  const el = document.getElementById("categoryListEl");
+  el.innerHTML = cats.map(c => {
+    const inUse = state.bills.filter(b => b.category === c.id).length;
+    return `
+    <div style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius2);background:rgba(255,255,255,.04);margin-bottom:6px" id="catRow_${c.id}">
+      <span style="font-size:20px;width:28px;text-align:center">${c.icon || '📌'}</span>
+      <span id="catLabel_${c.id}" style="flex:1;font-size:13px;font-weight:900;color:var(--text)">${escHtml(c.label)}</span>
+      <div id="catEditRow_${c.id}" style="display:none;flex:1;align-items:center;gap:6px">
+        <input id="catEditLabel_${c.id}" value="${escHtml(c.label)}" style="flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:9px;background:rgba(255,255,255,.06);color:var(--text);font-size:13px;outline:none" onkeydown="if(event.key==='Enter')saveCategoryEdit('${c.id}');if(event.key==='Escape')cancelCategoryEdit('${c.id}')">
+        <input id="catEditIcon_${c.id}" value="${c.icon||''}" maxlength="2" style="width:44px;padding:6px 8px;border:1px solid var(--border);border-radius:9px;background:rgba(255,255,255,.06);color:var(--text);font-size:18px;text-align:center;outline:none">
+        <input id="catEditColor_${c.id}" type="color" value="${c.color||'#7c3aed'}" style="width:36px;height:32px;border-radius:8px;border:1px solid var(--border);cursor:pointer;padding:1px">
+        <button onclick="saveCategoryEdit('${c.id}')" style="padding:5px 10px;border-radius:9px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:900;font-size:12px;cursor:pointer">Save</button>
+        <button onclick="cancelCategoryEdit('${c.id}')" style="padding:5px 8px;border-radius:9px;border:1px solid var(--border);background:rgba(255,255,255,.06);color:var(--muted);font-weight:900;font-size:12px;cursor:pointer">✕</button>
+      </div>
+      <span style="font-size:11px;color:var(--muted);font-weight:900;min-width:38px;text-align:right">${inUse ? inUse + ' bill' + (inUse!==1?'s':'') : ''}</span>
+      <button onclick="startCategoryEdit('${c.id}')" title="Edit" style="background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:9px;padding:5px 9px;cursor:pointer;color:var(--muted);font-size:13px">✏️</button>
+      <button onclick="deleteCategory('${c.id}')" title="Delete" ${inUse ? 'disabled title="Reassign bills first"' : ''} style="background:rgba(251,113,133,.10);border:1px solid rgba(251,113,133,.20);border-radius:9px;padding:5px 9px;cursor:pointer;color:${inUse ? 'rgba(251,113,133,.30)' : 'var(--bad)'};font-size:13px;${inUse?'cursor:not-allowed':''}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="currentColor" style="vertical-align:middle;margin-top:-2px"><path d="M6 7l.8 12.1A1 1 0 007.8 20h8.4a1 1 0 001-.9L18 7H6zm4 2h1l.4 7h-1L10 9zm3 0h1l-.4 7h-1L13 9z"/><rect x="4" y="5" width="16" height="2" rx="1"/><rect x="9" y="2" width="6" height="2" rx="1"/><path d="M17.5 14a3.5 3.5 0 100 7 3.5 3.5 0 000-7zm-1 3.5l.8.8 1.7-1.7.7.7-2.4 2.4-1.5-1.5.7-.7z" fill="currentColor"/></svg></button>
+    </div>`;
+  }).join("");
+}
+
+function startCategoryEdit(id) {
+  document.getElementById("catLabel_" + id).style.display = "none";
+  document.getElementById("catEditRow_" + id).style.display = "flex";
+}
+
+function cancelCategoryEdit(id) {
+  document.getElementById("catLabel_" + id).style.display = "";
+  document.getElementById("catEditRow_" + id).style.display = "none";
+}
+
+function saveCategoryEdit(id) {
+  const newLabel = document.getElementById("catEditLabel_" + id).value.trim();
+  const newIcon  = document.getElementById("catEditIcon_"  + id).value.trim();
+  const newColor = document.getElementById("catEditColor_" + id).value;
+  if (!newLabel) return;
+  if (!state.categories) state.categories = JSON.parse(JSON.stringify(CATEGORIES));
+  const cat = state.categories.find(c => c.id === id);
+  if (cat) { cat.label = newLabel; cat.icon = newIcon || cat.icon; cat.color = newColor; }
+  saveState();
+  initCategorySelect();
+  renderCategoryList();
+}
+
+function addCategoryFromModal() {
+  const label = document.getElementById("newCatLabel").value.trim();
+  const icon  = document.getElementById("newCatIcon").value.trim() || "📌";
+  const color = document.getElementById("newCatColor").value;
+  if (!label) { document.getElementById("newCatLabel").style.borderColor = "var(--bad)"; setTimeout(() => document.getElementById("newCatLabel").style.borderColor = "", 1500); return; }
+  if (!state.categories) state.categories = JSON.parse(JSON.stringify(CATEGORIES));
+  const id = "cat_" + label.toLowerCase().replace(/[^a-z0-9]/g, "_") + "_" + Date.now();
+  state.categories.push({ id, label, icon, color });
+  saveState();
+  initCategorySelect();
+  renderCategoryList();
+  document.getElementById("newCatLabel").value = "";
+  document.getElementById("newCatIcon").value  = "";
+}
+
+function deleteCategory(id) {
+  if (!state.categories) return;
+  const inUse = state.bills.filter(b => b.category === id).length;
+  if (inUse) { alert(`Cannot delete: ${inUse} bill(s) use this category. Reassign them first.`); return; }
+  state.categories = state.categories.filter(c => c.id !== id);
+  saveState();
+  initCategorySelect();
+  renderCategoryList();
+}
+
+function getAccountName(id) {
+  if (!id) return "";
+  const acct = (state.accounts || []).find(a => a.id === id);
+  return acct ? acct.name : id; // fallback: show raw id for legacy data
+}
+
+function escHtml(s) { return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 
 function isDueThisMonth(bill, month) {
   var m = month !== undefined ? month : state.currentMonth;
@@ -1704,6 +2111,10 @@ function isDueThisMonth(bill, month) {
   if (freq === "quarterly") {
     var startM = bill.startMonth !== undefined ? bill.startMonth : 0;
     return ((m - startM) % 3 + 3) % 3 === 0;
+  }
+  if (freq === "yearly") {
+    var dueM = bill.startMonth !== undefined ? bill.startMonth : 0;
+    return m === dueM;
   }
   return true;
 }
@@ -1738,7 +2149,7 @@ function render() {
   if (state.view === "dashboard") {
     const catMap = {};
     bills.forEach(b => { catMap[b.category] = (catMap[b.category]||0) + b.amount; });
-    const catBreakdown = CATEGORIES.map(c => ({...c, total: catMap[c.id]||0})).filter(c => c.total > 0).sort((a,b) => b.total - a.total);
+    const catBreakdown = getCats().map(c => ({...c, total: catMap[c.id]||0})).filter(c => c.total > 0).sort((a,b) => b.total - a.total);
     const barMax = catBreakdown.length > 0 ? catBreakdown[0].total : 1;
     const upcoming = bills.filter(b => !isPaid(b.id)).map(b => ({...b, dueDate: getDueDate(b), daysLeft: daysUntil(getDueDate(b))})).sort((a,b) => a.daysLeft - b.daysLeft).slice(0,5);
     const expPct = totalIncome > 0 ? Math.min(100, Math.round((monthTotal / totalIncome) * 100)) : 0;
@@ -1775,8 +2186,8 @@ function render() {
             upcoming.map(b => `
               <div class="upcoming-item">
                 <div style="display:flex;align-items:center;gap:10px">
-                  <div class="cat-icon-badge" style="background:${catInfo(b.category).color}38">${catInfo(b.category).icon||'●'}</div>
-                  <div><div class="upcoming-name">${b.name}${b.biller ? ' <span style="color:#9ca3af;font-size:12px;font-weight:400">&middot; ' + b.biller + '</span>' : ''} <span class="badge ${b.payMethod === 'autopay' ? 'badge-autopay' : 'badge-manual'}" style="vertical-align:middle">${b.payMethod === 'autopay' ? 'Auto' : 'Manual'}</span></div><div class="upcoming-due">Due ${b.dueDate}${b.accountId ? ' &middot; ' + b.accountId : ''}</div></div>
+                  <div class="cat-icon-badge" style="background:${catInfo(b.category).color}38">${billIcon(b)}</div>
+                  <div><div class="upcoming-name">${b.name}${b.biller ? ' <span style="color:var(--muted);font-size:12px;font-weight:400">&middot; ' + b.biller + '</span>' : ''} <span class="badge ${b.payMethod === 'autopay' ? 'badge-autopay' : 'badge-manual'}" style="vertical-align:middle">${b.payMethod === 'autopay' ? 'Auto' : 'Manual'}</span></div><div class="upcoming-due">Due ${b.dueDate}${b.accountId ? ' &middot; ' + getAccountName(b.accountId) : ''}</div></div>
                 </div>
                 <div><div class="upcoming-amount">${fmt(b.amount)}</div>${badgeHTML(false, b.dueDate)}</div>
               </div>`).join("")}
@@ -1828,7 +2239,7 @@ function render() {
         ${shown.map(ev => {
           if (ev.type === "bill") {
             const calCat = catInfo(ev.category);
-            return `<span class="cal-pip bill${ev.paid ? " is-paid" : ""}" title="${ev.name}: ${fmt(ev.amount)} (${ev.payMethod === 'autopay' ? 'Autopay' : 'Manual'})" onclick="togglePaid('${ev.id}')">${calCat.icon||''}${ev.payMethod === 'autopay' ? '⚡' : ''} ${fmtShort(ev.amount)}</span>`;
+            return `<span class="cal-pip bill${ev.paid ? " is-paid" : ""}" title="${ev.name}: ${fmt(ev.amount)} (${ev.payMethod === 'autopay' ? 'Autopay' : 'Manual'})" onclick="togglePaid('${ev.id}')">${getBillDisplayIcon(ev)||calCat.icon||''}${ev.payMethod === 'autopay' ? '⚡' : ''} ${fmtShort(ev.amount)}</span>`;
           } else {
             return `<span class="cal-pip income" title="${ev.name}: ${fmt(ev.amount)}">+${fmtShort(ev.amount)} ${ev.name}</span>`;
           }
@@ -1857,7 +2268,7 @@ function render() {
     document.getElementById("view-bills").innerHTML = `
       <div class="filters">
         <button class="filter-btn" style="background:${state.filterCat==="all"?"rgba(124,58,237,.22)":"rgba(255,255,255,.06)"};border-color:${state.filterCat==="all"?"rgba(124,58,237,.35)":"var(--border)"};color:var(--text)" onclick="setFilter('all')">All</button>
-        ${CATEGORIES.map(c => `<button class="filter-btn" style="background:${state.filterCat===c.id?c.color:"rgba(255,255,255,.06)"};border-color:${state.filterCat===c.id?"rgba(255,255,255,.18)":"var(--border)"};color:var(--text)" onclick="setFilter('${c.id}')">${c.label}</button>`).join("")}
+        ${getCats().map(c => `<button class="filter-btn" style="background:${state.filterCat===c.id?c.color:"rgba(255,255,255,.06)"};border-color:${state.filterCat===c.id?"rgba(255,255,255,.18)":"var(--border)"};color:var(--text)" onclick="setFilter('${c.id}')">${c.label}</button>`).join("")}
       </div>
       <div class="bill-list">
         ${filtered.length === 0 ? '<p class="empty">No bills in this category</p>' :
@@ -1865,21 +2276,47 @@ function render() {
             const cat = catInfo(b.category);
             const paid = isPaid(b.id);
             const dueDate = getDueDate(b);
+            const isSav = !!b.isSavingsContrib;
+            const isLoan = !isSav && isLoanCategory(b.category) && b.payoffBalance > 0;
+            const remaining = isLoan ? computePayoffBalance(b) : null;
+            const moLeft = isLoan ? payoffMonths(remaining, b.amount, b.interestRate || 0) : null;
+            const pctPaid = isLoan && remaining !== null ? Math.max(0, Math.min(100, Math.round((1 - remaining / b.payoffBalance) * 100))) : 0;
+            const payoffBar = isLoan ? (() => {
+              const payoffDate = moLeft != null ? (() => {
+                const d = new Date(); d.setMonth(d.getMonth() + moLeft);
+                return d.toLocaleDateString('en-US', { month:'short', year:'numeric' });
+              })() : null;
+              return `<div style="margin-top:6px">
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px">
+                  <span>Remaining: <strong style="color:var(--bad)">${fmt(remaining)}</strong></span>
+                  <span>${payoffDate ? 'Payoff ~' + payoffDate : 'Payment too low'}</span>
+                </div>
+                <div style="height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden">
+                  <div style="height:100%;width:${pctPaid}%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;transition:width .4s"></div>
+                </div>
+                <div style="font-size:10px;color:var(--muted);margin-top:2px">${pctPaid}% paid off${moLeft != null ? ' &middot; ' + moLeft + ' payment' + (moLeft!==1?'s':'') + ' left' : ''}</div>
+              </div>`;
+            })() : '';
             return `<div class="bill-row${paid?" paid":""}${!isDueThisMonth(b) ? " paid" : ""}">
-              <button class="check-btn${paid?" checked":""}" onclick="togglePaid('${b.id}')" ${!isDueThisMonth(b) ? "disabled style='opacity:0.3'" : ""}>${paid?"✓":""}</button>
-              <div class="cat-icon-badge" style="background:${cat.color}38" title="${cat.label}">${cat.icon || '●'}</div>
-              <div class="bill-info">
+              <button class="check-btn${paid?" checked":""}" onclick="${isSav ? `openSavingsTxnForBill('${b.id}')` : `togglePaid('${b.id}')`}" ${!isDueThisMonth(b) && !isSav ? "disabled style='opacity:0.3'" : ""} title="${isSav ? 'Log deposit' : ''}">${isSav ? '💰' : (paid?"✓":"")}</button>
+              <div class="cat-icon-badge" style="background:${cat.color}38" title="${cat.label}">${billIcon(b)}</div>
+              <div class="bill-info" style="flex:1;min-width:0">
                 <div class="bill-name${paid?" struck":""}">${b.name}</div>
-                <div class="bill-meta">${cat.label} &middot; ${b.frequency === "quarterly" ? "Quarterly · " : ""}Due ${MONTHS[state.currentMonth]} ${b.dueDay}${b.biller ? " &middot; " + b.biller : ""}${b.accountId ? " &middot; &#x1F4B3; " + b.accountId : ""} &middot; <span class="badge ${b.payMethod === 'autopay' ? 'badge-autopay' : 'badge-manual'}">${b.payMethod === 'autopay' ? 'Autopay' : 'Manual'}</span></div>
+                <div class="bill-meta">${cat.label} &middot; ${b.frequency === "quarterly" ? "Quarterly · " : b.frequency === "yearly" ? "Yearly · " : ""}Due ${MONTHS[b.frequency === "yearly" || b.frequency === "quarterly" ? (b.startMonth||0) : state.currentMonth]} ${b.dueDay}${b.biller ? " &middot; " + b.biller : ""}${b.accountId ? " &middot; &#x1F4B3; " + getAccountName(b.accountId) : ""} &middot; <span class="badge ${b.payMethod === 'autopay' ? 'badge-autopay' : 'badge-manual'}">${b.payMethod === 'autopay' ? 'Autopay' : 'Manual'}</span></div>
+                ${payoffBar}
               </div>
               <div class="bill-right">
                 <div class="bill-amount">${fmt(b.amount)}</div>
                 ${badgeHTML(paid, dueDate)}
               </div>
               <div class="bill-actions">
-                <button onclick="openPayeeHistory('${b.id}')" title="View 12-month history" style="font-size:15px">🕐</button>
-                <button onclick="openEditModal('${b.id}')" title="Edit">&#9998;</button>
-                <button onclick="deleteBill('${b.id}')" title="Delete">&#128465;</button>
+                ${isSav
+                  ? `<button onclick="openSavingsTxnForBill('${b.id}')" title="Log deposit" style="font-size:15px">💰</button>
+                     <button onclick="switchView('savings')" title="Go to savings" style="font-size:15px">📊</button>`
+                  : `<button onclick="openPayeeHistory('${b.id}')" title="View 12-month history" style="font-size:15px">🕐</button>
+                     <button onclick="openEditModal('${b.id}')" title="Edit">&#9998;</button>
+                     <button onclick="deleteBill('${b.id}')" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="currentColor" style="vertical-align:middle;margin-top:-2px"><path d="M6 7l.8 12.1A1 1 0 007.8 20h8.4a1 1 0 001-.9L18 7H6zm4 2h1l.4 7h-1L10 9zm3 0h1l-.4 7h-1L13 9z"/><rect x="4" y="5" width="16" height="2" rx="1"/><rect x="9" y="2" width="6" height="2" rx="1"/><path d="M17.5 14a3.5 3.5 0 100 7 3.5 3.5 0 000-7zm-1 3.5l.8.8 1.7-1.7.7.7-2.4 2.4-1.5-1.5.7-.7z" fill="currentColor"/></svg></button>`
+                }
               </div>
             </div>`;
           }).join("")}
@@ -1888,7 +2325,7 @@ function render() {
 
   // ===== INCOME =====
   if (state.view === "income") {
-    const freqLabels = { monthly: "Monthly", biweekly: "Bi-Weekly", weekly: "Weekly", "one-time": "One-Time" };
+    const freqLabels = { monthly: "Monthly", biweekly: "Bi-Weekly", weekly: "Weekly", yearly: "Yearly", "one-time": "One-Time" };
     document.getElementById("view-income").innerHTML = `
       <div class="summary-grid" style="margin-bottom:20px">
         ${[
@@ -1921,7 +2358,7 @@ function render() {
               </div>
               <div class="bill-actions">
                 <button onclick="openEditIncome('${inc.id}')" title="Edit">&#9998;</button>
-                <button onclick="deleteIncome('${inc.id}')" title="Delete">&#128465;</button>
+                <button onclick="deleteIncome('${inc.id}')" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="currentColor" style="vertical-align:middle;margin-top:-2px"><path d="M6 7l.8 12.1A1 1 0 007.8 20h8.4a1 1 0 001-.9L18 7H6zm4 2h1l.4 7h-1L10 9zm3 0h1l-.4 7h-1L13 9z"/><rect x="4" y="5" width="16" height="2" rx="1"/><rect x="9" y="2" width="6" height="2" rx="1"/><path d="M17.5 14a3.5 3.5 0 100 7 3.5 3.5 0 000-7zm-1 3.5l.8.8 1.7-1.7.7.7-2.4 2.4-1.5-1.5.7-.7z" fill="currentColor"/></svg></button>
               </div>
             </div>`).join("")}
       </div>`;
@@ -1941,7 +2378,7 @@ function render() {
           history.map(p => {
             const cat = catInfo(p.category);
             return `<div class="history-row">
-              <div class="history-icon" style="background:${cat.color}38;font-size:18px">${cat.icon||'✓'}</div>
+              <div class="history-icon" style="background:${cat.color}38;font-size:18px">${billIcon({name:p.billName,category:p.category})}</div>
               <div class="row-info">
                 <div class="row-name">${p.billName}</div>
                 <div class="row-meta">${cat.label} &middot; ${MONTHS[p.month]} ${p.year}</div>
@@ -1957,16 +2394,6 @@ function render() {
 
   if (state.view === "rental") { renderRental(); }
   if (state.view === "savings") { renderSavings(); }
-}
-
-
-function populateBillerDataLists() {
-  var billers = [...new Set(state.bills.map(b => b.biller).filter(Boolean))];
-  var accounts = [...new Set(state.bills.map(b => b.accountId).filter(Boolean))];
-  var bEl = document.getElementById("billersList");
-  var aEl = document.getElementById("accountsList");
-  if (bEl) bEl.innerHTML = billers.map(b => "<option value=" + b + ">").join("");
-  if (aEl) aEl.innerHTML = accounts.map(a => "<option value=" + a + ">").join("");
 }
 
 
@@ -2239,7 +2666,7 @@ function renderRental() {
 
   // All expenses list
   var MO_SHORT2 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  var FREQ_LABELS2 = {monthly:"Monthly",quarterly:"Quarterly",once:"One-Time"};
+  var FREQ_LABELS2 = {monthly:"Monthly",quarterly:"Quarterly",yearly:"Yearly",once:"One-Time"};
   function buildExpRow(e) {
     var info = EXPENSE_CATS[e.category] || EXPENSE_CATS.other;
     var freq = e.frequency || "once";
@@ -2259,7 +2686,7 @@ function renderRental() {
     h += "</div>";
     h += "<div class='bill-actions'>";
     h += "<button onclick='openExpenseModal(\"" + e.id + "\")' title='Edit'>&#9998;</button>";
-    h += "<button onclick='deleteExpense(\"" + e.id + "\")' title='Delete'>&#128465;</button>";
+    h += "<button onclick='deleteExpense(\"" + e.id + "\")' title='Delete'>" + TRASH_BIN_SVG + "</button>";
     h += "</div></div>";
     return h;
   }
@@ -2355,7 +2782,7 @@ function renderRental() {
 // ════════════════════════════════════════════════════
 
 function getSavingsContribBills() {
-  const FREQ_LABELS = { weekly: "Weekly", biweekly: "Bi-Weekly", monthly: "Monthly" };
+  const FREQ_LABELS = { weekly: "Weekly", biweekly: "Bi-Weekly", monthly: "Monthly", yearly: "Yearly" };
   return state.savingsAccounts
     .filter(a => a.contrib > 0)
     .map(a => {
@@ -2392,6 +2819,9 @@ function openSavingsAccountModal(id) {
     document.getElementById('saName').value = a.name;
     document.getElementById('saBank').value = a.bank || '';
     document.getElementById('saBalance').value = a.balance;
+    document.getElementById('saBalanceAsOf').value = a.balanceAsOf || new Date().toISOString().slice(0,10);
+    document.getElementById('saYtdDep').value = a.ytdDepSeed || '';
+    document.getElementById('saYtdInt').value = a.ytdIntSeed || '';
     document.getElementById('saAPY').value = a.apy || '';
     document.getElementById('saContrib').value = a.contrib || '';
     document.getElementById('saContribDay').value = a.contribDay || 1;
@@ -2401,6 +2831,9 @@ function openSavingsAccountModal(id) {
     document.getElementById('saNotes').value = a.notes || '';
   } else {
     ['saName','saBank','saBalance','saAPY','saContrib','saGoal','saNotes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('saBalanceAsOf').value = new Date().toISOString().slice(0,10);
+    document.getElementById('saYtdDep').value = '';
+    document.getElementById('saYtdInt').value = '';
     document.getElementById('saContribDay').value = '1';
     document.getElementById('saContribFreq').value = 'monthly';
     document.getElementById('saContribDayRow').classList.remove('hidden');
@@ -2415,6 +2848,9 @@ function saveSavingsAcct() {
     name,
     bank: document.getElementById('saBank').value.trim(),
     balance: parseFloat(document.getElementById('saBalance').value) || 0,
+    balanceAsOf: document.getElementById('saBalanceAsOf').value || new Date().toISOString().slice(0,10),
+    ytdDepSeed: parseFloat(document.getElementById('saYtdDep').value) || 0,
+    ytdIntSeed: parseFloat(document.getElementById('saYtdInt').value) || 0,
     apy: parseFloat(document.getElementById('saAPY').value) || 0,
     contrib: parseFloat(document.getElementById('saContrib').value) || 0,
     contribDay: parseInt(document.getElementById('saContribDay').value) || 1,
@@ -2445,6 +2881,24 @@ function deleteSavingsAcct(id) {
 
 function selectSavingsAcct(id) { state.selectedSavingsId = id; saveState(); renderSavings(); }
 
+function openSavingsTxnForBill(billId) {
+  // Find the savings contrib virtual bill
+  const contribBills = getSavingsContribBills();
+  const b = contribBills.find(x => x.id === billId);
+  if (!b) return;
+  // Select the correct savings account
+  state.selectedSavingsId = b.savingsAccountId;
+  state.editSavingsTxnId = null;
+  // Open modal pre-filled
+  document.getElementById('savTxnModalTitle').textContent = 'Log Deposit — ' + b.name.split(' — ')[0];
+  document.getElementById('savTxnSaveBtn').textContent = 'Add Transaction';
+  document.getElementById('stType').value = 'deposit';
+  document.getElementById('stAmount').value = b.amount;
+  document.getElementById('stDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('stNotes').value = 'Monthly contribution';
+  document.getElementById('savTxnModal').classList.remove('hidden');
+}
+
 function openSavingsTxnModal(id) {
   state.editSavingsTxnId = id || null;
   const isEdit = !!id;
@@ -2466,6 +2920,20 @@ function openSavingsTxnModal(id) {
   document.getElementById('savTxnModal').classList.remove('hidden');
 }
 
+// Returns the true current balance = starting balance + all transaction effects
+function computedBalance(acctId) {
+  const acct = state.savingsAccounts.find(a => a.id === acctId);
+  if (!acct) return 0;
+  const cutoff = acct.balanceAsOf || '1970-01-01';
+  const txnEffect = state.savingsTransactions
+    .filter(t => t.accountId === acctId && t.date >= cutoff)
+    .reduce((sum, t) => {
+      if (t.type === 'deposit' || t.type === 'interest') return sum + t.amount;
+      return sum - t.amount;
+    }, 0);
+  return acct.balance + txnEffect;
+}
+
 function saveSavingsTxn() {
   const amount = parseFloat(document.getElementById('stAmount').value);
   const acctId = state.selectedSavingsId;
@@ -2478,18 +2946,8 @@ function saveSavingsTxn() {
 
   if (state.editSavingsTxnId) {
     const old = state.savingsTransactions.find(t => t.id === state.editSavingsTxnId);
-    if (old) {
-      // Reverse old balance effect
-      if (old.type === 'deposit' || old.type === 'interest') acct.balance -= old.amount;
-      else acct.balance += old.amount;
-      // Apply new
-      if (type === 'deposit' || type === 'interest') acct.balance += amount;
-      else acct.balance -= amount;
-      Object.assign(old, { type, amount, date, notes });
-    }
+    if (old) Object.assign(old, { type, amount, date, notes });
   } else {
-    if (type === 'deposit' || type === 'interest') acct.balance += amount;
-    else acct.balance -= amount;
     state.savingsTransactions.push({ id: genId(), accountId: acctId, type, amount, date, notes });
   }
   saveState();
@@ -2498,16 +2956,9 @@ function saveSavingsTxn() {
 }
 
 function deleteSavingsTxn(id) {
-  if (!confirm('Delete this transaction?')) return;
   const t = state.savingsTransactions.find(x => x.id === id);
-  if (t) {
-    const acct = state.savingsAccounts.find(a => a.id === t.accountId);
-    if (acct) {
-      if (t.type === 'deposit' || t.type === 'interest') acct.balance -= t.amount;
-      else acct.balance += t.amount;
-    }
-    state.savingsTransactions = state.savingsTransactions.filter(x => x.id !== id);
-  }
+  if (!t) return;
+  state.savingsTransactions = state.savingsTransactions.filter(x => x.id !== id);
   saveState(); renderSavings();
 }
 
@@ -2534,18 +2985,20 @@ function renderSavings() {
   const curY = state.currentYear;
   const curM = state.currentMonth;
   const acct = state.savingsAccounts.find(a => a.id === state.selectedSavingsId);
-  const totalBalance = state.savingsAccounts.reduce((s,a) => s + (a.balance||0), 0);
+  const totalBalance = state.savingsAccounts.reduce((s,a) => s + computedBalance(a.id), 0);
   const totalContrib = state.savingsAccounts.reduce((s,a) => {
     const freq = a.contribFreq || 'monthly';
-    const monthly = freq === 'weekly' ? (a.contrib||0)*52/12 : freq === 'biweekly' ? (a.contrib||0)*26/12 : (a.contrib||0);
+    const monthly = freq === 'weekly' ? (a.contrib||0)*52/12 : freq === 'biweekly' ? (a.contrib||0)*26/12 : freq === 'yearly' ? (a.contrib||0)/12 : (a.contrib||0);
     return s + monthly;
   }, 0);
   const acctTxns = state.savingsTransactions
     .filter(t => t.accountId === acct.id)
     .sort((a,b) => new Date(b.date) - new Date(a.date));
 
-  // YTD stats
-  let ytdDep = 0, ytdWith = 0, ytdInt = 0;
+  // YTD stats — transactions this year + any pre-tracking seed amounts entered by user
+  let ytdDep = acct.ytdDepSeed || 0;
+  let ytdWith = 0;
+  let ytdInt = acct.ytdIntSeed || 0;
   acctTxns.forEach(t => {
     const y = new Date(t.date + 'T12:00:00').getFullYear();
     if (y === curY) {
@@ -2554,12 +3007,14 @@ function renderSavings() {
       else if (t.type === 'interest') ytdInt += t.amount;
     }
   });
-  const estMonthlyInterest = acct.apy > 0 ? acct.balance * acct.apy / 100 / 12 : 0;
+  const curBal = computedBalance(acct.id);
+  const estMonthlyInterest = acct.apy > 0 ? curBal * acct.apy / 100 / 12 : 0;
 
   // Account cards
   const acctCards = state.savingsAccounts.map(a => {
     const isActive = a.id === state.selectedSavingsId;
-    const goalPct = a.goal > 0 ? Math.min(100, Math.round((a.balance / a.goal) * 100)) : 0;
+    const aBal = computedBalance(a.id);
+    const goalPct = a.goal > 0 ? Math.min(100, Math.round((aBal / a.goal) * 100)) : 0;
     const goalBar = a.goal > 0 ? `
       <div class="goal-bar-wrap">
         <div class="goal-bar-labels"><span>Goal progress</span><span>${goalPct}% of ${fmt(a.goal)}</span></div>
@@ -2568,9 +3023,10 @@ function renderSavings() {
     return `<div class="savings-card${isActive ? ' active-acct' : ''}" onclick="selectSavingsAcct('${a.id}')">
       <div class="sc-name">${a.name}</div>
       <div class="sc-bank">${a.bank || 'No bank set'}</div>
-      <div class="sc-bal">${fmt(a.balance)}</div>
+      <div class="sc-bal">${fmt(aBal)}</div>
       ${a.apy ? `<div class="sc-meta">APY ${a.apy}% &mdash; ~${fmt(estMonthlyInterest)}/mo interest</div>` : ''}
       ${a.contrib ? `<div class="sc-contrib">&#128176; ${fmt(a.contrib)}/${({weekly:'wk',biweekly:'2wk',monthly:'mo'})[a.contribFreq||'monthly']||'mo'}${a.contribFreq==='monthly'||!a.contribFreq ? ' &middot; day '+(a.contribDay||1) : ''}</div>` : ''}
+      ${a.balanceAsOf ? `<div class="sc-meta" style="font-size:11px;opacity:.6">Tracking from ${a.balanceAsOf}</div>` : ''}
       ${goalBar}
     </div>`;
   }).join('');
@@ -2579,10 +3035,10 @@ function renderSavings() {
   const SC = (label, val, sub, color) =>
     `<div class="summary-card" style="--accent:${color}"><div class="label">${label}</div><div class="value">${val}</div><div class="sub">${sub}</div></div>`;
   const summaryCards = `<div class="summary-grid" style="margin-bottom:20px">
-    ${SC('Balance', fmt(acct.balance), acct.bank || 'current', '#10b981')}
-    ${SC('YTD Deposits', fmt(ytdDep), curY + ' contributions', '#4f46e5')}
+    ${SC('Balance', fmt(curBal), acct.bank || 'current', '#10b981')}
+    ${SC('YTD Deposits', fmt(ytdDep), (acct.ytdDepSeed ? 'incl. $' + acct.ytdDepSeed.toFixed(2) + ' pre-tracking' : curY + ' contributions'), '#4f46e5')}
     ${SC('YTD Withdrawals', fmt(ytdWith), curY + ' taken out', '#ef4444')}
-    ${SC('YTD Interest', fmt(ytdInt), acct.apy ? acct.apy + '% APY' : 'earned', '#d97706')}
+    ${SC('YTD Interest', fmt(ytdInt), (acct.ytdIntSeed ? 'incl. $' + acct.ytdIntSeed.toFixed(2) + ' pre-tracking' : acct.apy ? acct.apy + '% APY' : 'earned'), '#d97706')}
     ${SC('All Accounts', fmt(totalBalance), state.savingsAccounts.length + ' accounts total', '#7c3aed')}
     ${SC('Monthly Savings', fmt(totalContrib), 'monthly equivalent', '#0891b2')}
   </div>`;
@@ -2590,7 +3046,7 @@ function renderSavings() {
   // Growth chart — running balance per month this year
   const chartHTML = (() => {
     // Work backwards from current balance to find start-of-year balance
-    let bal = acct.balance;
+    let bal = curBal;
     const futureAndThisYear = acctTxns.filter(t => new Date(t.date+'T12:00:00').getFullYear() >= curY);
     // All txns in current year affect current balance; reverse them month by month
     const byMonth = Array.from({length: 12}, () => []);
@@ -2599,7 +3055,7 @@ function renderSavings() {
       if (d.getFullYear() === curY) byMonth[d.getMonth()].push(t);
     });
     // Build end-of-month balances forward
-    let running = acct.balance;
+    let running = curBal;
     // First subtract all year txns to get start-of-year balance
     acctTxns.forEach(t => {
       if (new Date(t.date+'T12:00:00').getFullYear() === curY) {
@@ -2649,7 +3105,7 @@ function renderSavings() {
       </div>
       <div class="bill-actions">
         <button onclick="openSavingsTxnModal('${t.id}')" title="Edit">&#9998;</button>
-        <button onclick="deleteSavingsTxn('${t.id}')" title="Delete">&#128465;</button>
+        <button onclick="deleteSavingsTxn('${t.id}')" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="currentColor" style="vertical-align:middle;margin-top:-2px"><path d="M6 7l.8 12.1A1 1 0 007.8 20h8.4a1 1 0 001-.9L18 7H6zm4 2h1l.4 7h-1L10 9zm3 0h1l-.4 7h-1L13 9z"/><rect x="4" y="5" width="16" height="2" rx="1"/><rect x="9" y="2" width="6" height="2" rx="1"/><path d="M17.5 14a3.5 3.5 0 100 7 3.5 3.5 0 000-7zm-1 3.5l.8.8 1.7-1.7.7.7-2.4 2.4-1.5-1.5.7-.7z" fill="currentColor"/></svg></button>
       </div>
     </div>`;
   }).join('');
@@ -2659,7 +3115,7 @@ function renderSavings() {
       <h3 style="font-size:18px;font-weight:700">Savings Accounts</h3>
       <div style="display:flex;gap:8px">
         <button class="btn-secondary btn-sm" onclick="openSavingsAccountModal('${acct.id}')">&#9998; Edit</button>
-        <button class="btn-secondary btn-sm" style="color:#ef4444" onclick="deleteSavingsAcct('${acct.id}')">&#128465; Delete</button>
+        <button class="btn-secondary btn-sm" style="color:#ef4444" onclick="deleteSavingsAcct('${acct.id}')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="currentColor" style="vertical-align:middle;margin-top:-2px"><path d="M6 7l.8 12.1A1 1 0 007.8 20h8.4a1 1 0 001-.9L18 7H6zm4 2h1l.4 7h-1L10 9zm3 0h1l-.4 7h-1L13 9z"/><rect x="4" y="5" width="16" height="2" rx="1"/><rect x="9" y="2" width="6" height="2" rx="1"/><path d="M17.5 14a3.5 3.5 0 100 7 3.5 3.5 0 000-7zm-1 3.5l.8.8 1.7-1.7.7.7-2.4 2.4-1.5-1.5.7-.7z" fill="currentColor"/></svg> Delete</button>
         <button class="btn-primary btn-sm" onclick="openSavingsAccountModal()">+ Add Account</button>
       </div>
     </div>
@@ -2963,5 +3419,47 @@ if (syncConfig.enabled && syncConfig.gistId) setSyncStatus('ready');
 syncOnLoad();
 
 </script>
+
+<!-- ══════════════════════════════════════════
+     ACCOUNT MANAGER MODAL
+════════════════════════════════════════════ -->
+<div id="accountsModal" class="modal-overlay hidden" onclick="if(event.target===this)closeAccountsModal()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:440px">
+    <div class="modal-header">
+      <h3>Manage Accounts</h3>
+      <button class="modal-close" onclick="closeAccountsModal()">&times;</button>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px">These accounts appear in the "Paid From Account" dropdown on every bill.</p>
+    <div id="accountListEl" style="margin-bottom:16px"></div>
+    <div style="display:flex;gap:8px">
+      <input id="newAccountInput" placeholder="e.g. Chase Checking, Amex Gold" style="flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius2);background:rgba(255,255,255,.06);color:var(--text);font-size:13px;outline:none" onkeydown="if(event.key==='Enter')addAccountFromModal()">
+      <button onclick="addAccountFromModal()" style="padding:10px 16px;border-radius:var(--radius2);border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:900;font-size:13px;cursor:pointer;white-space:nowrap">＋ Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     CATEGORY MANAGER MODAL
+════════════════════════════════════════════ -->
+<div id="categoriesModal" class="modal-overlay hidden" onclick="if(event.target===this)closeCategoriesModal()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:500px">
+    <div class="modal-header">
+      <h3>Manage Categories</h3>
+      <button class="modal-close" onclick="closeCategoriesModal()">&times;</button>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Add, rename, recolor, or remove bill categories. Categories in use can't be deleted until bills are reassigned.</p>
+    <div id="categoryListEl" style="margin-bottom:16px"></div>
+    <!-- Add new category row -->
+    <div style="border:1px solid var(--border);border-radius:var(--radius2);padding:14px;background:rgba(255,255,255,.03)">
+      <div style="font-size:11px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">New Category</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input id="newCatLabel" placeholder="Category name" style="flex:1;min-width:120px;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius2);background:rgba(255,255,255,.06);color:var(--text);font-size:13px;outline:none">
+        <input id="newCatIcon" placeholder="Icon" maxlength="2" style="width:56px;padding:9px 10px;border:1px solid var(--border);border-radius:var(--radius2);background:rgba(255,255,255,.06);color:var(--text);font-size:18px;outline:none;text-align:center">
+        <input id="newCatColor" type="color" value="#7c3aed" style="width:44px;height:40px;border-radius:var(--radius2);border:1px solid var(--border);background:rgba(255,255,255,.06);cursor:pointer;padding:2px">
+        <button onclick="addCategoryFromModal()" style="padding:9px 16px;border-radius:var(--radius2);border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:900;font-size:13px;cursor:pointer;white-space:nowrap">＋ Add</button>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
