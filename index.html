@@ -520,6 +520,21 @@
   .goal-bar-labels  { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-bottom: 4px; }
   .goal-bar-track   { background: rgba(255,255,255,.08); border-radius: 999px; height: 5px; overflow: hidden; }
   .goal-bar-fill    { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 999px; }
+
+  .invest-card {
+    padding: 16px; border-radius: 14px; cursor: pointer;
+    background: linear-gradient(180deg,rgba(34,211,238,.07),rgba(34,211,238,.03));
+    border: 1px solid rgba(34,211,238,.18); border-left: 3px solid rgba(34,211,238,.5);
+    transition: box-shadow .15s, border-color .15s;
+  }
+  .invest-card:hover     { box-shadow: var(--shadow); border-left-color: #22d3ee; }
+  .invest-card.active-acct { border-left-color: #22d3ee; box-shadow: 0 0 0 2px rgba(34,211,238,.20); }
+  .invest-card .ic-type  { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .8px; color: #67e8f9; margin-bottom: 4px; }
+  .invest-card .ic-name  { font-size: 14px; font-weight: 900; color: var(--text); }
+  .invest-card .ic-inst  { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .invest-card .ic-bal   { font-size: 22px; font-weight: 900; color: #22d3ee; }
+  .invest-card .ic-meta  { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .invest-card .ic-contrib{ font-size: 12px; color: #67e8f9; font-weight: 900; margin-top: 3px; }
   .txn-row { display: flex; align-items: center; padding: 12px 18px; border-bottom: 1px solid var(--border); gap: 12px; }
   .txn-row:last-child { border-bottom: none; }
   .txn-icon             { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
@@ -535,6 +550,65 @@
   .sav-chart-bar-col    { width: 100%; background: rgba(255,255,255,.06); border-radius: 6px 6px 0 0; height: 100px; display: flex; align-items: flex-end; }
   .sav-chart-bar        { width: 100%; background: linear-gradient(180deg, var(--accent2), var(--accent)); border-radius: 6px 6px 0 0; transition: height .3s; }
   .sav-chart-label      { font-size: 10px; color: var(--muted); }
+
+  /* ══════════════════════════════════════════
+     FINANCIAL HEALTH TAB
+  ══════════════════════════════════════════ */
+  .health-score-ring { position:relative; width:140px; height:140px; flex-shrink:0; }
+  .health-score-ring svg { transform:rotate(-90deg); }
+  .health-score-label { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .health-score-num  { font-size:38px; font-weight:900; line-height:1; }
+  .health-score-word { font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.8px; margin-top:3px; }
+
+  .health-section { margin-bottom:24px; }
+  .health-section-title { font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .health-section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  .health-metric-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; }
+  .health-metric {
+    padding:14px 16px; border-radius:var(--radius2);
+    background:linear-gradient(180deg,var(--panel2),var(--panel));
+    border:1px solid var(--border);
+  }
+  .health-metric .hm-label { font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:6px; }
+  .health-metric .hm-value { font-size:22px; font-weight:900; color:var(--text); line-height:1.1; }
+  .health-metric .hm-sub   { font-size:11px; color:var(--muted); margin-top:4px; }
+  .health-metric .hm-bar   { height:4px; border-radius:2px; background:rgba(255,255,255,.08); margin-top:8px; overflow:hidden; }
+  .health-metric .hm-bar-fill { height:100%; border-radius:2px; transition:width .5s; }
+
+  .health-alert {
+    display:flex; align-items:flex-start; gap:12px; padding:13px 16px;
+    border-radius:var(--radius2); border:1px solid; margin-bottom:8px;
+  }
+  .health-alert.warn  { background:rgba(251,191,36,.07);  border-color:rgba(251,191,36,.22);  }
+  .health-alert.danger{ background:rgba(251,113,133,.07); border-color:rgba(251,113,133,.22); }
+  .health-alert.good  { background:rgba(34,197,94,.07);   border-color:rgba(34,197,94,.22);   }
+  .health-alert.info  { background:rgba(34,211,238,.07);  border-color:rgba(34,211,238,.22);  }
+  .health-alert .ha-icon  { font-size:18px; flex-shrink:0; margin-top:1px; }
+  .health-alert .ha-title { font-size:13px; font-weight:900; color:var(--text); }
+  .health-alert .ha-body  { font-size:12px; color:var(--muted); margin-top:3px; line-height:1.5; }
+
+  .health-projection-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:12px; }
+  .proj-card {
+    padding:16px; border-radius:var(--radius2); text-align:center;
+    background:linear-gradient(180deg,var(--panel2),var(--panel));
+    border:1px solid var(--border);
+  }
+  .proj-card .pc-year  { font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); margin-bottom:6px; }
+  .proj-card .pc-val   { font-size:22px; font-weight:900; color:var(--accent2); }
+  .proj-card .pc-sub   { font-size:11px; color:var(--muted); margin-top:4px; }
+
+  .payoff-row { display:flex; align-items:center; gap:10px; padding:10px 14px; border:1px solid var(--border); border-radius:var(--radius2); background:rgba(255,255,255,.03); margin-bottom:6px; }
+  .payoff-row .pr-name { flex:1; font-size:13px; font-weight:900; color:var(--text); }
+  .payoff-row .pr-bal  { font-size:13px; font-weight:900; color:var(--bad); }
+  .payoff-row .pr-date { font-size:11px; color:var(--muted); }
+
+  .sub-chart { display:flex; gap:6px; height:160px; align-items:flex-end; margin-top:8px; }
+  .sub-bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .sub-bar-col  { width:100%; flex:1; display:flex; align-items:flex-end; }
+  .sub-bar      { width:100%; border-radius:4px 4px 0 0; min-height:3px; transition:height .4s; }
+  .sub-bar-label{ font-size:9px; color:var(--muted); text-align:center; }
+  .sub-bar-val  { font-size:9px; color:var(--muted); text-align:center; }
 
   /* ── Category icon badge ── */
   .cat-icon-badge {
@@ -604,6 +678,9 @@
       <button class="nav-item" data-view="savings" onclick="switchView('savings')">
         <span class="nav-icon">💰</span> Savings
       </button>
+      <button class="nav-item" data-view="health" onclick="switchView('health')">
+        <span class="nav-icon">❤️</span> Financial Health
+      </button>
     </div>
     <div class="sidebar-actions">
       <button class="sidebar-action-btn" onclick="openIncomeModal()">
@@ -643,6 +720,7 @@
     <div id="view-history" class="hidden"></div>
     <div id="view-rental" class="hidden"></div>
     <div id="view-savings" class="hidden"></div>
+    <div id="view-health" class="hidden"></div>
   </div>
 </div><!-- end .app-body -->
 
@@ -883,6 +961,10 @@
       <div class="form-group"><label>Monthly Rent ($)</label><input id="pRent" type="number" step="0.01" placeholder="0.00"></div>
       <div class="form-group"><label>Rent Due Day</label><input id="pRentDay" type="number" min="1" max="31" value="1"></div>
     </div>
+    <div class="form-row">
+      <div class="form-group"><label>Est. Market Value ($) <span style="font-weight:400;color:var(--muted);font-size:11px">— for net worth</span></label><input id="pMarketValue" type="number" step="1" placeholder="e.g. 350000"></div>
+      <div class="form-group"><label>Mortgage Balance ($) <span style="font-weight:400;color:var(--muted);font-size:11px">— optional, for equity</span></label><input id="pMortgageBalance" type="number" step="1" placeholder="e.g. 210000"></div>
+    </div>
     <div class="form-group"><label>Notes</label><textarea id="pNotes" rows="2" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;outline:none" placeholder="Lease end date, special terms..."></textarea></div>
     <div class="form-actions">
       <button class="btn-secondary" onclick="closePropertyModal()">Cancel</button>
@@ -942,6 +1024,66 @@
   </div>
 </div>
 
+
+<!-- Investment Account Modal -->
+<div id="investAcctModal" class="modal-overlay hidden" onclick="if(event.target===this)closeInvestModal()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:560px">
+    <div class="modal-header">
+      <h3 id="investAcctModalTitle">Add Investment Account</h3>
+      <button class="modal-close" onclick="closeInvestModal()">&times;</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Account Name</label><input id="iaName" placeholder="e.g. Fidelity Roth IRA"></div>
+      <div class="form-group"><label>Account Type</label>
+        <select id="iaType" onchange="toggleInvestFields()">
+          <option value="brokerage">Brokerage</option>
+          <option value="ira">IRA</option>
+          <option value="roth_ira">Roth IRA</option>
+          <option value="401k">401(k)</option>
+          <option value="403b">403(b)</option>
+          <option value="hsa">HSA</option>
+          <option value="529">529 College</option>
+          <option value="crypto">Crypto</option>
+          <option value="other_inv">Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label>Institution</label><input id="iaInstitution" placeholder="e.g. Fidelity, Vanguard, Schwab"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Current Balance ($)</label><input id="iaBalance" type="number" step="0.01" placeholder="0.00"></div>
+      <div class="form-group"><label>Balance As Of</label><input id="iaBalanceAsOf" type="date"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Monthly Contribution ($)</label><input id="iaContrib" type="number" step="0.01" placeholder="0.00"></div>
+      <div class="form-group"><label>Est. Annual Return (%)</label><input id="iaReturn" type="number" step="0.01" placeholder="e.g. 7.00"></div>
+    </div>
+    <!-- 401k / 403b employer match section -->
+    <div id="iaMatchSection" class="hidden" style="border:1px solid rgba(34,211,238,.2);border-radius:var(--radius2);padding:14px;background:rgba(34,211,238,.04);margin-bottom:12px">
+      <div style="font-size:11px;font-weight:900;color:#67e8f9;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🏢 Employer Match</div>
+      <div class="form-row" style="margin-bottom:0">
+        <div class="form-group" style="margin-bottom:0"><label>Your Contribution % of Salary</label><input id="iaYourPct" type="number" step="0.1" placeholder="e.g. 6"></div>
+        <div class="form-group" style="margin-bottom:0"><label>Employer Match % (up to)</label><input id="iaMatchPct" type="number" step="0.1" placeholder="e.g. 3"></div>
+      </div>
+      <div class="form-group" style="margin-top:10px;margin-bottom:0"><label>Match Vesting Schedule <span style="font-weight:400;color:var(--muted);font-size:11px">— optional note</span></label><input id="iaVesting" placeholder="e.g. 3-year cliff, immediate"></div>
+    </div>
+    <!-- YTD seed -->
+    <div style="border:1px solid var(--border);border-radius:var(--radius2);padding:14px;margin-bottom:12px;background:rgba(255,255,255,.02)">
+      <div style="font-size:11px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">YTD Contributions (before tracking)</div>
+      <div class="form-row" style="margin-bottom:0">
+        <div class="form-group" style="margin-bottom:0"><label>Your Contributions ($)</label><input id="iaYtdContrib" type="number" step="0.01" placeholder="0.00"></div>
+        <div class="form-group" style="margin-bottom:0"><label>Employer Contributions ($)</label><input id="iaYtdMatch" type="number" step="0.01" placeholder="0.00"></div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Goal / Target Balance ($) — optional</label><input id="iaGoal" type="number" step="0.01" placeholder="e.g. 1000000"></div>
+      <div class="form-group"><label>Notes</label><input id="iaNotes" placeholder="e.g. Max Roth every year"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-secondary" onclick="closeInvestModal()">Cancel</button>
+      <button class="btn-primary" id="investAcctSaveBtn" onclick="saveInvestAcct()">Add Account</button>
+    </div>
+  </div>
+</div>
 
 <!-- Savings Account Modal -->
 <div id="savAcctModal" class="modal-overlay hidden" onclick="if(event.target===this)document.getElementById('savAcctModal').classList.add('hidden')">
@@ -1041,6 +1183,20 @@ const CATEGORIES = [
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const FULL_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const DAYS_NAMES = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+const INVEST_TYPES = [
+  { id: 'brokerage', label: 'Brokerage',   icon: '📈' },
+  { id: 'ira',       label: 'IRA',          icon: '🏛️' },
+  { id: 'roth_ira',  label: 'Roth IRA',     icon: '🏛️' },
+  { id: '401k',      label: '401(k)',        icon: '🏢' },
+  { id: '403b',      label: '403(b)',        icon: '🏢' },
+  { id: 'hsa',       label: 'HSA',          icon: '🏥' },
+  { id: '529',       label: '529 College',  icon: '🎓' },
+  { id: 'crypto',    label: 'Crypto',       icon: '₿'  },
+  { id: 'other_inv', label: 'Other',        icon: '💹' },
+];
+// 2025 IRS contribution limits
+const TAX_ADV_LIMITS = { ira: 7000, roth_ira: 7000, '401k': 23500, '403b': 23500, hsa: 4300 };
 const STORAGE_KEY = "billTracker_v3";
 const SETTINGS_KEY = "billTracker_settings";
 
@@ -1102,6 +1258,9 @@ function defaultState() {
     selectedSavingsId: null,
     editSavingsId: null,
     editSavingsTxnId: null,
+    investmentAccounts: [],
+    selectedInvestmentId: null,
+    editInvestmentId: null,
     accounts: [],
     categories: JSON.parse(JSON.stringify(CATEGORIES))
   };
@@ -1132,6 +1291,7 @@ function loadState() {
       if (!parsed.rentalExpPayments) parsed.rentalExpPayments = [];
       if (!parsed.savingsAccounts) parsed.savingsAccounts = [];
       if (!parsed.savingsTransactions) parsed.savingsTransactions = [];
+      if (!parsed.investmentAccounts) parsed.investmentAccounts = [];
       // Migrate: ensure every savings account has a balanceAsOf date
       parsed.savingsAccounts = parsed.savingsAccounts.map(a =>
         a.balanceAsOf ? a : { ...a, balanceAsOf: new Date().toISOString().slice(0,10) }
@@ -1199,6 +1359,7 @@ function importData(event) {
       render();
       if (state.view === 'rental') renderRental();
       if (state.view === 'savings') renderSavings();
+      if (state.view === 'health') renderHealth();
 
       // Show success toast
       showToast('✅ Data imported successfully!', '#86efac', '#0d1a0d');
@@ -2120,7 +2281,7 @@ function isDueThisMonth(bill, month) {
 }
 
 // ===== RENDER =====
-const VIEW_TITLES = { dashboard:'Dashboard', calendar:'Calendar', bills:'All Bills', income:'Income', history:'History', rental:'Rental', savings:'Savings' };
+const VIEW_TITLES = { dashboard:'Dashboard', calendar:'Calendar', bills:'All Bills', income:'Income', history:'History', rental:'Rental', savings:'Savings', health:'Financial Health' };
 function render() {
   document.getElementById("monthLabel").textContent = `${MONTHS[state.currentMonth]} ${state.currentYear}`;
   // Update sidebar active state
@@ -2129,7 +2290,7 @@ function render() {
   const tb = document.getElementById("topbarTitle");
   if (tb) tb.textContent = VIEW_TITLES[state.view] || 'Bill Tracker';
   // Show/hide view panels
-  ["dashboard","calendar","bills","income","history","rental","savings"].forEach(v => document.getElementById("view-"+v).classList.toggle("hidden", state.view !== v));
+  ["dashboard","calendar","bills","income","history","rental","savings","health"].forEach(v => document.getElementById("view-"+v).classList.toggle("hidden", state.view !== v));
 
   const savingsContribBills = getSavingsContribBills();
   const allBills = state.bills.concat(savingsContribBills);
@@ -2394,6 +2555,7 @@ function render() {
 
   if (state.view === "rental") { renderRental(); }
   if (state.view === "savings") { renderSavings(); }
+  if (state.view === "health") { renderHealth(); }
 }
 
 
@@ -2439,6 +2601,8 @@ function openPropertyModal(id) {
     document.getElementById("pTenant").value = p.tenant || "";
     document.getElementById("pRent").value = p.rent;
     document.getElementById("pRentDay").value = p.rentDay;
+    document.getElementById("pMarketValue").value     = p.marketValue || "";
+    document.getElementById("pMortgageBalance").value = p.mortgageBalance || "";
     document.getElementById("pNotes").value = p.notes || "";
   } else {
     document.getElementById("pName").value = "";
@@ -2446,6 +2610,8 @@ function openPropertyModal(id) {
     document.getElementById("pTenant").value = "";
     document.getElementById("pRent").value = "";
     document.getElementById("pRentDay").value = "1";
+    document.getElementById("pMarketValue").value     = "";
+    document.getElementById("pMortgageBalance").value = "";
     document.getElementById("pNotes").value = "";
   }
   document.getElementById("propertyModal").classList.remove("hidden");
@@ -2458,10 +2624,12 @@ function saveProperty() {
   if (!name || isNaN(rent)) return;
   const data = {
     name, rent,
-    address: document.getElementById("pAddress").value.trim(),
-    tenant:  document.getElementById("pTenant").value.trim(),
-    rentDay: parseInt(document.getElementById("pRentDay").value) || 1,
-    notes:   document.getElementById("pNotes").value.trim(),
+    address:         document.getElementById("pAddress").value.trim(),
+    tenant:          document.getElementById("pTenant").value.trim(),
+    rentDay:         parseInt(document.getElementById("pRentDay").value) || 1,
+    marketValue:     parseFloat(document.getElementById("pMarketValue").value) || 0,
+    mortgageBalance: parseFloat(document.getElementById("pMortgageBalance").value) || 0,
+    notes:           document.getElementById("pNotes").value.trim(),
   };
   if (state.editPropertyId) {
     const p = state.properties.find(x => x.id === state.editPropertyId);
@@ -2962,6 +3130,132 @@ function deleteSavingsTxn(id) {
   saveState(); renderSavings();
 }
 
+// ════════════════════════════════════════════════════
+//  INVESTMENT ACCOUNTS
+// ════════════════════════════════════════════════════
+function openInvestModal(id) {
+  state.editInvestmentId = id || null;
+  const isEdit = !!id;
+  document.getElementById('investAcctModalTitle').textContent = isEdit ? 'Edit Investment Account' : 'Add Investment Account';
+  document.getElementById('investAcctSaveBtn').textContent = isEdit ? 'Save Changes' : 'Add Account';
+  const today = new Date().toISOString().slice(0,10);
+  if (isEdit) {
+    const a = state.investmentAccounts.find(x => x.id === id);
+    if (!a) return;
+    document.getElementById('iaName').value        = a.name || '';
+    document.getElementById('iaType').value        = a.type || 'brokerage';
+    document.getElementById('iaInstitution').value = a.institution || '';
+    document.getElementById('iaBalance').value     = a.balance || '';
+    document.getElementById('iaBalanceAsOf').value = a.balanceAsOf || today;
+    document.getElementById('iaContrib').value     = a.contrib || '';
+    document.getElementById('iaReturn').value      = a.annualReturn || '';
+    document.getElementById('iaYourPct').value     = a.yourPct || '';
+    document.getElementById('iaMatchPct').value    = a.matchPct || '';
+    document.getElementById('iaVesting').value     = a.vesting || '';
+    document.getElementById('iaYtdContrib').value  = a.ytdContribSeed || '';
+    document.getElementById('iaYtdMatch').value    = a.ytdMatchSeed || '';
+    document.getElementById('iaGoal').value        = a.goal || '';
+    document.getElementById('iaNotes').value       = a.notes || '';
+  } else {
+    ['iaName','iaInstitution','iaBalance','iaContrib','iaReturn',
+     'iaYourPct','iaMatchPct','iaVesting','iaYtdContrib','iaYtdMatch','iaGoal','iaNotes'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('iaType').value        = 'brokerage';
+    document.getElementById('iaBalanceAsOf').value = today;
+  }
+  toggleInvestFields();
+  document.getElementById('investAcctModal').classList.remove('hidden');
+}
+function closeInvestModal() { document.getElementById('investAcctModal').classList.add('hidden'); }
+
+function toggleInvestFields() {
+  const t = document.getElementById('iaType').value;
+  document.getElementById('iaMatchSection').classList.toggle('hidden', t !== '401k' && t !== '403b');
+}
+
+function saveInvestAcct() {
+  const name = document.getElementById('iaName').value.trim();
+  if (!name) return;
+  const data = {
+    name,
+    type:         document.getElementById('iaType').value,
+    institution:  document.getElementById('iaInstitution').value.trim(),
+    balance:      parseFloat(document.getElementById('iaBalance').value) || 0,
+    balanceAsOf:  document.getElementById('iaBalanceAsOf').value || new Date().toISOString().slice(0,10),
+    contrib:      parseFloat(document.getElementById('iaContrib').value) || 0,
+    annualReturn: parseFloat(document.getElementById('iaReturn').value) || 0,
+    yourPct:      parseFloat(document.getElementById('iaYourPct').value) || 0,
+    matchPct:     parseFloat(document.getElementById('iaMatchPct').value) || 0,
+    vesting:      document.getElementById('iaVesting').value.trim(),
+    ytdContribSeed: parseFloat(document.getElementById('iaYtdContrib').value) || 0,
+    ytdMatchSeed:   parseFloat(document.getElementById('iaYtdMatch').value) || 0,
+    goal:         parseFloat(document.getElementById('iaGoal').value) || 0,
+    notes:        document.getElementById('iaNotes').value.trim(),
+  };
+  if (state.editInvestmentId) {
+    const a = state.investmentAccounts.find(x => x.id === state.editInvestmentId);
+    if (a) Object.assign(a, data);
+  } else {
+    data.id = genId();
+    state.investmentAccounts.push(data);
+    if (!state.selectedInvestmentId) state.selectedInvestmentId = data.id;
+  }
+  saveState(); closeInvestModal(); renderSavings();
+}
+
+function deleteInvestAcct(id) {
+  state.investmentAccounts = state.investmentAccounts.filter(a => a.id !== id);
+  if (state.selectedInvestmentId === id)
+    state.selectedInvestmentId = state.investmentAccounts[0]?.id || null;
+  saveState(); renderSavings();
+}
+
+function selectInvestAcct(id) {
+  state.selectedInvestmentId = id;
+  renderSavings();
+}
+
+// Projected investment balance: compound growth on current balance + monthly contributions
+function projectedInvestBalance(acct, years) {
+  if (!acct) return 0;
+  const r = (acct.annualReturn || 0) / 100;
+  const monthlyRate = r / 12;
+  const months = years * 12;
+  const fvBal  = acct.balance * Math.pow(1 + monthlyRate, months);
+  const monthlyContrib = (acct.contrib || 0) + monthlyEmployerMatch(acct);
+  const fvContrib = monthlyRate > 0
+    ? monthlyContrib * ((Math.pow(1+monthlyRate, months) - 1) / monthlyRate)
+    : monthlyContrib * months;
+  return fvBal + fvContrib;
+}
+
+function monthlyEmployerMatch(acct) {
+  if (!acct.matchPct || !acct.yourPct) return 0;
+  const monthlyIncome = getMonthlyIncome();
+  const matchDollars  = monthlyIncome * (Math.min(acct.yourPct, acct.matchPct) / 100);
+  return matchDollars;
+}
+
+function annualEmployerMatch(acct) { return monthlyEmployerMatch(acct) * 12; }
+
+function investTypeInfo(typeId) {
+  return INVEST_TYPES.find(t => t.id === typeId) || { id: typeId, label: typeId, icon: '💹' };
+}
+
+function totalInvestmentBalance() {
+  return state.investmentAccounts.reduce((s,a) => s + a.balance, 0);
+}
+
+function totalMonthlyInvestContrib() {
+  return state.investmentAccounts.reduce((s,a) => s + (a.contrib||0) + monthlyEmployerMatch(a), 0);
+}
+
+function investYtdContribs(curY) {
+  // seed amounts entered by user for this year before tracking
+  return state.investmentAccounts.reduce((s,a) => s + (a.ytdContribSeed||0) + (a.ytdMatchSeed||0), 0);
+}
+
 function renderSavings() {
   const el = document.getElementById('view-savings');
   if (!el) return;
@@ -3025,6 +3319,33 @@ function renderSavings() {
   const curBal = computedBalance(acct.id);
   const estMonthlyInterest = acct.apy > 0 ? curBal * acct.apy / 100 / 12 : 0;
 
+  // ── Investment account cards ──────────────────────────────────────────────
+  const totalInvested = totalInvestmentBalance();
+  const monthlyInvContrib = totalMonthlyInvestContrib();
+  const investCards = state.investmentAccounts.map(a => {
+    const ti = investTypeInfo(a.type);
+    const isActive = a.id === state.selectedInvestmentId;
+    const proj1yr  = projectedInvestBalance(a, 1);
+    const matchAnn = annualEmployerMatch(a);
+    const goalPct  = a.goal > 0 ? Math.min(100, Math.round((a.balance/a.goal)*100)) : 0;
+    const goalBar  = a.goal > 0 ? `
+      <div class="goal-bar-wrap">
+        <div class="goal-bar-labels"><span>Goal progress</span><span>${goalPct}% of ${fmt(a.goal)}</span></div>
+        <div class="goal-bar-track"><div class="goal-bar-fill" style="background:linear-gradient(90deg,#06b6d4,#22d3ee);width:${goalPct}%"></div></div>
+      </div>` : '';
+    return `<div class="invest-card${isActive?' active-acct':''}" onclick="selectInvestAcct('${a.id}')">
+      <div class="ic-type">${ti.icon} ${ti.label}</div>
+      <div class="ic-name">${escHtml(a.name)}</div>
+      <div class="ic-inst">${a.institution || 'No institution set'}</div>
+      <div class="ic-bal">${fmt(a.balance)}</div>
+      ${a.annualReturn ? `<div class="ic-meta">Est. ${a.annualReturn}% return &mdash; ~${fmt(proj1yr-a.balance)}/yr projected growth</div>` : ''}
+      ${a.contrib ? `<div class="ic-contrib">📥 ${fmt(a.contrib)}/mo${matchAnn>0?' + '+fmt(matchAnn/12)+'/mo employer match':''}` +
+        `${TAX_ADV_LIMITS[a.type] ? ' &middot; limit '+fmt(TAX_ADV_LIMITS[a.type])+'/yr' : ''}</div>` : ''}
+      ${a.balanceAsOf ? `<div class="ic-meta" style="font-size:11px;opacity:.55">As of ${a.balanceAsOf}</div>` : ''}
+      ${goalBar}
+    </div>`;
+  }).join('');
+
   // Account cards
   const acctCards = state.savingsAccounts.map(a => {
     const isActive = a.id === state.selectedSavingsId;
@@ -3054,7 +3375,7 @@ function renderSavings() {
     ${SC('YTD Deposits', fmt(ytdDep), (acct.ytdDepSeed ? 'incl. $' + acct.ytdDepSeed.toFixed(2) + ' pre-tracking' : curY + ' contributions'), '#4f46e5')}
     ${SC('YTD Withdrawals', fmt(ytdWith), curY + ' taken out', '#ef4444')}
     ${SC('YTD Interest', fmt(ytdInt), (acct.ytdIntSeed ? 'incl. $' + acct.ytdIntSeed.toFixed(2) + ' pre-tracking' : acct.apy ? acct.apy + '% APY' : 'earned'), '#d97706')}
-    ${SC('All Accounts', fmt(totalBalance), state.savingsAccounts.length + ' accounts total', '#7c3aed')}
+    ${SC('All Savings', fmt(totalBalance), state.savingsAccounts.length + ' savings accounts', '#7c3aed')}
     ${SC('Monthly Savings', fmt(totalContrib), 'monthly equivalent', '#0891b2')}
   </div>
   <div class="summary-grid" style="margin-bottom:20px">
@@ -3062,7 +3383,13 @@ function renderSavings() {
     ${SC('All Accts YTD Interest', fmt(allYtdInt), curY + ' interest earned', '#d97706')}
     ${SC('All Accts YTD Withdrawals', fmt(allYtdWith), curY + ' taken out', '#ef4444')}
     ${SC('All Accts YTD Net', fmt(allYtdDep + allYtdInt - allYtdWith), 'deposits + interest − withdrawals', allYtdDep + allYtdInt - allYtdWith >= 0 ? '#10b981' : '#ef4444')}
-  </div>`;
+  </div>
+  ${state.investmentAccounts.length > 0 ? `<div class="summary-grid" style="margin-bottom:20px">
+    ${SC('Total Invested', fmt(totalInvested), state.investmentAccounts.length + ' investment account' + (state.investmentAccounts.length!==1?'s':''), '#22d3ee')}
+    ${SC('Monthly Investing', fmt(monthlyInvContrib), 'contributions incl. employer match', '#06b6d4')}
+    ${SC('YTD Contributions', fmt(investYtdContribs(curY)), curY + ' invested (seeds + logged)', '#67e8f9')}
+    ${SC('Liquid + Invested', fmt(totalBalance + totalInvested), 'total assets tracked', '#a78bfa')}
+  </div>` : ''}`;
 
   // Growth chart — running balance per month this year
   const chartHTML = (() => {
@@ -3136,11 +3463,28 @@ function renderSavings() {
       <h3 style="font-size:18px;font-weight:700">Savings Accounts</h3>
       <div style="display:flex;gap:8px">
         <button class="btn-secondary btn-sm" onclick="openSavingsAccountModal('${acct.id}')">&#9998; Edit</button>
-        <button class="btn-secondary btn-sm" style="color:#ef4444" onclick="deleteSavingsAcct('${acct.id}')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="currentColor" style="vertical-align:middle;margin-top:-2px"><path d="M6 7l.8 12.1A1 1 0 007.8 20h8.4a1 1 0 001-.9L18 7H6zm4 2h1l.4 7h-1L10 9zm3 0h1l-.4 7h-1L13 9z"/><rect x="4" y="5" width="16" height="2" rx="1"/><rect x="9" y="2" width="6" height="2" rx="1"/><path d="M17.5 14a3.5 3.5 0 100 7 3.5 3.5 0 000-7zm-1 3.5l.8.8 1.7-1.7.7.7-2.4 2.4-1.5-1.5.7-.7z" fill="currentColor"/></svg> Delete</button>
-        <button class="btn-primary btn-sm" onclick="openSavingsAccountModal()">+ Add Account</button>
+        <button class="btn-secondary btn-sm" style="color:#ef4444" onclick="deleteSavingsAcct('${acct.id}')">${TRASH_BIN_SVG} Delete</button>
+        <button class="btn-primary btn-sm" onclick="openSavingsAccountModal()">+ Add Savings</button>
+        <button class="btn-primary btn-sm" style="background:linear-gradient(135deg,#0891b2,#22d3ee)" onclick="openInvestModal()">📈 Add Investment</button>
       </div>
     </div>
     <div class="savings-acct-grid">${acctCards}</div>
+    ${state.investmentAccounts.length > 0 ? `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;margin-top:8px;flex-wrap:wrap;gap:8px">
+      <h3 style="font-size:16px;font-weight:700;color:#22d3ee">📈 Investment Accounts</h3>
+      <div style="display:flex;gap:8px">
+        ${state.selectedInvestmentId ? `
+        <button class="btn-secondary btn-sm" onclick="openInvestModal('${state.selectedInvestmentId}')">&#9998; Edit</button>
+        <button class="btn-secondary btn-sm" style="color:#ef4444" onclick="deleteInvestAcct('${state.selectedInvestmentId}')">${TRASH_BIN_SVG} Delete</button>` : ''}
+        <button class="btn-primary btn-sm" style="background:linear-gradient(135deg,#0891b2,#22d3ee)" onclick="openInvestModal()">+ Add Investment</button>
+      </div>
+    </div>
+    <div class="savings-acct-grid">${investCards}</div>` : `
+    <div style="padding:16px;border:1px dashed rgba(34,211,238,.25);border-radius:14px;text-align:center;margin-bottom:16px;color:var(--muted)">
+      <div style="font-size:24px;margin-bottom:6px">📈</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">No investment accounts yet</div>
+      <button class="btn-primary btn-sm" style="background:linear-gradient(135deg,#0891b2,#22d3ee)" onclick="openInvestModal()">+ Add Investment Account</button>
+    </div>`}
     ${summaryCards}
     ${chartHTML}
     <div class="bill-list">
@@ -3152,6 +3496,592 @@ function renderSavings() {
     </div>`;
 }
 
+
+
+// ════════════════════════════════════════════════════
+//  FINANCIAL HEALTH
+// ════════════════════════════════════════════════════
+function renderHealth() {
+  const el = document.getElementById('view-health');
+  if (!el) return;
+
+  const curY = state.currentYear;
+  const now  = new Date();
+
+  // ── Core data pulls ──────────────────────────────────────────────────────
+  const monthlyIncome  = getMonthlyIncome();
+  const allBills       = state.bills.concat(getSavingsContribBills());
+  const monthlyBills   = allBills.filter(b => !b.isSavingsContrib).reduce((s,b) => {
+    const freq = b.frequency || 'monthly';
+    const mo = freq === 'yearly' ? b.amount/12 : freq === 'quarterly' ? b.amount/3 : b.amount;
+    return s + (isDueThisMonth(b) ? b.amount : 0);
+  }, 0);
+  const monthlyBillsEq = allBills.filter(b => !b.isSavingsContrib).reduce((s,b) => {
+    const freq = b.frequency || 'monthly';
+    return s + (freq === 'yearly' ? b.amount/12 : freq === 'quarterly' ? b.amount/3 : b.amount);
+  }, 0);
+  const monthlySavings = state.savingsAccounts.reduce((s,a) => {
+    const freq = a.contribFreq || 'monthly';
+    return s + (freq === 'weekly' ? (a.contrib||0)*52/12 : freq === 'biweekly' ? (a.contrib||0)*26/12 : freq === 'yearly' ? (a.contrib||0)/12 : (a.contrib||0));
+  }, 0);
+  const totalSavings   = state.savingsAccounts.reduce((s,a) => s + computedBalance(a.id), 0);
+  const avgSavAPY      = state.savingsAccounts.length ? state.savingsAccounts.reduce((s,a)=>s+(a.apy||0),0)/state.savingsAccounts.length : 0;
+
+  // Loan / debt data (must be declared before investment calculations reference it)
+  const loanBills = state.bills.filter(b => isLoanCategory(b.category) && b.payoffBalance > 0);
+  const totalDebt  = loanBills.reduce((s,b) => s + (computePayoffBalance(b) || b.payoffBalance), 0);
+  const totalMonthlyDebtPayments = loanBills.reduce((s,b) => s + b.amount, 0);
+  const weightedRate = loanBills.length ? loanBills.reduce((s,b) => {
+    const bal = computePayoffBalance(b) || b.payoffBalance;
+    return s + (b.interestRate||0) * bal;
+  }, 0) / (totalDebt || 1) : 0;
+  const totalAnnualInterest = loanBills.reduce((s,b) => {
+    const bal = computePayoffBalance(b) || b.payoffBalance;
+    return s + bal * (b.interestRate||0)/100;
+  }, 0);
+
+  // Investment data
+  const totalInvested        = totalInvestmentBalance();
+  const monthlyInvContrib    = totalMonthlyInvestContrib();
+
+  // Real estate equity from rental properties
+  const totalPropertyValue   = state.properties.reduce((s,p) => s + (p.marketValue||0), 0);
+  const totalPropertyDebt    = state.properties.reduce((s,p) => s + (p.mortgageBalance||0), 0);
+  const totalPropertyEquity  = totalPropertyValue - totalPropertyDebt;
+
+  const totalAssets          = totalSavings + totalInvested + totalPropertyValue;
+  const liquidPct            = totalAssets > 0 ? (totalSavings / totalAssets * 100) : 0;
+  const investedPct          = totalAssets > 0 ? (totalInvested / totalAssets * 100) : 0;
+  const realEstatePct        = totalAssets > 0 ? (totalPropertyValue / totalAssets * 100) : 0;
+
+  // 401k match analysis
+  const matchAccounts        = state.investmentAccounts.filter(a => (a.type==='401k'||a.type==='403b') && a.matchPct > 0);
+  const uncapturedMatchAnnual= matchAccounts.reduce((s,a) => {
+    const inc = getMonthlyIncome() * 12;
+    const maxMatchable = inc * (a.matchPct/100);
+    const yourAnn = (a.contrib||0) * 12;
+    const yourPctOfInc = inc > 0 ? (yourAnn/inc*100) : 0;
+    return s + (yourPctOfInc < a.matchPct ? maxMatchable - (inc*(yourPctOfInc/100)) : 0);
+  }, 0);
+
+  // Tax-advantaged space usage
+  const taxAdvAccounts = state.investmentAccounts.filter(a => TAX_ADV_LIMITS[a.type]);
+  const unusedTaxAdvSpace = taxAdvAccounts.reduce((s,a) => {
+    const limit = TAX_ADV_LIMITS[a.type] || 0;
+    const annualContrib = (a.contrib||0)*12 + (a.ytdContribSeed||0);
+    return s + Math.max(0, limit - annualContrib);
+  }, 0);
+
+  // Net worth = all assets − all debts (loans + mortgages)
+  const totalDebtForNW = loanBills.reduce((s,b) => s + (computePayoffBalance(b)||b.payoffBalance), 0)
+                       + totalPropertyDebt;
+  const netWorth = totalAssets - totalDebtForNW;
+
+  // Avg investment return
+  const avgInvReturn = state.investmentAccounts.length
+    ? state.investmentAccounts.reduce((s,a) => s+(a.annualReturn||0),0) / state.investmentAccounts.length : 0;
+
+  // Retirement readiness — 25x annual expenses (FIRE number)
+  const annualExpenses = monthlyBillsEq * 12;
+  const fireNumber = annualExpenses * 25;
+  const fireProgress = fireNumber > 0 ? Math.min(100, Math.round((totalAssets / fireNumber)*100)) : 0;
+  const fireYearsLeft = (() => {
+    const totalMonthlyWealthBuilding = monthlySavings + monthlyInvContrib;
+    const r = Math.max(avgInvReturn, avgSavAPY) / 100 / 12;
+    if (totalMonthlyWealthBuilding <= 0) return null;
+    if (r <= 0) return Math.ceil((fireNumber - totalAssets) / totalMonthlyWealthBuilding / 12);
+    const needed = fireNumber - totalAssets;
+    if (needed <= 0) return 0;
+    return Math.ceil(Math.log(1 + (needed * r / totalMonthlyWealthBuilding)) / Math.log(1+r) / 12);
+  })();
+
+  // Investment rate
+  const investmentRate = monthlyIncome > 0 ? (monthlyInvContrib / monthlyIncome * 100) : 0;
+  const wealthBuildingRate = monthlyIncome > 0 ? ((monthlySavings + monthlyInvContrib) / monthlyIncome * 100) : 0;
+
+  // Subscriptions
+  const subBills = state.bills.filter(b => b.category === 'subscriptions');
+  const monthlySubTotal = subBills.reduce((s,b) => s + b.amount, 0);
+
+  // Autopay bills
+  const autopayBills  = allBills.filter(b => b.payMethod === 'autopay' && !b.isSavingsContrib);
+  const autopayTotal  = autopayBills.reduce((s,b) => s + b.amount, 0);
+
+  // Housing costs
+  const housingBills  = state.bills.filter(b => b.category === 'housing');
+  const monthlyHousing = housingBills.reduce((s,b) => {
+    const freq = b.frequency || 'monthly';
+    return s + (freq === 'yearly' ? b.amount/12 : freq === 'quarterly' ? b.amount/3 : b.amount);
+  }, 0);
+
+  // Rental net cash flow (this year)
+  const rentalIncome = state.rentalPayments.filter(p => p.year === curY).length > 0
+    ? state.properties.reduce((s,p) => s + (p.rent||0), 0) : 0;
+  const rentalExpensesThisMonth = state.rentalExpenses.filter(e => {
+    const m = state.currentMonth, y = state.currentYear;
+    if (e.date) { const d = new Date(e.date+'T12:00:00'); return d.getMonth()===m && d.getFullYear()===y; }
+    return true;
+  }).reduce((s,e) => s + (e.amount||0), 0);
+  const rentalNetMonthly = rentalIncome - rentalExpensesThisMonth;
+
+  // Savings accounts with low APY
+  const lowApyAccounts = state.savingsAccounts.filter(a => (a.apy||0) < 3 && computedBalance(a.id) > 500);
+
+  // Bills with no account assigned
+  const noAccountBills = state.bills.filter(b => !b.accountId && !b.isSavingsContrib);
+
+  // Yearly bills in next 90 days
+  const in90 = new Date(); in90.setDate(in90.getDate() + 90);
+  const upcomingYearly = state.bills.filter(b => {
+    if (b.frequency !== 'yearly') return false;
+    const dueM = b.startMonth || 0;
+    const dueD = b.dueDay || 1;
+    const dueDate = new Date(curY, dueM, dueD);
+    if (dueDate < now) dueDate.setFullYear(curY + 1);
+    return dueDate <= in90;
+  });
+  const yearlyReserveNeeded = state.bills.filter(b => b.frequency === 'yearly')
+    .reduce((s,b) => s + b.amount, 0) / 12;
+
+  // Emergency fund coverage months
+  const emergencyMonths = monthlyBillsEq > 0 ? totalSavings / monthlyBillsEq : 0;
+
+  // ── Ratio calculations ────────────────────────────────────────────────────
+  const dti         = monthlyIncome > 0 ? (totalMonthlyDebtPayments / monthlyIncome) * 100 : 0;
+  const savingsRate = monthlyIncome > 0 ? (monthlySavings / monthlyIncome) * 100 : 0;
+  const housingRatio= monthlyIncome > 0 ? (monthlyHousing / monthlyIncome) * 100 : 0;
+  const billsRatio  = monthlyIncome > 0 ? (monthlyBillsEq / monthlyIncome) * 100 : 0;
+  const subRatio    = monthlyIncome > 0 ? (monthlySubTotal / monthlyIncome) * 100 : 0;
+
+  // 50/30/20 classification
+  const NEEDS_CATS   = ['housing','utilities','insurance','transportation','phone_internet','loans'];
+  const WANTS_CATS   = ['subscriptions','other'];
+  const needsTotal   = state.bills.filter(b=>NEEDS_CATS.includes(b.category)).reduce((s,b)=>s+b.amount,0);
+  const wantsTotal   = state.bills.filter(b=>WANTS_CATS.includes(b.category)).reduce((s,b)=>s+b.amount,0);
+  const savingsTotal = monthlySavings;
+  const needsPct     = monthlyIncome>0 ? Math.round(needsTotal/monthlyIncome*100) : 0;
+  const wantsPct     = monthlyIncome>0 ? Math.round(wantsTotal/monthlyIncome*100) : 0;
+  const savingsPct   = monthlyIncome>0 ? Math.round(savingsTotal/monthlyIncome*100) : 0;
+
+  // ── Overall Health Score (0–100) ─────────────────────────────────────────
+  let score = 100;
+  // Debt burden (-30 max)
+  if (dti > 50) score -= 30; else if (dti > 36) score -= 18; else if (dti > 20) score -= 8;
+  // Savings + investment rate (-25 max)
+  if (wealthBuildingRate < 5) score -= 25; else if (wealthBuildingRate < 10) score -= 15; else if (wealthBuildingRate < 20) score -= 5;
+  // Emergency fund (-20 max)
+  if (emergencyMonths < 1) score -= 20; else if (emergencyMonths < 3) score -= 12; else if (emergencyMonths < 6) score -= 5;
+  // Housing ratio (-15 max)
+  if (housingRatio > 40) score -= 15; else if (housingRatio > 30) score -= 8;
+  // Bills vs income (-10 max)
+  if (billsRatio > 90) score -= 10; else if (billsRatio > 70) score -= 5;
+  score = Math.max(0, Math.min(100, Math.round(score)));
+
+  const scoreColor = score >= 80 ? '#22c55e' : score >= 60 ? '#fbbf24' : score >= 40 ? '#f97316' : '#fb7185';
+  const scoreWord  = score >= 80 ? 'Excellent' : score >= 60 ? 'Good' : score >= 40 ? 'Fair' : 'Needs Work';
+
+  // ── Helper renderers ─────────────────────────────────────────────────────
+  const pct = (v, max) => Math.min(100, Math.round((v/max)*100));
+  const bar = (fill, color) => `<div class="hm-bar"><div class="hm-bar-fill" style="width:${fill}%;background:${color}"></div></div>`;
+  const trafficColor = (val, good, warn) => val <= good ? '#22c55e' : val <= warn ? '#fbbf24' : '#fb7185';
+  const invTrafficColor = (val, good, warn) => val >= good ? '#22c55e' : val >= warn ? '#fbbf24' : '#fb7185';
+
+  function HM(label, value, sub, barFill, barColor) {
+    return `<div class="health-metric">
+      <div class="hm-label">${label}</div>
+      <div class="hm-value">${value}</div>
+      <div class="hm-sub">${sub}</div>
+      ${barFill !== undefined ? bar(barFill, barColor) : ''}
+    </div>`;
+  }
+
+  function ALERT(type, icon, title, body) {
+    return `<div class="health-alert ${type}">
+      <div class="ha-icon">${icon}</div>
+      <div><div class="ha-title">${title}</div><div class="ha-body">${body}</div></div>
+    </div>`;
+  }
+
+  // ── Score Ring ───────────────────────────────────────────────────────────
+  const R = 60, C = 2*Math.PI*R;
+  const dash = (score/100)*C;
+  const scoreRing = `
+    <div style="display:flex;align-items:center;gap:24px;padding:20px;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:18px;margin-bottom:20px;flex-wrap:wrap">
+      <div class="health-score-ring">
+        <svg width="140" height="140" viewBox="0 0 140 140">
+          <circle cx="70" cy="70" r="${R}" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="12"/>
+          <circle cx="70" cy="70" r="${R}" fill="none" stroke="${scoreColor}" stroke-width="12"
+            stroke-dasharray="${dash.toFixed(1)} ${C.toFixed(1)}" stroke-linecap="round"/>
+        </svg>
+        <div class="health-score-label">
+          <div class="health-score-num" style="color:${scoreColor}">${score}</div>
+          <div class="health-score-word" style="color:${scoreColor}">${scoreWord}</div>
+        </div>
+      </div>
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:22px;font-weight:900;color:var(--text);margin-bottom:4px">Financial Health Score</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.5">Based on your debt load, savings rate, emergency fund coverage, and housing costs.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          ${[
+            ['DTI', dti.toFixed(0)+'%', trafficColor(dti,20,36)],
+            ['Savings Rate', savingsRate.toFixed(0)+'%', invTrafficColor(savingsRate,20,10)],
+            ['Emergency Fund', emergencyMonths.toFixed(1)+' mo', invTrafficColor(emergencyMonths,6,3)],
+            ['Housing Ratio', housingRatio.toFixed(0)+'%', trafficColor(housingRatio,28,35)],
+          ].map(([l,v,c]) => `<div style="padding:8px 12px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--border)">
+            <div style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">${l}</div>
+            <div style="font-size:16px;font-weight:900;color:${c}">${v}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+
+  // ── Net Worth Banner ─────────────────────────────────────────────────────
+  const netWorthBanner = `
+    <div style="display:flex;gap:16px;align-items:center;padding:16px 20px;background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(34,211,238,.08));border:1px solid rgba(124,58,237,.25);border-radius:18px;margin-bottom:20px;flex-wrap:wrap">
+      <div style="flex:1;min-width:160px">
+        <div style="font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.7px;color:var(--muted)">Estimated Net Worth</div>
+        <div style="font-size:36px;font-weight:900;color:${netWorth>=0?'#a78bfa':'#fb7185'};line-height:1.1">${fmt(netWorth)}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">Assets ${fmt(totalAssets)} &minus; Debt ${fmt(totalDebtForNW)}</div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        ${[
+          ['💧 Liquid', fmt(totalSavings), '#10b981'],
+          ['📈 Invested', fmt(totalInvested), '#22d3ee'],
+          ...(totalPropertyValue > 0 ? [['🏠 Real Estate', fmt(totalPropertyValue), '#f59e0b']] : []),
+          ...(totalPropertyEquity > 0 ? [['🏠 Equity', fmt(totalPropertyEquity), '#fbbf24']] : []),
+          ['💳 Total Debt', fmt(totalDebtForNW), '#fb7185'],
+        ].map(([l,v,c])=>`<div style="text-align:center;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--border)">
+          <div style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">${l}</div>
+          <div style="font-size:17px;font-weight:900;color:${c}">${v}</div>
+        </div>`).join('')}
+      </div>
+    </div>
+    ${totalPropertyValue > 0 ? `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+      ${state.properties.filter(p=>p.marketValue>0).map(p => {
+        const equity = (p.marketValue||0) - (p.mortgageBalance||0);
+        const ltvPct = p.marketValue > 0 ? Math.round((p.mortgageBalance||0)/p.marketValue*100) : 0;
+        return `<div style="flex:1;min-width:200px;padding:12px 16px;border-radius:14px;background:linear-gradient(180deg,rgba(245,158,11,.08),rgba(245,158,11,.03));border:1px solid rgba(245,158,11,.2)">
+          <div style="font-size:11px;font-weight:900;color:#fbbf24;text-transform:uppercase;letter-spacing:.5px">🏠 ${escHtml(p.name)}</div>
+          <div style="display:flex;gap:16px;margin-top:6px;flex-wrap:wrap">
+            <div><div style="font-size:10px;color:var(--muted)">Market Value</div><div style="font-size:15px;font-weight:900;color:var(--text)">${fmt(p.marketValue)}</div></div>
+            ${p.mortgageBalance ? `<div><div style="font-size:10px;color:var(--muted)">Mortgage</div><div style="font-size:15px;font-weight:900;color:#fb7185">${fmt(p.mortgageBalance)}</div></div>` : ''}
+            <div><div style="font-size:10px;color:var(--muted)">Equity</div><div style="font-size:15px;font-weight:900;color:#22c55e">${fmt(equity)}</div></div>
+            ${p.mortgageBalance ? `<div><div style="font-size:10px;color:var(--muted)">LTV</div><div style="font-size:15px;font-weight:900;color:${ltvPct>80?'#fb7185':ltvPct>60?'#fbbf24':'#22c55e'}">${ltvPct}%</div></div>` : ''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>` : (state.properties.length > 0 ? `<div style="padding:10px 14px;border-radius:12px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);margin-bottom:16px;font-size:12px;color:#fbbf24">
+      🏠 You have ${state.properties.length} rental propert${state.properties.length!==1?'ies':'y'} — add an <strong>Est. Market Value</strong> in the Rental tab to include them in your net worth.
+    </div>` : '')}`;
+
+  // ── Key Ratios ───────────────────────────────────────────────────────────
+  const ratioGrid = `
+    <div class="health-metric-grid">
+      ${HM('Debt-to-Income', dti.toFixed(1)+'%', dti<=20?'✅ Excellent':dti<=36?'✅ Healthy':dti<=50?'⚠️ High':'🚨 Critical', pct(dti,60), trafficColor(dti,20,36))}
+      ${HM('Wealth-Building Rate', wealthBuildingRate.toFixed(1)+'%', wealthBuildingRate>=20?'✅ Excellent — 20%+ hit':wealthBuildingRate>=10?'👍 On track':wealthBuildingRate>=5?'⚠️ Low':'🚨 Very low', Math.min(100,wealthBuildingRate*5), invTrafficColor(wealthBuildingRate,20,10))}
+      ${HM('Savings Rate', savingsRate.toFixed(1)+'%', 'liquid savings only &mdash; '+fmt(monthlySavings)+'/mo', Math.min(100,savingsRate*5), invTrafficColor(savingsRate,15,8))}
+      ${HM('Investment Rate', investmentRate.toFixed(1)+'%', fmt(monthlyInvContrib)+'/mo incl. match &mdash; '+ (state.investmentAccounts.length||0)+' accounts', Math.min(100,investmentRate*5), invTrafficColor(investmentRate,10,5))}
+      ${HM('Housing Ratio', housingRatio.toFixed(1)+'%', housingRatio<=28?'✅ Comfortable':housingRatio<=35?'✅ Acceptable':housingRatio<=40?'⚠️ High':'🚨 Very high', pct(housingRatio,50), trafficColor(housingRatio,28,35))}
+      ${HM('Emergency Fund', emergencyMonths.toFixed(1)+' months', emergencyMonths>=6?'✅ Fully funded':emergencyMonths>=3?'👍 Partial — target 6 mo':emergencyMonths>=1?'⚠️ Low':'🚨 None', pct(emergencyMonths,6), invTrafficColor(emergencyMonths,6,3))}
+      ${HM('Asset Allocation', liquidPct.toFixed(0)+'% liquid', investedPct.toFixed(0)+'% invested' + (realEstatePct>0?' · '+realEstatePct.toFixed(0)+'% real estate':'') + ' — total '+fmt(totalAssets), Math.round(investedPct+realEstatePct), '#22d3ee')}
+      ${HM('Subscription Cost', fmt(monthlySubTotal)+'/mo', subRatio.toFixed(1)+'% of income &middot; '+subBills.length+' services', Math.min(100,subRatio*5), trafficColor(subRatio,5,10))}
+      ${HM('Monthly Surplus', fmt(Math.max(0,monthlyIncome-monthlyBillsEq-monthlySavings-monthlyInvContrib)), monthlyIncome>0?(((monthlyIncome-monthlyBillsEq-monthlySavings-monthlyInvContrib)/monthlyIncome*100).toFixed(0)+'% after bills, savings & investing'):'Add income to calculate', undefined)}
+      ${HM('Bills / Income', billsRatio.toFixed(1)+'%', billsRatio<=50?'✅ Strong surplus':billsRatio<=70?'👍 Manageable':billsRatio<=90?'⚠️ Tight':'🚨 Over budget', pct(billsRatio,100), trafficColor(billsRatio,50,75))}
+    </div>`;
+
+  // ── FIRE / Retirement Progress ───────────────────────────────────────────
+  const fireSection = `
+    <div style="padding:18px 20px;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:18px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:14px;font-weight:900;color:var(--text)">🔥 FIRE Number — Financial Independence</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px">25× annual expenses (${fmt(annualExpenses)}) = <strong style="color:#a78bfa">${fmt(fireNumber)}</strong></div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:22px;font-weight:900;color:#a78bfa">${fireProgress}%</div>
+          <div style="font-size:11px;color:var(--muted)">${fireYearsLeft===0?'🎉 Already there!':fireYearsLeft!=null?'~'+fireYearsLeft+' years at current pace':'Add contributions'}</div>
+        </div>
+      </div>
+      <div style="height:8px;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden;margin-bottom:8px">
+        <div style="height:100%;width:${fireProgress}%;background:linear-gradient(90deg,#7c3aed,#a78bfa);border-radius:4px;transition:width .6s"></div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)">
+        <span>Current assets: <strong style="color:var(--text)">${fmt(totalAssets)}</strong></span>
+        <span>Still needed: <strong style="color:var(--text)">${fmt(Math.max(0,fireNumber-totalAssets))}</strong></span>
+        <span>Monthly wealth-building: <strong style="color:var(--text)">${fmt(monthlySavings+monthlyInvContrib)}</strong></span>
+      </div>
+    </div>`;
+
+  // ── Tax-Advantaged Usage ─────────────────────────────────────────────────
+  const taxAdvSection = taxAdvAccounts.length > 0 ? `
+    <div style="padding:16px;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:18px">
+      ${taxAdvAccounts.map(a => {
+        const limit = TAX_ADV_LIMITS[a.type] || 0;
+        const annualContrib = (a.contrib||0)*12;
+        const used = Math.min(annualContrib, limit);
+        const usedPct = Math.round(used/limit*100);
+        const remaining = Math.max(0, limit - annualContrib);
+        const statusColor = usedPct >= 90 ? '#22c55e' : usedPct >= 50 ? '#fbbf24' : '#fb7185';
+        return `<div style="margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+            <span style="font-weight:900;color:var(--text)">${investTypeInfo(a.type).icon} ${escHtml(a.name)} <span style="color:var(--muted);font-weight:400">${investTypeInfo(a.type).label}</span></span>
+            <span style="color:${statusColor};font-weight:900">${fmt(used)} / ${fmt(limit)} limit (${usedPct}%)</span>
+          </div>
+          <div style="height:6px;border-radius:3px;background:rgba(255,255,255,.06);overflow:hidden">
+            <div style="height:100%;width:${usedPct}%;background:${statusColor};border-radius:3px;transition:width .5s"></div>
+          </div>
+          ${remaining>0?`<div style="font-size:11px;color:var(--muted);margin-top:3px">${fmt(remaining)} of tax-advantaged space unused this year</div>`:''}
+          ${a.matchPct ? `<div style="font-size:11px;color:#67e8f9;margin-top:2px">Employer matches up to ${a.matchPct}% — annual match value ~${fmt(annualEmployerMatch(a))}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
+  // ── Investment Projections ───────────────────────────────────────────────
+  function projectAllInvestments(years) {
+    return state.investmentAccounts.reduce((s,a) => s + projectedInvestBalance(a, years), 0);
+  }
+
+  // ── 50/30/20 Breakdown ───────────────────────────────────────────────────
+  const thirtyPie = (() => {
+    const total = needsTotal + wantsTotal + savingsTotal || 1;
+    const segments = [
+      { label:'Needs', val:needsTotal, target:50, color:'#6366f1' },
+      { label:'Wants', val:wantsTotal, target:30, color:'#ec4899' },
+      { label:'Savings', val:savingsTotal, target:20, color:'#22c55e' },
+    ];
+    return `<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;padding:16px;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:18px">
+      <div style="flex:1;min-width:200px">
+        ${segments.map(s => {
+          const actual = monthlyIncome>0 ? Math.round(s.val/monthlyIncome*100) : 0;
+          const barW = Math.min(100, Math.round(s.val/total*100*2));
+          const status = s.label==='Savings' ? (actual>=s.target?'✅':'⚠️') : (actual<=s.target?'✅':'⚠️');
+          return `<div style="margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+              <span style="font-weight:900;color:var(--text)">${s.label} <span style="color:var(--muted);font-weight:400">target ${s.target}%</span></span>
+              <span style="font-weight:900;color:${s.color}">${actual}% &mdash; ${fmt(s.val)}/mo ${status}</span>
+            </div>
+            <div style="height:8px;border-radius:4px;background:rgba(255,255,255,.06);overflow:hidden">
+              <div style="height:100%;width:${actual*2}%;max-width:100%;background:${s.color};border-radius:4px;transition:width .5s"></div>
+            </div>
+          </div>`;
+        }).join('')}
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Note: uncategorized bills count toward Needs by default.</div>
+      </div>
+    </div>`;
+  })();
+
+  // ── Debt Snapshot ────────────────────────────────────────────────────────
+  const debtRows = loanBills.length ? loanBills
+    .map(b => {
+      const bal = computePayoffBalance(b) || b.payoffBalance;
+      const mo  = payoffMonths(bal, b.amount, b.interestRate||0);
+      const dt  = mo != null ? (() => { const d=new Date(); d.setMonth(d.getMonth()+mo); return d.toLocaleDateString('en-US',{month:'short',year:'numeric'}); })() : '—';
+      const annInt = bal * (b.interestRate||0)/100;
+      return `<div class="payoff-row">
+        <div style="font-size:18px">${billIcon(b)}</div>
+        <div class="pr-name">${escHtml(b.name)}<div style="font-size:11px;color:var(--muted)">${(b.interestRate||0).toFixed(2)}% APR &middot; ${fmt(b.amount)}/mo</div></div>
+        <div style="text-align:right"><div class="pr-bal">${fmt(bal)}</div><div class="pr-date">Payoff ~${dt} &middot; $${Math.round(annInt).toLocaleString()}/yr interest</div></div>
+      </div>`;
+    }).join('') : '<p class="empty">No loans with payoff balances entered. Edit a Loans &amp; Debt bill to add payoff tracking.</p>';
+
+  const highestRateLoan = loanBills.length ? loanBills.reduce((a,b) => (b.interestRate||0)>(a.interestRate||0)?b:a, loanBills[0]) : null;
+
+  // ── Hidden Drains / Alerts ───────────────────────────────────────────────
+  const alerts = [];
+
+  if (dti > 36) alerts.push(ALERT('danger','💳','High Debt Load',
+    `Your debt-to-income ratio is ${dti.toFixed(0)}%. Lenders prefer under 36%. Paying an extra ${fmt(Math.round(totalMonthlyDebtPayments*0.1))} per month could accelerate payoff significantly.`));
+
+  if (emergencyMonths < 3) alerts.push(ALERT('danger','🚨','Thin Emergency Fund',
+    `You have ${emergencyMonths.toFixed(1)} months of expenses covered. Target is 3–6 months (${fmt(monthlyBillsEq*3)}–${fmt(monthlyBillsEq*6)}). Consider directing surplus here first.`));
+
+  if (emergencyMonths >= 3 && emergencyMonths < 6) alerts.push(ALERT('warn','⚠️','Emergency Fund Partially Funded',
+    `${emergencyMonths.toFixed(1)} of 6 months covered. At your current savings rate you'll reach full coverage in ~${Math.ceil((monthlyBillsEq*6-totalSavings)/monthlySavings)} months.`));
+
+  if (savingsRate < 10 && monthlyIncome > 0) alerts.push(ALERT('warn','💸','Low Savings Rate',
+    `You're saving ${savingsRate.toFixed(1)}% of income. The 20% target would be ${fmt(monthlyIncome*0.20)}/mo. Even getting to 15% would add ${fmt((monthlyIncome*0.15-monthlySavings)*12)}/year.`));
+
+  if (monthlySubTotal > 100) alerts.push(ALERT('warn','📺','Subscription Creep',
+    `${subBills.length} subscriptions totaling ${fmt(monthlySubTotal)}/mo (${fmt(monthlySubTotal*12)}/yr). Cost per day: $${(monthlySubTotal/30).toFixed(2)}. Worth reviewing annually.`));
+
+  if (lowApyAccounts.length > 0) alerts.push(ALERT('warn','🏦','Idle Savings — Low APY',
+    `${lowApyAccounts.map(a=>`${a.name} (${a.apy||0}%)`).join(', ')} ${lowApyAccounts.length===1?'has':'have'} a low APY. Moving ${fmt(lowApyAccounts.reduce((s,a)=>s+computedBalance(a.id),0))} to a 4.5% HYSA would earn ~${fmt(lowApyAccounts.reduce((s,a)=>s+computedBalance(a.id),0)*0.045/12)}/mo extra.`));
+
+  if (highestRateLoan && avgSavAPY > 0 && highestRateLoan.interestRate > avgSavAPY) alerts.push(ALERT('warn','⚖️','Debt Rate Beats Savings APY',
+    `Your ${highestRateLoan.name} costs ${highestRateLoan.interestRate.toFixed(2)}% but your savings earn avg ${avgSavAPY.toFixed(2)}% APY. Every extra dollar on that loan saves more than it earns in savings.`));
+
+  if (noAccountBills.length > 0) alerts.push(ALERT('info','👻','Bills Without Accounts',
+    `${noAccountBills.length} bill${noAccountBills.length!==1?'s':''} (${noAccountBills.map(b=>b.name).join(', ')}) have no "Paid From" account assigned — they're invisible in cash flow tracking.`));
+
+  if (upcomingYearly.length > 0) alerts.push(ALERT('info','📅','Annual Bill Ambush',
+    `${upcomingYearly.map(b=>`${b.name} (${fmt(b.amount)})`).join(', ')} due in the next 90 days. Reserve needed: ${fmt(yearlyReserveNeeded)}/mo to spread all annual bills evenly.`));
+
+  if (autopayBills.length > 0) alerts.push(ALERT('info','🤖','Autopay Blindness Check',
+    `${fmt(autopayTotal)}/mo (${autopayBills.length} bills) on autopay. These can quietly increase. Last chance to review: ${autopayBills.slice(0,4).map(b=>b.name).join(', ')}${autopayBills.length>4?' + '+(autopayBills.length-4)+' more':''}.`));
+
+  if (housingRatio > 35) alerts.push(ALERT('warn','🏠','High Housing Cost Ratio',
+    `Housing is ${housingRatio.toFixed(0)}% of your income. The recommended ceiling is 28–30%. Reducing by even $${Math.round(monthlyHousing*0.05).toLocaleString()}/mo would reclaim ${fmt(monthlyHousing*0.05*12)}/year.`));
+
+  if (state.properties.length > 0) {
+    const propCashFlow = state.properties.reduce((s,p) => s + (p.rent||0), 0) - rentalExpensesThisMonth;
+    if (propCashFlow < 0) alerts.push(ALERT('danger','🏘️','Rental Property Cash Flow Negative',
+      `Your rental properties are net negative this month by ${fmt(Math.abs(propCashFlow))}. Expenses are outpacing rent collected.`));
+    else if (propCashFlow > 0) alerts.push(ALERT('good','🏘️','Rental Cash Flow Positive',
+      `Rental properties are generating ${fmt(propCashFlow)}/mo net this month after expenses.`));
+  }
+
+  if (alerts.length === 0) alerts.push(ALERT('good','🎉','Finances Looking Solid','No major issues detected. Keep it up!'));
+
+  // Investment-specific alerts
+  if (uncapturedMatchAnnual > 50) alerts.unshift(ALERT('danger','🏢','Free Money Left on the Table',
+    `You're not contributing enough to capture your full employer 401k match. That's ~${fmt(uncapturedMatchAnnual)}/yr in free compensation going unclaimed. Increase your contribution to capture it.`));
+
+  if (unusedTaxAdvSpace > 1000 && taxAdvAccounts.length > 0) alerts.push(ALERT('info','🏛️','Unused Tax-Advantaged Space',
+    `You have ~${fmt(unusedTaxAdvSpace)} of IRS-allowed tax-advantaged contribution room remaining this year across your ${taxAdvAccounts.map(a=>investTypeInfo(a.type).label).join(', ')} accounts. Using it reduces your taxable income.`));
+
+  if (emergencyMonths > 12 && totalInvested === 0) alerts.push(ALERT('warn','💤','Excess Cash May Be Idle',
+    `You have ${emergencyMonths.toFixed(0)} months of expenses in savings. Most advisors suggest keeping 3–6 months liquid and investing the rest. Consider opening a brokerage or IRA for the excess.`));
+
+  if (state.investmentAccounts.length === 0 && monthlyIncome > 0) alerts.push(ALERT('info','📈','No Investment Accounts Tracked',
+    `Add your 401k, IRA, or brokerage accounts to unlock net worth, FIRE progress, and retirement readiness metrics.`));
+
+  if (highestRateLoan && avgInvReturn > 0 && avgInvReturn > highestRateLoan.interestRate) alerts.push(ALERT('info','📊','Investing May Beat Extra Debt Payments',
+    `Your estimated investment return (${avgInvReturn.toFixed(1)}%) exceeds your highest debt rate (${highestRateLoan.interestRate.toFixed(1)}%). Mathematically, investing the extra dollar may build more wealth than accelerating payoff.`));
+
+  // ── Projections ──────────────────────────────────────────────────────────
+  const annualSavings = monthlySavings * 12;
+  const avgAPY = avgSavAPY / 100;
+  function projectSavings(years) {
+    const fvBalance  = totalSavings * Math.pow(1 + avgAPY, years);
+    const fvContribs = avgAPY > 0
+      ? annualSavings * ((Math.pow(1+avgAPY,years)-1)/avgAPY)
+      : annualSavings * years;
+    return fvBalance + fvContribs;
+  }
+  function projectDebt(years) {
+    let bal = totalDebt;
+    const r = weightedRate/100/12;
+    const pmt = totalMonthlyDebtPayments;
+    for (let i=0; i<years*12 && bal>0; i++) { bal = bal*(1+r) - pmt; }
+    return Math.max(0, bal);
+  }
+
+  const projGrid = [1,3,5,10].map(yr => {
+    const savProj  = projectSavings(yr);
+    const invProj  = projectAllInvestments(yr);
+    const debtProj = projectDebt(yr);
+    const netProj  = savProj + invProj - debtProj;
+    return `<div class="proj-card">
+      <div class="pc-year">${yr} Year${yr>1?'s':''} — ${new Date().getFullYear()+yr}</div>
+      <div class="pc-val">${fmt(netProj)}</div>
+      <div class="pc-sub">
+        💧 ${fmt(savProj)}<br>
+        📈 ${fmt(invProj)}<br>
+        ${debtProj>0?'💳 −'+fmt(debtProj):'<span style="color:#22c55e">Debt free 🎉</span>'}
+      </div>
+    </div>`;
+  }).join('');
+
+  // "What if" extra payment on highest-rate debt
+  const whatIfHTML = highestRateLoan ? (() => {
+    const bal = computePayoffBalance(highestRateLoan) || highestRateLoan.payoffBalance;
+    const extras = [50,100,200,500];
+    const rows = extras.map(extra => {
+      const newPmt = highestRateLoan.amount + extra;
+      const moNow  = payoffMonths(bal, highestRateLoan.amount, highestRateLoan.interestRate||0);
+      const moNew  = payoffMonths(bal, newPmt, highestRateLoan.interestRate||0);
+      const r = (highestRateLoan.interestRate||0)/100/12;
+      const intNow = moNow!=null ? (moNow*highestRateLoan.amount - bal) : null;
+      const intNew = moNew!=null ? (moNew*newPmt - bal) : null;
+      const saved  = intNow!=null && intNew!=null ? (intNow-intNew) : null;
+      const moSaved= moNow!=null && moNew!=null ? (moNow-moNew) : null;
+      return `<div style="display:flex;align-items:center;gap:12px;padding:9px 14px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.03);margin-bottom:6px;flex-wrap:wrap">
+        <div style="font-size:13px;font-weight:900;color:var(--accent2);min-width:80px">+${fmt(extra)}/mo</div>
+        <div style="flex:1;font-size:12px;color:var(--muted)">${moSaved!=null?'Save '+moSaved+' payments':'—'}${saved!=null?' &middot; '+fmt(saved)+' less interest':''}</div>
+        <div style="font-size:12px;font-weight:900;color:var(--good)">${moNew!=null?'Payoff in '+Math.ceil(moNew/12)+' yr '+((moNew%12)||'')+' mo':'—'}</div>
+      </div>`;
+    }).join('');
+    return `<div style="padding:16px;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:18px;margin-top:12px">
+      <div style="font-size:14px;font-weight:900;color:var(--text);margin-bottom:4px">💡 Extra Payment Calculator — ${escHtml(highestRateLoan.name)}</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Current payment ${fmt(highestRateLoan.amount)}/mo at ${highestRateLoan.interestRate||0}% APR. What if you paid more?</div>
+      ${rows}
+    </div>`;
+  })() : '';
+
+  // ── Category Breakdown Bar Chart ─────────────────────────────────────────
+  const catTotals = getCats().map(c => ({
+    ...c, total: state.bills.filter(b=>b.category===c.id).reduce((s,b)=>s+b.amount,0)
+  })).filter(c=>c.total>0).sort((a,b)=>b.total-a.total);
+  const maxCat = catTotals[0]?.total || 1;
+  const catBars = catTotals.map(c => `
+    <div class="sub-bar-wrap">
+      <div class="sub-bar-val">${fmt(c.total)}</div>
+      <div class="sub-bar-col"><div class="sub-bar" style="height:${Math.round(c.total/maxCat*100)}%;background:${c.color}88;border:1px solid ${c.color}66"></div></div>
+      <div class="sub-bar-label">${c.icon||''} ${c.label}</div>
+    </div>`).join('');
+
+  // ── Assemble ─────────────────────────────────────────────────────────────
+  el.innerHTML = `
+    ${netWorthBanner}
+    ${scoreRing}
+
+    <div class="health-section">
+      <div class="health-section-title">Key Ratios</div>
+      ${ratioGrid}
+    </div>
+
+    <div class="health-section">
+      <div class="health-section-title">🔥 Financial Independence Progress</div>
+      ${fireSection}
+    </div>
+
+    ${taxAdvAccounts.length > 0 ? `<div class="health-section">
+      <div class="health-section-title">🏛️ Tax-Advantaged Account Usage</div>
+      ${taxAdvSection}
+    </div>` : ''}
+
+    <div class="health-section">
+      <div class="health-section-title">50 / 30 / 20 Budget Rule</div>
+      ${thirtyPie}
+    </div>
+
+    <div class="health-section">
+      <div class="health-section-title">Spend by Category</div>
+      <div style="padding:16px;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:18px">
+        <div class="sub-chart">${catBars}</div>
+      </div>
+    </div>
+
+    <div class="health-section">
+      <div class="health-section-title">Debt Snapshot</div>
+      <div style="padding:16px 16px 10px;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--border);border-radius:18px">
+        ${loanBills.length ? `<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px">
+          ${HM('Total Debt',fmt(totalDebt),'across '+loanBills.length+' loan'+(loanBills.length!==1?'s':''),undefined)}
+          ${HM('Avg Interest Rate',weightedRate.toFixed(2)+'%','weighted by balance',undefined)}
+          ${HM('Annual Interest Cost',fmt(totalAnnualInterest),'dollars lost to interest/yr',undefined)}
+          ${HM('Monthly Payments',fmt(totalMonthlyDebtPayments),'total debt service',undefined)}
+        </div>` : ''}
+        ${debtRows}
+      </div>
+      ${whatIfHTML}
+    </div>
+
+    <div class="health-section">
+      <div class="health-section-title">Hidden Drains &amp; Alerts</div>
+      ${alerts.join('')}
+    </div>
+
+    <div class="health-section">
+      <div class="health-section-title">Projections — Net Worth at Current Pace</div>
+      <div class="health-projection-grid" style="margin-bottom:12px">${projGrid}</div>
+      <div style="font-size:11px;color:var(--muted);padding:0 4px">
+        💧 Savings at ${avgSavAPY.toFixed(2)}% avg APY &nbsp;|&nbsp;
+        📈 Investments at ${avgInvReturn.toFixed(1)}% avg return &nbsp;|&nbsp;
+        ${fmt(monthlySavings+monthlyInvContrib)}/mo total wealth-building.
+        Does not account for inflation, income changes, or market volatility.
+      </div>
+    </div>`;
+}
 
 
 // ════════════════════════════════════════════════════
@@ -3329,7 +4259,7 @@ async function syncPull() {
 
     const nav = { currentMonth: state.currentMonth, currentYear: state.currentYear,
       view: 'dashboard', filterCat: 'all', editId: null, editIncomeId: null,
-      editPropertyId: null, editExpenseId: null, editSavingsId: null, editSavingsTxnId: null };
+      editPropertyId: null, editExpenseId: null, editSavingsId: null, editSavingsTxnId: null, editInvestmentId: null };
     Object.assign(state, data, nav);
     saveState();
     render();
@@ -3418,7 +4348,7 @@ async function syncOnLoad() {
     if (data && data.bills) {
       const nav = { currentMonth: state.currentMonth, currentYear: state.currentYear,
         view: 'dashboard', filterCat: 'all', editId: null, editIncomeId: null,
-        editPropertyId: null, editExpenseId: null, editSavingsId: null, editSavingsTxnId: null };
+        editPropertyId: null, editExpenseId: null, editSavingsId: null, editSavingsTxnId: null, editInvestmentId: null };
       Object.assign(state, data, nav);
       saveState();
       render();
