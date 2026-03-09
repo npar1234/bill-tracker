@@ -405,12 +405,18 @@
     .sidebar-toggle { display: flex; align-items: center; justify-content: center; }
     .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(6px); z-index: 99; }
     .sidebar-overlay.open { display: block; }
-    .topbar { padding: 0 16px; }
+    .topbar { padding: 0 12px; }
+    .topbar-title { font-size: 15px; }
+    .topbar-actions .hide-mobile { display: none !important; }
     .main { padding: 16px 14px 80px; }
     .summary-grid { grid-template-columns: repeat(2, 1fr); }
     .cal-cell { min-height: 60px; padding: 4px; }
     .cal-pip { font-size: 9px; padding: 1px 4px; }
     .bottom-nav { display: flex !important; }
+    html, body { overflow-x: hidden; }
+    .two-col { grid-template-columns: 1fr !important; }
+    .panel { overflow-x: auto; }
+    .form-row { flex-direction: column !important; }
   }
 
   /* ── Mobile bottom nav ── */
@@ -896,12 +902,12 @@
           <div class="notif-list" id="notifList"></div>
         </div>
       </div>
-      <button class="btn-icon" onclick="openWhatIf()" title="What-If Scenario Builder" style="font-size:15px">🔮</button>
-      <button class="btn-icon" onclick="openPartnerModal()" title="Partner/Spouse Mode" style="font-size:15px">👥</button>
+      <button class="btn-icon hide-mobile" onclick="openWhatIf()" title="What-If Scenario Builder" style="font-size:15px">🔮</button>
+      <button class="btn-icon hide-mobile" onclick="openPartnerModal()" title="Partner/Spouse Mode" style="font-size:15px">👥</button>
       <button class="btn-icon" onclick="toggleTheme()" id="themeBtn" title="Toggle dark/light mode" style="font-size:16px">🌙</button>
-      <button class="btn-icon" onclick="exportData()" title="Export JSON backup" style="font-size:15px">⬇️</button>
-      <button class="btn-icon" onclick="exportCSV()" title="Export CSV (bills, payments, income, savings)" style="font-size:13px;font-weight:900;letter-spacing:-.3px">CSV</button>
-      <button class="btn-icon" onclick="document.getElementById('importFileInput').click()" title="Import backup" style="font-size:15px">⬆️</button>
+      <button class="btn-icon hide-mobile" onclick="exportData()" title="Export JSON backup" style="font-size:15px">⬇️</button>
+      <button class="btn-icon hide-mobile" onclick="exportCSV()" title="Export CSV (bills, payments, income, savings)" style="font-size:13px;font-weight:900;letter-spacing:-.3px">CSV</button>
+      <button class="btn-icon hide-mobile" onclick="document.getElementById('importFileInput').click()" title="Import backup" style="font-size:15px">⬆️</button>
       <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="importData(event)">
       <button class="btn-icon" onclick="openSettingsModal()" id="settingsBtn" title="Settings">
         &#9881;
