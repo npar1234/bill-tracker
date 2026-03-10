@@ -6220,6 +6220,21 @@ async function syncOnLoad() {
 }
 
 
+// Migrate: sync existing recurring rental expenses to bills
+(function migrateExpensesToBills() {
+  let changed = false;
+  (state.rentalExpenses || []).forEach(exp => {
+    const freq = exp.frequency || 'once';
+    if (freq === 'once') return;
+    const existing = state.bills.find(b => b.linkedExpenseId === exp.id);
+    if (!existing) {
+      syncExpenseToBill(exp.id);
+      changed = true;
+    }
+  });
+  if (changed) saveState();
+})();
+
 // Init
 initCategorySelect();
 render();
