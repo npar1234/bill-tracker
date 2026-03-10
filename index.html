@@ -942,7 +942,13 @@
     </div>
     <div class="form-group">
       <label>Bill Name</label>
-      <input id="fName" placeholder="e.g. Electric Bill">
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <input id="fName" placeholder="e.g. Electric Bill" style="flex:1">
+        <div style="text-align:center">
+          <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">Icon</label>
+          <input id="fIcon" placeholder="🔔" maxlength="2" style="width:48px;padding:9px 6px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.06);color:var(--text);font-size:20px;text-align:center;outline:none">
+        </div>
+      </div>
     </div>
     <div class="form-row">
       <div class="form-group">
@@ -2485,6 +2491,7 @@ function openAddModal() {
   state.editId = null;
   document.getElementById("modalTitle").textContent = "Add New Bill";
   document.getElementById("fName").value = "";
+  document.getElementById("fIcon").value = "";
   document.getElementById("fAmount").value = "";
   document.getElementById("fDay").value = "1";
   initCategorySelect();
@@ -2512,6 +2519,7 @@ function openEditModal(id) {
   state.editId = id;
   document.getElementById("modalTitle").textContent = "Edit Bill";
   document.getElementById("fName").value = bill.name;
+  document.getElementById("fIcon").value = bill.icon || "";
   document.getElementById("fAmount").value = bill.amount;
   document.getElementById("fDay").value = bill.dueDay;
   initCategorySelect();
@@ -2550,6 +2558,7 @@ function saveBill() {
   const startMonth = (frequency === "quarterly" || frequency === "yearly") ? parseInt(document.getElementById("fStartMonth").value) : 0;
   const isRecurring = frequency !== "once";
   const biller = document.getElementById("fBiller").value.trim();
+  const icon = document.getElementById("fIcon").value.trim() || "";
   const accountId = (() => {
     const v = document.getElementById("fAccount").value.trim();
     return (v === "__new__") ? "" : v;
@@ -2575,10 +2584,10 @@ function saveBill() {
         if (state.billPriceHistory[state.editId].length > 12)
           state.billPriceHistory[state.editId] = state.billPriceHistory[state.editId].slice(-12);
       }
-      Object.assign(bill, { name, amount, dueDay, category, isRecurring, frequency, startMonth, payMethod, biller, accountId, payoffBalance, interestRate, payoffAsOf });
+      Object.assign(bill, { name, amount, dueDay, category, isRecurring, frequency, startMonth, payMethod, biller, icon, accountId, payoffBalance, interestRate, payoffAsOf });
     }
   } else {
-    state.bills.push({ id: genId(), name, amount, dueDay, category, isRecurring, frequency, startMonth, payMethod, biller, accountId, payoffBalance, interestRate, payoffAsOf });
+    state.bills.push({ id: genId(), name, amount, dueDay, category, isRecurring, frequency, startMonth, payMethod, biller, icon, accountId, payoffBalance, interestRate, payoffAsOf });
   }
   saveState(); closeModalDirect(); render();
 }
@@ -2799,6 +2808,7 @@ function getBillDisplayIcon(bill) {
 const TRASH_BIN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="17" height="17" fill="currentColor" style="display:inline-block;vertical-align:middle;margin-top:-2px"><path d="M6 7l.8 12.1A1 1 0 007.8 20h8.4a1 1 0 001-.9L18 7H6zm4 2h1l.4 7h-1L10 9zm3 0h1l-.4 7h-1L13 9z"/><rect x="4" y="5" width="16" height="2" rx="1"/><rect x="9" y="2" width="6" height="2" rx="1"/><ellipse cx="19.5" cy="17" rx="3.5" ry="3.5" fill="rgba(0,0,0,.0)"/><circle cx="19.5" cy="17" r="3" fill="rgba(255,255,255,.12)" stroke="currentColor" stroke-width="1.2"/><path d="M18 17l1 1 2-2" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>`;
 
 function billIcon(bill) {
+  if (bill.icon) return bill.icon;
   const raw = getBillDisplayIcon(bill) || catInfo(bill.category).icon || '●';
   return raw === '__trash__' ? TRASH_BIN_SVG : raw;
 }
