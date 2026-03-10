@@ -861,7 +861,7 @@
       </button>
       <div class="sidebar-nav-label">Properties</div>
       <button class="nav-item" data-view="rental" onclick="switchView('rental')">
-        <span class="nav-icon">🏘️</span> Rental
+        <span class="nav-icon">🏘️</span> Properties
       </button>
       <button class="nav-item" data-view="savings" onclick="switchView('savings')">
         <span class="nav-icon">💰</span> Savings
@@ -1191,7 +1191,7 @@
 <div id="propertyModal" class="modal-overlay hidden" onclick="if(event.target===this)closePropertyModal()">
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-header">
-      <h3 id="propertyModalTitle">Add Rental Property</h3>
+      <h3 id="propertyModalTitle">Add Property</h3>
       <button class="modal-close" onclick="closePropertyModal()">&times;</button>
     </div>
     <div class="form-group"><label>Property Name / Nickname</label><input id="pName" placeholder="e.g. Main St Duplex"></div>
@@ -1793,6 +1793,13 @@ function getDueDate(bill, month, year) {
   const y = year !== undefined ? year : state.currentYear;
   const day = Math.min(bill.dueDay, new Date(y, m+1, 0).getDate());
   return `${y}-${String(m+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+}
+const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+function fmtDueDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${mm}-${dd}-${DAY_NAMES[d.getDay()]}`;
 }
 function isPaid(billId, month, year) {
   const m = month !== undefined ? month : state.currentMonth;
@@ -3027,7 +3034,7 @@ function isDueThisMonth(bill, month) {
 }
 
 // ===== RENDER =====
-const VIEW_TITLES = { dashboard:'Dashboard', calendar:'Calendar', bills:'All Bills', income:'Income', history:'History', rental:'Rental', savings:'Savings', health:'Financial Health' };
+const VIEW_TITLES = { dashboard:'Dashboard', calendar:'Calendar', bills:'All Bills', income:'Income', history:'History', rental:'Properties', savings:'Savings', health:'Financial Health' };
 function render() {
   document.getElementById("monthLabel").textContent = `${MONTHS[state.currentMonth]} ${state.currentYear}`;
   // Update sidebar active state
@@ -3131,7 +3138,7 @@ function render() {
                 <button class="check-btn" onclick="togglePaid('${b.id}')" title="Mark as paid" style="flex-shrink:0"></button>
                 <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
                   <div class="cat-icon-badge" style="background:${catInfo(b.category).color}38">${billIcon(b)}</div>
-                  <div style="min-width:0"><div class="upcoming-name">${b.name}${b.biller ? ' <span style="color:var(--muted);font-size:12px;font-weight:400">&middot; ' + b.biller + '</span>' : ''} <span class="badge ${b.payMethod === 'autopay' ? 'badge-autopay' : 'badge-manual'}" style="vertical-align:middle">${b.payMethod === 'autopay' ? 'Auto' : 'Manual'}</span></div><div class="upcoming-due">Due ${b.dueDate}${b.accountId ? ' &middot; ' + getAccountName(b.accountId) : ''}</div></div>
+                  <div style="min-width:0"><div class="upcoming-name">${b.name}${b.biller ? ' <span style="color:var(--muted);font-size:12px;font-weight:400">&middot; ' + b.biller + '</span>' : ''} <span class="badge ${b.payMethod === 'autopay' ? 'badge-autopay' : 'badge-manual'}" style="vertical-align:middle">${b.payMethod === 'autopay' ? 'Auto' : 'Manual'}</span></div><div class="upcoming-due">Due ${fmtDueDate(b.dueDate)}${b.accountId ? ' &middot; ' + getAccountName(b.accountId) : ''}</div></div>
                 </div>
                 <div style="text-align:right;flex-shrink:0"><div class="upcoming-amount" onclick="openPayAndMarkModal('${b.id}')" title="Adjust amount &amp; mark paid" style="cursor:pointer;border-bottom:1px dashed var(--muted);display:inline-block">${fmt(b.amount)}<span style="font-size:10px;margin-left:3px;opacity:.5">✏️</span></div>${badgeHTML(false, b.dueDate)}</div>
               </div>`).join("")}
@@ -3384,7 +3391,7 @@ function togglePrimaryResFields() {
 
 function openPropertyModal(id) {
   const isEdit = !!id;
-  document.getElementById("propertyModalTitle").textContent = isEdit ? "Edit Property" : "Add Rental Property";
+  document.getElementById("propertyModalTitle").textContent = isEdit ? "Edit Property" : "Add Property";
   document.getElementById("propertySaveBtn").textContent = isEdit ? "Save Changes" : "Add Property";
   state.editPropertyId = id || null;
   if (isEdit) {
@@ -3654,8 +3661,8 @@ function renderRental() {
     el.innerHTML = `
       <div class="panel" style="text-align:center;padding:48px 24px">
         <div style="font-size:48px;margin-bottom:12px">🏠</div>
-        <h2 style="margin-bottom:8px">No Rental Properties Yet</h2>
-        <p style="color:#9ca3af;margin-bottom:24px">Add a property to track rent collection and expenses.</p>
+        <h2 style="margin-bottom:8px">No Properties Yet</h2>
+        <p style="color:#9ca3af;margin-bottom:24px">Add a rental property or your primary residence to track expenses and equity.</p>
         <button class="btn-primary" onclick="openPropertyModal()">+ Add First Property</button>
       </div>`;
     return;
