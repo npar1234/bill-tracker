@@ -1196,14 +1196,31 @@
     </div>
     <div class="form-group"><label>Property Name / Nickname</label><input id="pName" placeholder="e.g. Main St Duplex"></div>
     <div class="form-group"><label>Address <span style="font-weight:400;color:#9ca3af">(optional)</span></label><input id="pAddress" placeholder="123 Main St, City, State"></div>
-    <div class="form-group"><label>Tenant Name <span style="font-weight:400;color:#9ca3af">(optional)</span></label><input id="pTenant" placeholder="e.g. John Smith"></div>
-    <div class="form-row">
-      <div class="form-group"><label>Monthly Rent ($)</label><input id="pRent" type="number" step="0.01" placeholder="0.00"></div>
-      <div class="form-group"><label>Rent Due Day</label><input id="pRentDay" type="number" min="1" max="31" value="1"></div>
+    <div class="settings-row" style="padding:10px 0;margin-bottom:8px;border-bottom:1px solid var(--border)">
+      <div>
+        <div class="settings-label">🏡 Primary Residence</div>
+        <div class="settings-desc">Include in net worth but skip rent collection</div>
+      </div>
+      <label class="toggle"><input type="checkbox" id="pPrimaryRes" onchange="togglePrimaryResFields()"><span class="toggle-slider"></span></label>
+    </div>
+    <div id="pRentalFields">
+      <div class="form-group"><label>Tenant Name <span style="font-weight:400;color:#9ca3af">(optional)</span></label><input id="pTenant" placeholder="e.g. John Smith"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Monthly Rent ($)</label><input id="pRent" type="number" step="0.01" placeholder="0.00"></div>
+        <div class="form-group"><label>Rent Due Day</label><input id="pRentDay" type="number" min="1" max="31" value="1"></div>
+      </div>
     </div>
     <div class="form-row">
       <div class="form-group"><label>Est. Market Value ($) <span style="font-weight:400;color:var(--muted);font-size:11px">— for net worth</span></label><input id="pMarketValue" type="number" step="1" placeholder="e.g. 350000"></div>
       <div class="form-group"><label>Mortgage Balance ($) <span style="font-weight:400;color:var(--muted);font-size:11px">— optional, for equity</span></label><input id="pMortgageBalance" type="number" step="1" placeholder="e.g. 210000"></div>
+    </div>
+    <div style="border:1px solid rgba(34,211,238,.2);border-radius:var(--radius2);padding:14px;background:rgba(34,211,238,.04);margin-bottom:12px">
+      <div style="font-size:11px;font-weight:900;color:#22d3ee;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🏦 Rental Bank Account</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Track the dedicated bank account for this property. Enter the current balance and the app will auto-tally rent and expenses from that date forward.</p>
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom:0"><label>Starting Balance ($)</label><input id="pAcctBalance" type="number" step="0.01" placeholder="e.g. 5000.00"></div>
+        <div class="form-group" style="margin-bottom:0"><label>As of Date</label><input id="pAcctAsOf" type="date"></div>
+      </div>
     </div>
     <div style="border:1px solid rgba(251,191,36,.2);border-radius:var(--radius2);padding:14px;background:rgba(251,191,36,.04);margin-bottom:12px">
       <div style="font-size:11px;font-weight:900;color:#fbbf24;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🏖️ Retirement Sale</div>
@@ -1271,6 +1288,32 @@
     <div class="form-actions">
       <button class="btn-secondary" onclick="closeExpenseModal()">Cancel</button>
       <button class="btn-primary" id="expenseSaveBtn" onclick="saveExpense()">Add Expense</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rental Account Transaction Modal -->
+<div id="rentalTxnModal" class="modal-overlay hidden" onclick="if(event.target===this)closeRentalTxnModal()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:400px">
+    <div class="modal-header">
+      <h3 id="rentalTxnModalTitle">Add Transaction</h3>
+      <button class="modal-close" onclick="closeRentalTxnModal()">&times;</button>
+    </div>
+    <div class="form-group">
+      <label>Type</label>
+      <select id="rtType" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.06);color:var(--text)">
+        <option value="deposit">Deposit (money in)</option>
+        <option value="withdrawal">Withdrawal (money out)</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Amount ($)</label><input id="rtAmount" type="number" step="0.01" placeholder="0.00"></div>
+      <div class="form-group"><label>Date</label><input id="rtDate" type="date"></div>
+    </div>
+    <div class="form-group"><label>Note</label><input id="rtNote" placeholder="e.g. Transfer from checking, bank fee, etc."></div>
+    <div class="form-actions">
+      <button class="btn-secondary" onclick="closeRentalTxnModal()">Cancel</button>
+      <button class="btn-primary" id="rentalTxnSaveBtn" onclick="saveRentalTxn()">Add Transaction</button>
     </div>
   </div>
 </div>
@@ -1519,6 +1562,7 @@ function defaultState() {
     savingsChallenges: [],
     partner: null,
     notifications: [],
+    rentalAccountTxns: [],
   };
 }
 
@@ -1559,6 +1603,7 @@ function loadState() {
       if (!parsed.savingsChallenges) parsed.savingsChallenges = [];
       if (!parsed.partner)           parsed.partner = null;
       if (!parsed.notifications)     parsed.notifications = [];
+      if (!parsed.rentalAccountTxns) parsed.rentalAccountTxns = [];
       // Migrate: ensure every savings account has a balanceAsOf date
       parsed.savingsAccounts = parsed.savingsAccounts.map(a =>
         a.balanceAsOf ? a : { ...a, balanceAsOf: new Date().toISOString().slice(0,10) }
@@ -2043,6 +2088,7 @@ function checkRentReminders() {
   if (!state.properties || state.properties.length === 0) return;
 
   state.properties.forEach(prop => {
+    if (prop.primaryResidence) return; // Skip primary residences
     const rentDay = prop.rentDay || 1;
     const rentPaid = isRentPaid(prop.id, curMonth, curYear);
 
@@ -3331,6 +3377,11 @@ function toggleRentPaid(propId) {
   saveState(); renderRental();
 }
 
+function togglePrimaryResFields() {
+  const isPrimary = document.getElementById('pPrimaryRes').checked;
+  document.getElementById('pRentalFields').style.display = isPrimary ? 'none' : '';
+}
+
 function openPropertyModal(id) {
   const isEdit = !!id;
   document.getElementById("propertyModalTitle").textContent = isEdit ? "Edit Property" : "Add Rental Property";
@@ -3341,6 +3392,7 @@ function openPropertyModal(id) {
     if (!p) return;
     document.getElementById("pName").value = p.name;
     document.getElementById("pAddress").value = p.address || "";
+    document.getElementById("pPrimaryRes").checked = !!p.primaryResidence;
     document.getElementById("pTenant").value = p.tenant || "";
     document.getElementById("pRent").value = p.rent;
     document.getElementById("pRentDay").value = p.rentDay;
@@ -3349,10 +3401,13 @@ function openPropertyModal(id) {
     document.getElementById("pAppreciation").value    = p.appreciation ?? 3;
     document.getElementById("pSellingCosts").value    = p.sellingCosts ?? 6;
     document.getElementById("pIncludeInRetirement").checked = p.includeInRetirement !== false;
+    document.getElementById("pAcctBalance").value = p.acctBalance ?? "";
+    document.getElementById("pAcctAsOf").value = p.acctAsOf || "";
     document.getElementById("pNotes").value = p.notes || "";
   } else {
     document.getElementById("pName").value = "";
     document.getElementById("pAddress").value = "";
+    document.getElementById("pPrimaryRes").checked = false;
     document.getElementById("pTenant").value = "";
     document.getElementById("pRent").value = "";
     document.getElementById("pRentDay").value = "1";
@@ -3361,18 +3416,24 @@ function openPropertyModal(id) {
     document.getElementById("pAppreciation").value    = "3";
     document.getElementById("pSellingCosts").value    = "6";
     document.getElementById("pIncludeInRetirement").checked = true;
+    document.getElementById("pAcctBalance").value = "";
+    document.getElementById("pAcctAsOf").value = new Date().toISOString().slice(0, 10);
     document.getElementById("pNotes").value = "";
   }
+  togglePrimaryResFields();
   document.getElementById("propertyModal").classList.remove("hidden");
 }
 function closePropertyModal() { document.getElementById("propertyModal").classList.add("hidden"); }
 
 function saveProperty() {
   const name = document.getElementById("pName").value.trim();
-  const rent = parseFloat(document.getElementById("pRent").value);
-  if (!name || isNaN(rent)) return;
+  const isPrimary = document.getElementById("pPrimaryRes").checked;
+  const rent = parseFloat(document.getElementById("pRent").value) || 0;
+  if (!name) return;
+  if (!isPrimary && !rent) { alert('Enter the monthly rent amount.'); return; }
   const data = {
     name, rent,
+    primaryResidence: document.getElementById("pPrimaryRes").checked,
     address:         document.getElementById("pAddress").value.trim(),
     tenant:          document.getElementById("pTenant").value.trim(),
     rentDay:         parseInt(document.getElementById("pRentDay").value) || 1,
@@ -3381,6 +3442,8 @@ function saveProperty() {
     appreciation:       parseFloat(document.getElementById("pAppreciation").value) ?? 3,
     sellingCosts:       parseFloat(document.getElementById("pSellingCosts").value) ?? 6,
     includeInRetirement: document.getElementById("pIncludeInRetirement").checked,
+    acctBalance:        parseFloat(document.getElementById("pAcctBalance").value) || 0,
+    acctAsOf:           document.getElementById("pAcctAsOf").value || new Date().toISOString().slice(0, 10),
     notes:              document.getElementById("pNotes").value.trim(),
   };
   if (state.editPropertyId) {
@@ -3497,6 +3560,92 @@ function toggleExpPaid(expId) {
 }
 function selectProperty(id) { state.selectedProperty = id; saveState(); renderRental(); }
 
+// ═══ Rental Account Balance ═══
+function computeRentalAccountBalance(propId) {
+  const prop = state.properties.find(p => p.id === propId);
+  if (!prop || !prop.acctBalance) return null;
+  const startBal = prop.acctBalance || 0;
+  const asOf = prop.acctAsOf || '2000-01-01';
+
+  // Rent collected since as-of date
+  let rentIn = 0;
+  (state.rentalPayments || []).forEach(p => {
+    if (p.propId !== propId) return;
+    // Construct a date from month/year (use day 1)
+    const pDate = new Date(p.year, p.month, 1).toISOString().slice(0, 10);
+    if (pDate >= asOf) rentIn += prop.rent || 0;
+  });
+
+  // Recurring & one-time expenses paid since as-of date
+  let expOut = 0;
+  (state.rentalExpPayments || []).forEach(p => {
+    const exp = state.rentalExpenses.find(e => e.id === p.expId);
+    if (!exp || exp.propId !== propId) return;
+    const pDate = new Date(p.year, p.month, 1).toISOString().slice(0, 10);
+    if (pDate >= asOf) expOut += exp.amount || 0;
+  });
+
+  // Manual transactions (deposits/withdrawals)
+  let txnNet = 0;
+  (state.rentalAccountTxns || []).filter(t => t.propId === propId && t.date >= asOf).forEach(t => {
+    if (t.type === 'deposit') txnNet += t.amount;
+    else txnNet -= t.amount;
+  });
+
+  return startBal + rentIn - expOut + txnNet;
+}
+
+function openRentalTxnModal(editId) {
+  const prop = state.properties.find(p => p.id === state.selectedProperty);
+  if (!prop) return;
+  state.editRentalTxnId = editId || null;
+  if (editId) {
+    const t = (state.rentalAccountTxns || []).find(x => x.id === editId);
+    if (!t) return;
+    document.getElementById('rentalTxnModalTitle').textContent = 'Edit Transaction';
+    document.getElementById('rentalTxnSaveBtn').textContent = 'Save Changes';
+    document.getElementById('rtType').value = t.type;
+    document.getElementById('rtAmount').value = t.amount;
+    document.getElementById('rtDate').value = t.date;
+    document.getElementById('rtNote').value = t.note || '';
+  } else {
+    document.getElementById('rentalTxnModalTitle').textContent = 'Add Transaction';
+    document.getElementById('rentalTxnSaveBtn').textContent = 'Add Transaction';
+    document.getElementById('rtType').value = 'deposit';
+    document.getElementById('rtAmount').value = '';
+    document.getElementById('rtDate').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('rtNote').value = '';
+  }
+  document.getElementById('rentalTxnModal').classList.remove('hidden');
+}
+function closeRentalTxnModal() { document.getElementById('rentalTxnModal').classList.add('hidden'); }
+
+function saveRentalTxn() {
+  const amount = parseFloat(document.getElementById('rtAmount').value);
+  if (isNaN(amount) || amount <= 0) { alert('Enter a valid amount.'); return; }
+  const data = {
+    propId: state.selectedProperty,
+    type: document.getElementById('rtType').value,
+    amount,
+    date: document.getElementById('rtDate').value || new Date().toISOString().slice(0, 10),
+    note: document.getElementById('rtNote').value.trim(),
+  };
+  if (state.editRentalTxnId) {
+    const t = state.rentalAccountTxns.find(x => x.id === state.editRentalTxnId);
+    if (t) Object.assign(t, data);
+  } else {
+    if (!state.rentalAccountTxns) state.rentalAccountTxns = [];
+    state.rentalAccountTxns.push({ id: genId(), ...data });
+  }
+  saveState(); closeRentalTxnModal(); renderRental();
+}
+
+function deleteRentalTxn(id) {
+  if (!confirm('Delete this transaction?')) return;
+  state.rentalAccountTxns = (state.rentalAccountTxns || []).filter(t => t.id !== id);
+  saveState(); renderRental();
+}
+
 function renderRental() {
   const el = document.getElementById("view-rental");
   if (!el) return;
@@ -3571,11 +3720,19 @@ function renderRental() {
   // Property tabs
   const propTabs = state.properties.map(p => `
     <button class="property-tab-btn${p.id === state.selectedProperty ? ' active' : ''}" onclick="selectProperty('${p.id}')">
-      🏠 ${p.name}
+      ${p.primaryResidence ? '🏡' : '🏠'} ${p.name}
     </button>`).join('');
 
   // Summary cards
-  const summaryCards = [
+  const isPrimary = !!prop.primaryResidence;
+  const equity = (prop.marketValue || 0) - (prop.mortgageBalance || 0);
+  const summaryCards = (isPrimary ? [
+    { label: 'Property Value', value: fmt(prop.marketValue || 0), sub: 'estimated', accent: '#fbbf24' },
+    { label: 'Equity', value: fmt(equity), sub: equity >= 0 ? 'positive equity' : 'underwater', accent: equity >= 0 ? '#16a34a' : '#ef4444' },
+    { label: 'Month Expenses', value: fmt(monthExpTotal), sub: `${monthExpenses.length} items`, accent: '#ef4444' },
+    { label: 'YTD Expenses', value: fmt(ytdExpTotal), sub: ytdExpCount + ' occurrences', accent: '#8b5cf6' },
+    ...(() => { const bal = computeRentalAccountBalance(prop.id); return bal !== null ? [{ label: 'Account Balance', value: fmt(bal), sub: 'as of today', accent: '#22d3ee' }] : []; })(),
+  ] : [
     { label: 'Monthly Rent', value: fmt(prop.rent), sub: rentPaid ? '✓ Collected' : `Due day ${prop.rentDay}`, accent: rentPaid ? '#16a34a' : '#f59e0b' },
     { label: 'Month Expenses', value: fmt(monthExpTotal), sub: `${monthExpenses.length} items`, accent: '#ef4444' },
     { label: 'Month Net', value: fmt((rentPaid ? prop.rent : 0) - monthExpTotal), sub: rentPaid ? 'rent received' : 'rent pending', accent: (rentPaid ? prop.rent : 0) - monthExpTotal >= 0 ? '#16a34a' : '#ef4444' },
@@ -3583,7 +3740,8 @@ function renderRental() {
     { label: 'YTD Expenses', value: fmt(ytdExpTotal), sub: ytdExpCount + ' occurrences', accent: '#8b5cf6' },
     { label: 'YTD Net', value: fmt(ytdNet), sub: state.currentYear, accent: ytdNet >= 0 ? '#16a34a' : '#ef4444' },
     ...(yoyHasData ? [{ label: 'vs '+prevYear+' (YTD)', value: (yoyNetDiff>=0?'+':'')+fmt(yoyNetDiff), sub: yoyNetDiff>=0?'↑ better than last year':'↓ behind last year', accent: yoyNetDiff>=0?'#16a34a':'#ef4444' }] : []),
-  ].map(c => `<div class="summary-card" style="--accent:${c.accent}"><div class="label">${c.label}</div><div class="value" style="font-size:18px">${c.value}</div><div class="sub">${c.sub}</div></div>`).join('');
+    ...(() => { const bal = computeRentalAccountBalance(prop.id); return bal !== null ? [{ label: 'Account Balance', value: fmt(bal), sub: 'as of today', accent: '#22d3ee' }] : []; })(),
+  ]).map(c => `<div class="summary-card" style="--accent:${c.accent}"><div class="label">${c.label}</div><div class="value" style="font-size:18px">${c.value}</div><div class="sub">${c.sub}</div></div>`).join('');
 
   // Expense breakdown by category
   const catTotals = {};
@@ -3666,15 +3824,16 @@ function renderRental() {
       </div>
     </div>
 
-    ${prop.address || prop.tenant ? `<div class="panel" style="margin-bottom:16px;padding:14px 20px">
+    ${prop.address || (prop.tenant && !isPrimary) || isPrimary ? `<div class="panel" style="margin-bottom:16px;padding:14px 20px">
       ${prop.address ? `<div style="font-size:13px;color:#6b7280">📍 ${prop.address}</div>` : ''}
-      ${prop.tenant ? `<div style="font-size:13px;color:#6b7280;margin-top:4px">👤 Tenant: <strong>${prop.tenant}</strong></div>` : ''}
+      ${prop.tenant && !isPrimary ? `<div style="font-size:13px;color:#6b7280;margin-top:4px">👤 Tenant: <strong>${prop.tenant}</strong></div>` : ''}
+      ${isPrimary ? `<div style="font-size:13px;color:#22d3ee;margin-top:4px">🏡 Primary Residence</div>` : ''}
       ${prop.notes ? `<div style="font-size:13px;color:#9ca3af;margin-top:4px">📝 ${prop.notes}</div>` : ''}
     </div>` : ''}
 
-    <button class="rent-collect-btn${rentPaid ? ' received' : ''}" onclick="toggleRentPaid('${prop.id}')">
+    ${!isPrimary ? `<button class="rent-collect-btn${rentPaid ? ' received' : ''}" onclick="toggleRentPaid('${prop.id}')">
       ${rentPaid ? '✅ Rent Collected — ' + MONTHS[state.currentMonth] + ' ' + state.currentYear + ' (click to undo)' : '💰 Mark Rent as Collected — ' + MONTHS[state.currentMonth] + ' ' + state.currentYear + ' (' + fmt(prop.rent) + ')'}
-    </button>
+    </button>` : ''}
 
     <div class="rental-summary-grid">${summaryCards}</div>
 
@@ -3683,7 +3842,7 @@ function renderRental() {
         <h3 style="margin-bottom:14px">This Month's Expenses</h3>
         ${monthExpRows || '<p class="empty">No expenses this month</p>'}
       </div>
-      <div class="panel">
+      ${!isPrimary ? `<div class="panel">
         <h3>Rent Collection History</h3>
         <div style="margin-top:8px">
           ${[...Array(6)].map((_,i) => {
@@ -3696,7 +3855,7 @@ function renderRental() {
             </div>`;
           }).join('')}
         </div>
-      </div>
+      </div>` : ''}
     </div>
 
     <div class="bill-list">
@@ -3705,7 +3864,32 @@ function renderRental() {
         <button class="btn-primary btn-sm" onclick="openExpenseModal()">+ Add Expense</button>
       </div>
       ${expRows || '<p class="empty">No expense templates yet.</p>'}
-    </div>`;
+    </div>
+
+    ${prop.acctBalance ? `<div class="bill-list" style="margin-top:18px">
+      <div class="list-header">
+        <h3>🏦 Account Transactions</h3>
+        <button class="btn-primary btn-sm" onclick="openRentalTxnModal()">+ Transaction</button>
+      </div>
+      ${(() => {
+        const txns = (state.rentalAccountTxns || [])
+          .filter(t => t.propId === prop.id)
+          .sort((a, b) => b.date.localeCompare(a.date));
+        if (txns.length === 0) return '<p class="empty">No manual transactions yet. Rent and expense payments are tracked automatically.</p>';
+        return txns.map(t => {
+          const isDeposit = t.type === 'deposit';
+          return "<div class='history-row'>" +
+            "<div class='history-icon' style='background:" + (isDeposit ? "rgba(34,197,94,.15)" : "rgba(251,113,133,.15)") + ";font-size:16px'>" + (isDeposit ? "⬆️" : "⬇️") + "</div>" +
+            "<div class='row-info'><div class='row-name'>" + (isDeposit ? "Deposit" : "Withdrawal") + "</div>" +
+            "<div class='row-meta'>" + (t.note ? escHtml(t.note) + " &middot; " : "") + t.date + "</div></div>" +
+            "<div class='row-right'><div class='row-amount' style='color:" + (isDeposit ? "var(--good)" : "var(--bad)") + "'>" + (isDeposit ? "+" : "-") + fmt(t.amount) + "</div></div>" +
+            "<div class='bill-actions'>" +
+            "<button onclick=\"openRentalTxnModal('" + t.id + "')\" title='Edit'>&#9998;</button>" +
+            "<button onclick=\"deleteRentalTxn('" + t.id + "')\" title='Delete'>" + TRASH_BIN_SVG + "</button>" +
+            "</div></div>";
+        }).join("");
+      })()}
+    </div>` : ''}`;
 }
 
 
