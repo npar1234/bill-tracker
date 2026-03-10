@@ -1284,6 +1284,12 @@
       </select>
     </div>
     <div class="form-group"><label>Account Paid From</label><input id="eAccount" placeholder="e.g. Chase Checking" list="expAccountsList"><datalist id="expAccountsList"></datalist></div>
+    <div class="form-group" id="ePayMethodWrap"><label>Payment Method</label>
+      <select id="ePayMethod" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.06);color:var(--text)">
+        <option value="manual">Manual</option>
+        <option value="autopay">Autopay</option>
+      </select>
+    </div>
     <div class="form-group"><label>Notes</label><textarea id="eNotes" rows="2" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:10px;font-size:14px;outline:none" placeholder="Vendor, receipt #..."></textarea></div>
     <div class="form-actions">
       <button class="btn-secondary" onclick="closeExpenseModal()">Cancel</button>
@@ -1800,6 +1806,11 @@ function fmtDueDate(dateStr) {
   const mm = String(d.getMonth()+1).padStart(2,'0');
   const dd = String(d.getDate()).padStart(2,'0');
   return `${mm}-${dd}-${DAY_NAMES[d.getDay()]}`;
+}
+function getOrdinal(n) {
+  const s = ['th','st','nd','rd'];
+  const v = n % 100;
+  return n + (s[(v-20)%10] || s[v] || s[0]);
 }
 function isPaid(billId, month, year) {
   const m = month !== undefined ? month : state.currentMonth;
@@ -3467,11 +3478,14 @@ function saveProperty() {
 function deleteProperty(id) {
   if (!confirm("Delete this property and all its expense records?")) return;
   state.properties = state.properties.filter(p => p.id !== id);
+  // Remove linked bills
+  state.bills = state.bills.filter(b => b.linkedPropertyId !== id);
   state.rentalExpenses = state.rentalExpenses.filter(e => e.propId !== id);
   state.rentalPayments = state.rentalPayments.filter(p => p.propId !== id);
   state.rentalExpPayments = state.rentalExpPayments.filter(p => {
     return !state.rentalExpenses.filter(e => e.propId !== id).every(e => e.id !== p.expId);
   });
+  state.rentalAccountTxns = (state.rentalAccountTxns || []).filter(t => t.propId !== id);
   if (state.selectedProperty === id) state.selectedProperty = state.properties[0]?.id || null;
   saveState(); renderRental();
 }
@@ -3480,6 +3494,7 @@ function toggleExpenseDate() {
   var freq = document.getElementById("eFrequency").value;
   document.getElementById("eRecurringFields").classList.toggle("hidden", freq === "once");
   document.getElementById("eOnceFields").classList.toggle("hidden", freq !== "once");
+  document.getElementById("ePayMethodWrap").classList.toggle("hidden", freq === "once");
 }
 function openExpenseModal(id) {
   const isEdit = !!id;
@@ -3499,6 +3514,7 @@ function openExpenseModal(id) {
     document.getElementById("eDate").value = e.date || today;
     document.getElementById("eCategory").value = e.category;
     document.getElementById("eAccount").value = e.account || "";
+    document.getElementById("ePayMethod").value = e.payMethod || "manual";
     document.getElementById("eNotes").value = e.notes || "";
   } else {
     document.getElementById("eName").value = "";
@@ -3509,6 +3525,7 @@ function openExpenseModal(id) {
     document.getElementById("eDate").value = today;
     document.getElementById("eCategory").value = "maintenance";
     document.getElementById("eAccount").value = "";
+    document.getElementById("ePayMethod").value = "manual";
     document.getElementById("eNotes").value = "";
   }
   toggleExpenseDate();
@@ -3518,6 +3535,39 @@ function openExpenseModal(id) {
   document.getElementById("expenseModal").classList.remove("hidden");
 }
 function closeExpenseModal() { document.getElementById("expenseModal").classList.add("hidden"); }
+
+function syncExpenseToBill(expenseId) {
+  const exp = state.rentalExpenses.find(e => e.id === expenseId);
+  if (!exp) return;
+  const freq = exp.frequency || "once";
+  if (freq === "once") {
+    // Remove linked bill if expense changed to one-time
+    state.bills = state.bills.filter(b => b.linkedExpenseId !== expenseId);
+    return;
+  }
+  const prop = state.properties.find(p => p.id === exp.propId);
+  const propName = prop ? prop.name : 'Property';
+  const billData = {
+    name: exp.name + ' — ' + propName,
+    amount: exp.amount,
+    category: exp.category === 'mortgage' ? 'housing' : (exp.category === 'insurance' ? 'insurance' : (exp.category === 'utilities' ? 'utilities' : 'housing')),
+    dueDay: exp.dueDay || 1,
+    frequency: freq,
+    startMonth: exp.startMonth || 0,
+    payMethod: exp.payMethod || 'manual',
+    biller: '',
+    accountId: '',
+    isRecurring: true,
+    linkedExpenseId: expenseId,
+    linkedPropertyId: exp.propId,
+  };
+  const existing = state.bills.find(b => b.linkedExpenseId === expenseId);
+  if (existing) {
+    Object.assign(existing, billData);
+  } else {
+    state.bills.push({ id: genId(), ...billData });
+  }
+}
 
 function saveExpense() {
   const name = document.getElementById("eName").value.trim();
@@ -3533,20 +3583,28 @@ function saveExpense() {
     date:       frequency === "once" ? document.getElementById("eDate").value : "",
     category: document.getElementById("eCategory").value,
     account:  document.getElementById("eAccount").value.trim(),
+    payMethod: frequency !== "once" ? document.getElementById("ePayMethod").value : "",
     notes:    document.getElementById("eNotes").value.trim(),
   };
+  let expId;
   if (state.editExpenseId) {
     const e = state.rentalExpenses.find(x => x.id === state.editExpenseId);
     if (e) Object.assign(e, data);
+    expId = state.editExpenseId;
   } else {
-    state.rentalExpenses.push({ id: genId(), ...data });
+    expId = genId();
+    state.rentalExpenses.push({ id: expId, ...data });
   }
+  // Auto-sync recurring expenses to Bills
+  syncExpenseToBill(expId);
   saveState(); closeExpenseModal(); renderRental();
 }
 
 function deleteExpense(id) {
   if (!confirm("Delete this expense?")) return;
   state.rentalExpenses = state.rentalExpenses.filter(e => e.id !== id);
+  // Also remove linked bill
+  state.bills = state.bills.filter(b => b.linkedExpenseId !== id);
   saveState(); renderRental();
 }
 
@@ -3769,17 +3827,17 @@ function renderRental() {
     var freq = e.frequency || "once";
     var fLabel = FREQ_LABELS2[freq] || freq;
     var fClass = freq === "once" ? "badge-manual" : "badge-autopay";
-    var subDate = freq === "once" ? (e.date || "") : ("Day " + (e.dueDay || 1) + " from " + MO_SHORT2[e.startMonth || 0] + " " + (e.startYear || ""));
+    var payBadge = freq !== "once" && e.payMethod ? " <span class='badge " + (e.payMethod === "autopay" ? "badge-autopay" : "badge-manual") + "' style='font-size:10px'>" + (e.payMethod === "autopay" ? "Auto" : "Manual") + "</span>" : "";
+    var subDate = freq === "once" ? (e.date || "") : ("Due: " + getOrdinal(e.dueDay || 1) + " of each " + (freq === "quarterly" ? "quarter" : "month"));
     var h = "";
     h += "<div class='expense-row'>";
     h += "<div class='expense-icon'>" + info.icon + "</div>";
     h += "<div class='row-info'>";
-    h += "<div class='row-name'>" + e.name + " <span class='badge " + fClass + "' style='font-size:10px'>" + fLabel + "</span></div>";
-    h += "<div class='row-meta'>" + info.label + (e.account ? " &middot; " + e.account : "") + (e.notes ? " &middot; " + e.notes : "") + "</div>";
+    h += "<div class='row-name'>" + e.name + " <span class='badge " + fClass + "' style='font-size:10px'>" + fLabel + "</span>" + payBadge + "</div>";
+    h += "<div class='row-meta'>" + info.label + " &middot; " + subDate + (e.account ? " &middot; " + e.account : "") + (e.notes ? " &middot; " + e.notes : "") + "</div>";
     h += "</div>";
     h += "<div class='row-right' style='margin-right:8px;text-align:right'>";
     h += "<div class='row-amount' style='color:" + info.color + "'>" + fmt(e.amount) + "</div>";
-    h += "<div class='row-sub'>" + subDate + "</div>";
     h += "</div>";
     h += "<div class='bill-actions'>";
     h += "<button onclick='openExpenseModal(\"" + e.id + "\")' title='Edit'>&#9998;</button>";
