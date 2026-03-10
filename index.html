@@ -1059,7 +1059,7 @@
 <div id="settingsModal" class="modal-overlay hidden" onclick="closeSettingsModal(event)">
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-header">
-      <h3>Notification Settings</h3>
+      <h3>Settings</h3>
       <button class="modal-close" onclick="closeSettingsModalDirect()">&times;</button>
     </div>
 
@@ -1144,6 +1144,17 @@
     </div>
 
     <div class="settings-section" style="border-top:1px solid var(--border);padding-top:20px;margin-top:4px">
+      <h4>💾 Data Management</h4>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Export your data as a JSON backup, import a previous backup, or export a CSV summary.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-primary btn-sm" onclick="exportData()">⬇️ Export JSON</button>
+        <button class="btn-secondary btn-sm" onclick="document.getElementById('importFileInputSettings').click()">⬆️ Import JSON</button>
+        <input type="file" id="importFileInputSettings" accept=".json" style="display:none" onchange="importData(event)">
+        <button class="btn-secondary btn-sm" onclick="exportCSV()">📊 Export CSV</button>
+      </div>
+    </div>
+
+    <div class="settings-section" style="border-top:1px solid var(--border);padding-top:20px;margin-top:4px">
       <h4>&#9729; GitHub Gist Sync</h4>
       <p style="font-size:13px;color:var(--muted);margin-bottom:10px">Syncs across devices using a private <strong>GitHub Gist</strong>. Data is <strong>AES-256 encrypted</strong> before upload — your passphrase never leaves your device.</p>
       <div style="font-size:12px;background:rgba(34,211,238,.07);border:1px solid rgba(34,211,238,.18);border-radius:12px;padding:10px 12px;margin-bottom:12px;color:#a5f3fc;line-height:1.6">
@@ -1161,6 +1172,10 @@
       <div class="form-group" style="margin-bottom:12px">
         <label style="font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Gist ID <span style="font-weight:400;color:var(--muted)">(auto-created on first connect)</span></label>
         <input id="syncGistId" placeholder="Leave blank to create new — or paste existing Gist ID" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:12px;font-size:13px;font-family:monospace;background:rgba(255,255,255,.06);color:var(--text)">
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Encryption Salt <span style="font-weight:400;color:var(--muted)">(must match across devices — copy from first device)</span></label>
+        <input id="syncSalt" placeholder="Auto-generated on first connect" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:12px;font-size:11px;font-family:monospace;background:rgba(255,255,255,.06);color:var(--text)">
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn-primary btn-sm" onclick="syncSetup()">&#128275; Connect</button>
@@ -2218,6 +2233,7 @@ function openSettingsModal() {
   if (syncConfig.passphrase)   document.getElementById('syncPassphrase').value   = syncConfig.passphrase;
   if (syncConfig.githubToken)  document.getElementById('syncGithubToken').value  = syncConfig.githubToken;
   if (syncConfig.gistId)       document.getElementById('syncGistId').value        = syncConfig.gistId;
+  if (syncConfig.salt)         document.getElementById('syncSalt').value          = syncConfig.salt;
   const _syncBar = document.getElementById('syncStatusBar');
   if (_syncBar && syncConfig.enabled && syncConfig.gistId) {
     const _t = syncConfig.lastPush ? new Date(syncConfig.lastPush).toLocaleString() : 'never';
@@ -5828,6 +5844,7 @@ async function syncSetup() {
   const token      = document.getElementById('syncGithubToken').value.trim();
   const passphrase = document.getElementById('syncPassphrase').value.trim();
   const gistId     = document.getElementById('syncGistId').value.trim();
+  const saltInput  = document.getElementById('syncSalt').value.trim();
 
   if (!token)      { alert('Paste your GitHub Personal Access Token (needs gist scope).'); return; }
   if (!passphrase) { alert('Enter an encryption passphrase — you\'ll need the same one on every device.'); return; }
@@ -5837,7 +5854,7 @@ async function syncSetup() {
   if (bar) { bar.style.cssText = 'background:rgba(124,58,237,.10);border:1px solid rgba(124,58,237,.22);color:#c4b5fd;padding:10px 14px;border-radius:12px;font-size:13px'; bar.textContent = 'Connecting to GitHub…'; }
 
   try {
-    const salt = syncConfig.salt || bytesToHex(crypto.getRandomValues(new Uint8Array(16)));
+    const salt = saltInput || syncConfig.salt || bytesToHex(crypto.getRandomValues(new Uint8Array(16)));
     const plain = JSON.stringify(state);
     const encrypted = await encryptData(plain, passphrase, salt);
     const content = JSON.stringify({ v: 2, d: encrypted });
@@ -5848,12 +5865,13 @@ async function syncSetup() {
     saveSyncConfig(syncConfig);
 
     document.getElementById('syncGistId').value = finalGistId;
+    document.getElementById('syncSalt').value = salt;
     setSyncStatus('ready');
     if (bar) {
       bar.style.cssText = 'background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.22);color:#86efac;padding:10px 14px;border-radius:12px;font-size:13px';
       bar.innerHTML = '&#10003; Connected! Your Gist ID (share with other devices):<br>' +
         '<code style="background:rgba(255,255,255,.08);padding:3px 8px;border-radius:6px;font-size:12px;user-select:all;display:inline-block;margin-top:4px;border:1px solid var(--border)">' + finalGistId + '</code>' +
-        '<br><span style="font-size:11px;color:var(--muted);margin-top:4px;display:block">Use the same token + passphrase + Gist ID on every device.</span>';
+        '<br><span style="font-size:11px;color:var(--muted);margin-top:4px;display:block">Use the same token + passphrase + salt + Gist ID on every device.</span>';
     }
   } catch(e) {
     setSyncStatus('error', 'Setup failed: ' + e.message);
@@ -5871,7 +5889,7 @@ function syncDisconnect() {
   setSyncStatus('off');
   const bar = document.getElementById('syncStatusBar');
   if (bar) bar.innerHTML = '';
-  ['syncPassphrase','syncGithubToken','syncGistId'].forEach(id => {
+  ['syncPassphrase','syncGithubToken','syncGistId','syncSalt'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
