@@ -5854,30 +5854,71 @@ async function syncSetup() {
   if (bar) { bar.style.cssText = 'background:rgba(124,58,237,.10);border:1px solid rgba(124,58,237,.22);color:#c4b5fd;padding:10px 14px;border-radius:12px;font-size:13px'; bar.textContent = 'Connecting to GitHub…'; }
 
   try {
-    const salt = saltInput || syncConfig.salt || bytesToHex(crypto.getRandomValues(new Uint8Array(16)));
-    const plain = JSON.stringify(state);
-    const encrypted = await encryptData(plain, passphrase, salt);
-    const content = JSON.stringify({ v: 2, d: encrypted });
+    if (gistId) {
+      // Connecting to EXISTING gist (second device) — save config and pull, don't push
+      const salt = saltInput || syncConfig.salt;
+      if (!salt) { alert('When connecting to an existing Gist, you must provide the Encryption Salt from the first device.'); return; }
+      syncConfig = { githubToken: token, gistId, passphrase, salt, enabled: true };
+      saveSyncConfig(syncConfig);
+      document.getElementById('syncGistId').value = gistId;
+      document.getElementById('syncSalt').value = salt;
 
-    const finalGistId = await gistWrite(token, gistId || null, content);
+      // Now pull the data
+      setSyncStatus('syncing');
+      const raw = await gistRead(token, gistId);
+      const envelope = JSON.parse(raw);
+      if (!envelope || !envelope.d) throw new Error('Unexpected data format in gist');
 
-    syncConfig = { githubToken: token, gistId: finalGistId, passphrase, salt, enabled: true, lastPush: new Date().toISOString() };
-    saveSyncConfig(syncConfig);
+      let plain;
+      try {
+        plain = await decryptData(envelope.d, passphrase, salt);
+      } catch(e) {
+        throw new Error('Decryption failed — check that passphrase and salt match the first device.');
+      }
+      const data = JSON.parse(plain);
+      if (!data || !data.bills) throw new Error('Invalid data after decryption');
 
-    document.getElementById('syncGistId').value = finalGistId;
-    document.getElementById('syncSalt').value = salt;
-    setSyncStatus('ready');
-    if (bar) {
-      bar.style.cssText = 'background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.22);color:#86efac;padding:10px 14px;border-radius:12px;font-size:13px';
-      bar.innerHTML = '&#10003; Connected! Your Gist ID (share with other devices):<br>' +
-        '<code style="background:rgba(255,255,255,.08);padding:3px 8px;border-radius:6px;font-size:12px;user-select:all;display:inline-block;margin-top:4px;border:1px solid var(--border)">' + finalGistId + '</code>' +
-        '<br><span style="font-size:11px;color:var(--muted);margin-top:4px;display:block">Use the same token + passphrase + salt + Gist ID on every device.</span>';
+      const nav = { currentMonth: state.currentMonth, currentYear: state.currentYear,
+        view: 'dashboard', filterCat: 'all', editId: null, editIncomeId: null,
+        editPropertyId: null, editExpenseId: null, editSavingsId: null, editSavingsTxnId: null, editInvestmentId: null };
+      Object.assign(state, data, nav);
+      saveState();
+      render();
+      setSyncStatus('ok', '&#10003; Connected & pulled');
+      if (bar) {
+        bar.style.cssText = 'background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.22);color:#86efac;padding:10px 14px;border-radius:12px;font-size:13px';
+        bar.innerHTML = '&#10003; Connected &amp; synced from existing Gist!<br>' +
+          '<code style="background:rgba(255,255,255,.08);padding:3px 8px;border-radius:6px;font-size:12px;user-select:all;display:inline-block;margin-top:4px;border:1px solid var(--border)">' + gistId + '</code>' +
+          '<br><span style="font-size:11px;color:var(--muted);margin-top:4px;display:block">Data pulled successfully. Push/Pull to keep in sync.</span>';
+      }
+      setTimeout(() => setSyncStatus('ready'), 3000);
+    } else {
+      // NEW gist (first device) — create and push
+      const salt = saltInput || syncConfig.salt || bytesToHex(crypto.getRandomValues(new Uint8Array(16)));
+      const plain = JSON.stringify(state);
+      const encrypted = await encryptData(plain, passphrase, salt);
+      const content = JSON.stringify({ v: 2, d: encrypted });
+
+      const finalGistId = await gistWrite(token, null, content);
+
+      syncConfig = { githubToken: token, gistId: finalGistId, passphrase, salt, enabled: true, lastPush: new Date().toISOString() };
+      saveSyncConfig(syncConfig);
+
+      document.getElementById('syncGistId').value = finalGistId;
+      document.getElementById('syncSalt').value = salt;
+      setSyncStatus('ready');
+      if (bar) {
+        bar.style.cssText = 'background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.22);color:#86efac;padding:10px 14px;border-radius:12px;font-size:13px';
+        bar.innerHTML = '&#10003; Connected! Your Gist ID (share with other devices):<br>' +
+          '<code style="background:rgba(255,255,255,.08);padding:3px 8px;border-radius:6px;font-size:12px;user-select:all;display:inline-block;margin-top:4px;border:1px solid var(--border)">' + finalGistId + '</code>' +
+          '<br><span style="font-size:11px;color:var(--muted);margin-top:4px;display:block">Use the same token + passphrase + salt + Gist ID on every device.</span>';
+      }
     }
   } catch(e) {
     setSyncStatus('error', 'Setup failed: ' + e.message);
     if (bar) {
       bar.style.cssText = 'background:rgba(251,113,133,.10);border:1px solid rgba(251,113,133,.25);color:#fecdd3;padding:10px 14px;border-radius:12px;font-size:13px';
-      bar.textContent = '&#10007; ' + e.message;
+      bar.textContent = '✗ ' + e.message;
     }
   }
 }
