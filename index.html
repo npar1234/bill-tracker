@@ -1557,6 +1557,7 @@ function defaultState() {
     payments: [],
     view: "dashboard",
     filterCat: "all",
+    billSort: "alpha",
     editId: null,
     editIncomeId: null,
     properties: [],
@@ -1610,6 +1611,7 @@ function loadState() {
     if (s) {
       const parsed = JSON.parse(s);
       parsed.view = "dashboard"; parsed.filterCat = "all"; parsed.editId = null; parsed.editIncomeId = null; parsed.editPropertyId = null; parsed.editExpenseId = null;
+      if (!parsed.billSort) parsed.billSort = 'alpha';
       if (!parsed.incomes) parsed.incomes = [];
       if (!parsed.properties) parsed.properties = [];
       if (!parsed.rentalExpenses) parsed.rentalExpenses = [];
@@ -2728,15 +2730,15 @@ function getNextPayDates(income, count) {
   const freq = income.frequency || 'monthly';
   const now = new Date();
   let d = new Date(start);
-  // Walk forward from last paid until we're past today, then collect 'count' dates
   const step = () => {
     if (freq === 'weekly') d.setDate(d.getDate() + 7);
     else if (freq === 'biweekly') d.setDate(d.getDate() + 14);
     else if (freq === 'monthly') d.setMonth(d.getMonth() + 1);
     else if (freq === 'yearly') d.setFullYear(d.getFullYear() + 1);
   };
-  // Find first future date
-  for (let i = 0; i < 200 && d <= now; i++) step();
+  // Walk forward — collect all dates from the start of the viewed month onward
+  const viewStart = new Date(state.currentYear, state.currentMonth, 1);
+  for (let i = 0; i < 200 && d < viewStart; i++) step();
   for (let i = 0; i < (count || 6); i++) { dates.push(new Date(d)); step(); }
   return dates;
 }
@@ -3297,11 +3299,21 @@ function render() {
 
   // ===== ALL BILLS =====
   if (state.view === "bills") {
-    const filtered = state.filterCat === "all" ? allBills : allBills.filter(b => b.category === state.filterCat);
+    let filtered = state.filterCat === "all" ? allBills : allBills.filter(b => b.category === state.filterCat);
+    const sortMode = state.billSort || 'alpha';
+    if (sortMode === 'alpha') filtered = filtered.slice().sort((a,b) => a.name.localeCompare(b.name));
+    else if (sortMode === 'due') filtered = filtered.slice().sort((a,b) => (a.dueDay||1) - (b.dueDay||1));
+    else if (sortMode === 'amount') filtered = filtered.slice().sort((a,b) => b.amount - a.amount);
+    const sortBtn = (val, label) => `<button onclick="state.billSort='${val}';render()" style="padding:4px 10px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:900;background:${sortMode===val?'var(--accent)':'rgba(255,255,255,.06)'};color:${sortMode===val?'#fff':'var(--muted)'}">${label}</button>`;
     document.getElementById("view-bills").innerHTML = `
-      <div class="filters">
-        <button class="filter-btn" style="background:${state.filterCat==="all"?"rgba(124,58,237,.22)":"rgba(255,255,255,.06)"};border-color:${state.filterCat==="all"?"rgba(124,58,237,.35)":"var(--border)"};color:var(--text)" onclick="setFilter('all')">All</button>
-        ${getCats().map(c => `<button class="filter-btn" style="background:${state.filterCat===c.id?c.color:"rgba(255,255,255,.06)"};border-color:${state.filterCat===c.id?"rgba(255,255,255,.18)":"var(--border)"};color:var(--text)" onclick="setFilter('${c.id}')">${c.label}</button>`).join("")}
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+        <div class="filters" style="margin-bottom:0">
+          <button class="filter-btn" style="background:${state.filterCat==="all"?"rgba(124,58,237,.22)":"rgba(255,255,255,.06)"};border-color:${state.filterCat==="all"?"rgba(124,58,237,.35)":"var(--border)"};color:var(--text)" onclick="setFilter('all')">All</button>
+          ${getCats().map(c => `<button class="filter-btn" style="background:${state.filterCat===c.id?c.color:"rgba(255,255,255,.06)"};border-color:${state.filterCat===c.id?"rgba(255,255,255,.18)":"var(--border)"};color:var(--text)" onclick="setFilter('${c.id}')">${c.label}</button>`).join("")}
+        </div>
+        <div style="display:flex;gap:4px;background:rgba(255,255,255,.06);border-radius:10px;padding:3px">
+          ${sortBtn('alpha','A-Z')}${sortBtn('due','Due Date')}${sortBtn('amount','Amount')}
+        </div>
       </div>
       <div class="bill-list">
         ${filtered.length === 0 ? '<p class="empty">No bills in this category</p>' :
