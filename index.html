@@ -791,8 +791,8 @@
   .payoff-row .pr-bal  { font-size:13px; font-weight:900; color:var(--bad); }
   .payoff-row .pr-date { font-size:11px; color:var(--muted); }
 
-  .sub-chart { display:flex; gap:6px; height:160px; align-items:flex-end; margin-top:8px; }
-  .sub-bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .sub-chart { display:flex; gap:6px; height:160px; margin-top:8px; }
+  .sub-bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; height:100%; }
   .sub-bar-col  { width:100%; flex:1; display:flex; align-items:flex-end; }
   .sub-bar      { width:100%; border-radius:4px 4px 0 0; min-height:3px; transition:height .4s; }
   .sub-bar-label{ font-size:9px; color:var(--muted); text-align:center; }
@@ -1040,8 +1040,8 @@
         <input id="iAmount" type="number" step="0.01" placeholder="0.00">
       </div>
       <div class="form-group">
-        <label>Pay Day of Month</label>
-        <input id="iDay" type="number" min="1" max="31" value="1">
+        <label>Last Paid Date</label>
+        <input id="iLastPaid" type="date">
       </div>
     </div>
     <div class="form-group">
@@ -1118,6 +1118,13 @@
           <div class="settings-desc">Only remind me about bills I pay manually</div>
         </div>
         <label class="toggle"><input type="checkbox" id="sManualOnly" onchange="saveSettings()"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Auto-mark autopay bills</div>
+          <div class="settings-desc">Automatically mark autopay bills as paid on their due date</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="sAutoMarkAutopay" onchange="saveSettings()"><span class="toggle-slider"></span></label>
       </div>
     </div>
 
@@ -1585,6 +1592,7 @@ function defaultSettings() {
     reminderDays: [3, 7],
     checkFrequency: 3600000,
     manualOnly: true,
+    autoMarkAutopay: false,
     pushEnabled: false,
     lastNotified: {},
     // Retirement
@@ -1691,7 +1699,7 @@ function exportCSV() {
 
   // --- Income ---
   const incRows = [['Name','Amount','Frequency','Pay Day']];
-  state.incomes.forEach(i => incRows.push([i.name, i.amount.toFixed(2), i.frequency||'monthly', i.payDay||'']));
+  state.incomes.forEach(i => incRows.push([i.name, i.amount.toFixed(2), i.frequency||'monthly', i.lastPaidDate||i.payDay||'']));
   csvFiles.push({ name: `income-${dateStr}.csv`, rows: incRows });
 
   // --- Savings Transactions ---
@@ -1780,6 +1788,7 @@ function saveSettings() {
   settings.showOverdue  = document.getElementById("sOverdue").checked;
   settings.showUpcoming = document.getElementById("sUpcoming").checked;
   settings.manualOnly   = document.getElementById("sManualOnly").checked;
+  settings.autoMarkAutopay = document.getElementById("sAutoMarkAutopay").checked;
   settings.currentAge             = parseInt(document.getElementById("sCurrentAge").value)      || '';
   settings.retirementAge          = parseInt(document.getElementById("sRetirementAge").value)   || 67;
   settings.desiredMonthlyIncome   = parseFloat(document.getElementById("sDesiredIncome").value) || '';
@@ -1808,7 +1817,9 @@ function getDueDate(bill, month, year) {
 }
 const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 function fmtDueDate(dateStr) {
+  if (!dateStr) return '';
   const d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d)) return dateStr;
   const mm = String(d.getMonth()+1).padStart(2,'0');
   const dd = String(d.getDate()).padStart(2,'0');
   return `${mm}-${dd}-${DAY_NAMES[d.getDay()]}`;
@@ -2292,6 +2303,7 @@ function openSettingsModal() {
   document.getElementById("sOverdue").checked = settings.showOverdue;
   document.getElementById("sUpcoming").checked = settings.showUpcoming;
   document.getElementById("sManualOnly").checked = settings.manualOnly;
+  document.getElementById("sAutoMarkAutopay").checked = settings.autoMarkAutopay || false;
   document.getElementById("sCurrentAge").value      = settings.currentAge || '';
   document.getElementById("sRetirementAge").value   = settings.retirementAge || 67;
   document.getElementById("sDesiredIncome").value   = settings.desiredMonthlyIncome || '';
@@ -2665,7 +2677,7 @@ function openIncomeModal() {
   document.getElementById("incomeModalTitle").textContent = "Add Income Source";
   document.getElementById("iName").value = "";
   document.getElementById("iAmount").value = "";
-  document.getElementById("iDay").value = "1";
+  document.getElementById("iLastPaid").value = new Date().toISOString().slice(0,10);
   document.getElementById("iFrequency").value = "monthly";
   document.getElementById("incomeSaveBtn").textContent = "Add Income";
   document.getElementById("incomeModal").classList.remove("hidden");
@@ -2677,7 +2689,7 @@ function openEditIncome(id) {
   document.getElementById("incomeModalTitle").textContent = "Edit Income";
   document.getElementById("iName").value = inc.name;
   document.getElementById("iAmount").value = inc.amount;
-  document.getElementById("iDay").value = inc.payDay;
+  document.getElementById("iLastPaid").value = inc.lastPaidDate || '';
   document.getElementById("iFrequency").value = inc.frequency;
   document.getElementById("incomeSaveBtn").textContent = "Save Changes";
   document.getElementById("incomeModal").classList.remove("hidden");
@@ -2688,16 +2700,50 @@ function closeIncomeModalDirect() { document.getElementById("incomeModal").class
 function saveIncome() {
   const name = document.getElementById("iName").value.trim();
   const amount = parseFloat(document.getElementById("iAmount").value);
-  const payDay = parseInt(document.getElementById("iDay").value) || 1;
+  const lastPaidDate = document.getElementById("iLastPaid").value || '';
   const frequency = document.getElementById("iFrequency").value;
   if (!name || isNaN(amount)) return;
   if (state.editIncomeId) {
     const inc = state.incomes.find(i => i.id === state.editIncomeId);
-    if (inc) Object.assign(inc, { name, amount, payDay, frequency });
+    if (inc) Object.assign(inc, { name, amount, lastPaidDate, frequency });
   } else {
-    state.incomes.push({ id: genId(), name, amount, payDay, frequency });
+    state.incomes.push({ id: genId(), name, amount, lastPaidDate, frequency });
   }
   saveState(); closeIncomeModalDirect(); render();
+}
+
+// Compute next pay dates from lastPaidDate + frequency
+function getNextPayDates(income, count) {
+  const dates = [];
+  if (!income.lastPaidDate) {
+    // Fallback for old data: use payDay field
+    const day = income.payDay || 1;
+    for (let m = 0; m < (count || 3); m++) {
+      const d = new Date(state.currentYear, state.currentMonth + m, Math.min(day, 28));
+      dates.push(d);
+    }
+    return dates;
+  }
+  const start = new Date(income.lastPaidDate + 'T12:00:00');
+  const freq = income.frequency || 'monthly';
+  const now = new Date();
+  let d = new Date(start);
+  // Walk forward from last paid until we're past today, then collect 'count' dates
+  const step = () => {
+    if (freq === 'weekly') d.setDate(d.getDate() + 7);
+    else if (freq === 'biweekly') d.setDate(d.getDate() + 14);
+    else if (freq === 'monthly') d.setMonth(d.getMonth() + 1);
+    else if (freq === 'yearly') d.setFullYear(d.getFullYear() + 1);
+  };
+  // Find first future date
+  for (let i = 0; i < 200 && d <= now; i++) step();
+  for (let i = 0; i < (count || 6); i++) { dates.push(new Date(d)); step(); }
+  return dates;
+}
+
+function getIncomePayDay(income) {
+  const next = getNextPayDates(income, 1);
+  return next.length ? next[0].getDate() : (income.payDay || 1);
 }
 
 function deleteIncome(id) {
@@ -2773,7 +2819,7 @@ function catInfo(id) { return getCats().find(c => c.id === id) || getCats()[getC
 // Bill-name keyword → icon override (case-insensitive)
 const BILL_ICON_OVERRIDES = [
   { words: ['pool'],                    icon: '🏊' },
-  { words: ['trash','binz','bin','garbage','waste','junk','rubbish'], icon: '__trash__' },
+  { words: ['trash','binz','bin','garbage','waste','junk','rubbish'], icon: '🗑️' },
   { words: ['rv','camper','motorhome'], icon: '🚐' },
   { words: ['heloc','home equity','equity line'], icon: '🏠' },
   { words: ['mortgage','rent','hoa'],   icon: '🏠' },
@@ -3194,9 +3240,22 @@ function render() {
       dayEvents[d].push({ type: "bill", name: b.name, amount: b.amount, id: b.id, paid: isPaid(b.id), category: b.category, payMethod: b.payMethod });
     });
     state.incomes.forEach(inc => {
-      const d = Math.min(inc.payDay, daysInMonth);
-      if (!dayEvents[d]) dayEvents[d] = [];
-      dayEvents[d].push({ type: "income", name: inc.name, amount: inc.amount });
+      // Compute pay dates that fall in this month
+      const dates = getNextPayDates(inc, 12);
+      dates.forEach(pd => {
+        if (pd.getMonth() === state.currentMonth && pd.getFullYear() === state.currentYear) {
+          const d = pd.getDate();
+          if (!dayEvents[d]) dayEvents[d] = [];
+          dayEvents[d].push({ type: "income", name: inc.name, amount: inc.amount });
+        }
+      });
+      // Fallback for old data with payDay
+      if (!inc.lastPaidDate && inc.payDay) {
+        const d = Math.min(inc.payDay, daysInMonth);
+        if (!dayEvents[d]) dayEvents[d] = [];
+        const existing = dayEvents[d].find(e => e.type === 'income' && e.name === inc.name);
+        if (!existing) dayEvents[d].push({ type: "income", name: inc.name, amount: inc.amount });
+      }
     });
 
     let cells = DAYS_NAMES.map(d => `<div class="cal-header-cell">${d}</div>`).join("");
@@ -3213,7 +3272,7 @@ function render() {
             const calCat = catInfo(ev.category);
             const pipColor = ev.paid ? 'rgba(34,197,94,.25)' : calCat.color + '2a';
             const pipBorder = ev.paid ? 'rgba(34,197,94,.7)' : calCat.color + 'cc';
-            return `<span class="cal-pip bill${ev.paid ? " is-paid" : ""}" style="background:${pipColor};border:1px solid ${pipBorder}" title="${ev.name}: ${fmt(ev.amount)} · ${calCat.label} (${ev.payMethod === 'autopay' ? 'Autopay' : 'Manual'})" onclick="togglePaid('${ev.id}')">${getBillDisplayIcon(ev)||calCat.icon||''}${ev.payMethod === 'autopay' ? '⚡' : ''} ${fmtShort(ev.amount)}</span>`;
+            return `<span class="cal-pip bill${ev.paid ? " is-paid" : ""}" style="background:${pipColor};border:1px solid ${pipBorder}" title="${ev.name}: ${fmt(ev.amount)} · ${calCat.label} (${ev.payMethod === 'autopay' ? 'Autopay' : 'Manual'})" onclick="togglePaid('${ev.id}')">${billIcon(ev)}${ev.payMethod === 'autopay' ? '⚡' : ''} ${fmtShort(ev.amount)}</span>`;
           } else {
             return `<span class="cal-pip income" title="${ev.name}: ${fmt(ev.amount)}">+${fmtShort(ev.amount)} ${ev.name}</span>`;
           }
@@ -3328,7 +3387,7 @@ function render() {
               <div class="income-icon">$</div>
               <div class="row-info">
                 <div class="row-name">${inc.name}</div>
-                <div class="row-meta">${freqLabels[inc.frequency] || inc.frequency} &middot; Day ${inc.payDay}</div>
+                <div class="row-meta">${freqLabels[inc.frequency] || inc.frequency} &middot; ${inc.lastPaidDate ? 'Next: ' + fmtDueDate(getNextPayDates(inc,1)[0]?.toISOString().slice(0,10)||'') : (inc.payDay ? 'Day ' + inc.payDay : '')}</div>
               </div>
               <div class="row-right" style="margin-right:8px">
                 <div class="row-amount" style="color:#3b82f6">${fmt(inc.amount)}</div>
@@ -4416,115 +4475,81 @@ function renderSavings() {
 
   // Growth chart — multi-year balance view
   const chartHTML = (() => {
-    const yearColors = ['#6366f1','#22d3ee','#10b981','#fbbf24'];
-    const acctColors = ['#22d3ee','#a78bfa','#10b981','#fbbf24','#fb7185','#f97316','#60a5fa'];
+    const showAll = state._savLedgerAll;
 
-    // Build per-year bars for a given account using its transactions + current balance
-    function buildYearBarsForAcct(targetAcctId, yr) {
-      const targetBal = computedBalance(targetAcctId);
-      const targetTxns = state.savingsTransactions.filter(t => t.accountId === targetAcctId);
-      const yearTxns = targetTxns.filter(t => new Date(t.date+'T12:00:00').getFullYear() === yr);
-      const byMonth = Array.from({length:12}, () => []);
-      yearTxns.forEach(t => { byMonth[new Date(t.date+'T12:00:00').getMonth()].push(t); });
-      let running = yr === curY ? targetBal : 0;
-      if (yr === curY) {
-        yearTxns.forEach(t => {
-          if (t.type==='deposit'||t.type==='interest') running -= t.amount;
-          else running += t.amount;
-        });
+    // Generate scheduled deposits from Jan 1 of current year to today
+    function getScheduledDeposits(targetAcct) {
+      const sched = [];
+      if (!targetAcct.contrib || targetAcct.contrib <= 0) return sched;
+      const freq = targetAcct.contribFreq || 'monthly';
+      const now = new Date();
+      const startDate = new Date(curY, 0, 1); // Jan 1
+      // For monthly: use contribDay
+      if (freq === 'monthly') {
+        for (let m = 0; m <= now.getMonth(); m++) {
+          const day = Math.min(targetAcct.contribDay || 1, new Date(curY, m+1, 0).getDate());
+          const d = new Date(curY, m, day);
+          if (d <= now) sched.push({ date: d.toISOString().slice(0,10), amount: targetAcct.contrib, accountId: targetAcct.id, type: 'deposit', scheduled: true });
+        }
+      } else {
+        // Weekly or biweekly: start from Jan 1 (or contribDay as day-of-week reference)
+        const interval = freq === 'weekly' ? 7 : 14;
+        // Find the first occurrence on or after Jan 1
+        let d = new Date(startDate);
+        while (d <= now) {
+          sched.push({ date: d.toISOString().slice(0,10), amount: targetAcct.contrib, accountId: targetAcct.id, type: 'deposit', scheduled: true });
+          d = new Date(d.getTime() + interval * 86400000);
+        }
       }
-      const maxMo = yr === curY ? curM : 11;
-      const bars = [];
-      for (let m = 0; m <= maxMo; m++) {
-        byMonth[m].forEach(t => {
-          if (t.type==='deposit'||t.type==='interest') running += t.amount;
-          else running -= t.amount;
-        });
-        bars.push({ mo: MOS[m], bal: Math.max(0, running) });
-      }
-      return bars;
+      return sched;
     }
 
-    // ── Individual account chart ──────────────────────────────────────────
-    const indivHTML = (() => {
-      const allYears = [...new Set(acctTxns.map(t => new Date(t.date+'T12:00:00').getFullYear()))].sort();
-      if (!allYears.includes(curY)) allYears.push(curY);
-      const selectedYears = allYears.slice(-3);
-      const allBarsFlat = selectedYears.flatMap(yr => buildYearBarsForAcct(acct.id, yr));
-      if (allBarsFlat.length === 0) return '<p class="empty">No transactions yet.</p>';
-      const maxBal = Math.max(...allBarsFlat.map(b => b.bal), 1);
-      const barGroups = selectedYears.map((yr, yi) => {
-        const bars = buildYearBarsForAcct(acct.id, yr);
-        const color = yearColors[yi % yearColors.length];
-        return { yr, color, html: bars.map(b => {
-          const pct = Math.round((b.bal/maxBal)*100);
-          return `<div class="sav-chart-bar-wrap" title="${yr} ${b.mo}: ${fmt(b.bal)}">
-            <div style="font-size:9px;color:var(--muted);text-align:center">${b.bal>=1000?'$'+(b.bal/1000).toFixed(1)+'k':'$'+Math.round(b.bal)}</div>
-            <div class="sav-chart-bar-col"><div class="sav-chart-bar" style="height:${pct}%;background:${color}"></div></div>
-            <div class="sav-chart-label" style="color:var(--muted)">${b.mo}</div>
-          </div>`;
-        }).join('') };
+    // Build merged list: scheduled + actual
+    const targetAccts = showAll ? state.savingsAccounts : [acct];
+    let entries = [];
+    targetAccts.forEach(a => {
+      const scheduled = getScheduledDeposits(a);
+      const actual = state.savingsTransactions.filter(t => t.accountId === a.id && (t.type === 'deposit' || t.type === 'interest'));
+      // Mark scheduled entries as logged if an actual deposit exists on the same date (±1 day) for same amount
+      scheduled.forEach(s => {
+        const match = actual.find(t => Math.abs(new Date(t.date+'T12:00:00') - new Date(s.date+'T12:00:00')) <= 86400000 && Math.abs(t.amount - s.amount) < 0.01);
+        if (match) {
+          entries.push({ ...match, logged: true, acctName: a.name });
+        } else {
+          entries.push({ ...s, logged: false, acctName: a.name });
+        }
       });
-      const legend = barGroups.map(g =>
-        `<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)"><span style="width:10px;height:10px;border-radius:3px;background:${g.color};display:inline-block"></span>${g.yr}</span>`
-      ).join('');
-      return `<div style="display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:8px">${legend}</div>
-        ${barGroups.map(g => `<div style="margin-bottom:8px">
-          <div style="font-size:11px;font-weight:900;color:${g.color};margin-bottom:4px">${g.yr}</div>
-          <div class="sav-chart-bars">${g.html}</div>
-        </div>`).join('')}`;
-    })();
+      // Also add any actual deposits that didn't match a scheduled one (one-offs, interest)
+      actual.forEach(t => {
+        const alreadyIncluded = entries.find(e => e.id === t.id);
+        if (!alreadyIncluded) entries.push({ ...t, logged: true, acctName: a.name });
+      });
+    });
+    entries.sort((a,b) => b.date.localeCompare(a.date));
 
-    // ── All accounts combined chart ───────────────────────────────────────
-    const allAcctsHTML = (() => {
-      if (state.savingsAccounts.length < 2) return '<p class="empty" style="padding:8px 0">Add a second savings account to see combined view.</p>';
-      // Build combined monthly balance for current year across all accounts
-      const months = Array.from({length: curM+1}, (_,m) => m);
-      const acctData = state.savingsAccounts.map((a, ai) => ({
-        acct: a,
-        color: acctColors[ai % acctColors.length],
-        bars: buildYearBarsForAcct(a.id, curY),
-      }));
-      // For stacked bars: compute total per month
-      const totals = months.map(m => acctData.reduce((s, ad) => s + (ad.bars[m]?.bal || 0), 0));
-      const maxTotal = Math.max(...totals, 1);
-      const stackedBars = months.map(m => {
-        const total = totals[m];
-        const pct = Math.round((total/maxTotal)*100);
-        const segments = acctData.map(ad => {
-          const bal = ad.bars[m]?.bal || 0;
-          const segPct = total > 0 ? Math.round(bal/total*100) : 0;
-          return `<div style="width:100%;height:${segPct}%;background:${ad.color};min-height:${bal>0?2:0}px" title="${ad.acct.name}: ${fmt(bal)}"></div>`;
-        }).reverse().join(''); // reverse so first acct is on top
-        return `<div class="sav-chart-bar-wrap" title="${MOS[m]} total: ${fmt(total)}">
-          <div style="font-size:9px;color:var(--muted);text-align:center">${total>=1000?'$'+(total/1000).toFixed(1)+'k':'$'+Math.round(total)}</div>
-          <div class="sav-chart-bar-col" style="flex-direction:column;justify-content:flex-end;height:${pct}%;max-height:100px;border-radius:6px 6px 0 0;overflow:hidden">${segments}</div>
-          <div class="sav-chart-label" style="color:var(--muted)">${MOS[m]}</div>
-        </div>`;
-      }).join('');
-      const legend = acctData.map(ad =>
-        `<span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)"><span style="width:10px;height:10px;border-radius:3px;background:${ad.color};display:inline-block"></span>${escHtml(ad.acct.name)}</span>`
-      ).join('');
-      return `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">${legend}</div>
-        <div style="font-size:11px;font-weight:900;color:#22d3ee;margin-bottom:4px">${curY} — All Accounts Combined</div>
-        <div class="sav-chart-bars" style="height:120px">${stackedBars}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:6px">Total: <strong style="color:var(--text)">${fmt(totals[curM])}</strong> across ${state.savingsAccounts.length} accounts</div>`;
-    })();
-
-    // ── Tabbed panel ─────────────────────────────────────────────────────
-    const tabId = 'savChartTab';
+    const TLBL = { deposit: 'Deposit', interest: 'Interest' };
+    const rows = entries.slice(0, 30).map(t => {
+      const isInt = t.type === 'interest';
+      const statusIcon = t.logged ? '✅' : '⏳';
+      const statusColor = t.logged ? 'var(--good)' : 'var(--warn)';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);opacity:${t.logged?'1':'.7'}">
+        <div style="width:28px;height:28px;border-radius:8px;background:${isInt?'rgba(251,191,36,.15)':'rgba(34,197,94,.15)'};display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">${isInt?'⭐':statusIcon}</div>
+        <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:var(--text)">${TLBL[t.type]||t.type}${t.notes ? ' — '+escHtml(t.notes) : ''}${!t.logged && !isInt ? ' <span style="font-size:10px;color:var(--warn)">(scheduled)</span>' : ''}${showAll ? ' <span style="color:var(--muted);font-weight:400;font-size:11px">'+escHtml(t.acctName||'')+'</span>' : ''}</div><div style="font-size:11px;color:var(--muted)">${t.date}</div></div>
+        <div style="font-size:14px;font-weight:900;color:${statusColor}">+${fmt(t.amount)}</div>
+      </div>`;
+    }).join('');
+    const loggedCount = entries.filter(e => e.logged).length;
+    const totalCount = entries.length;
     return `<div class="panel" style="margin-bottom:20px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-        <h3>Balance Growth</h3>
+        <h3>Deposit Ledger <span style="font-size:12px;font-weight:400;color:var(--muted)">${loggedCount}/${totalCount} logged</span></h3>
         <div style="display:flex;gap:4px;background:rgba(255,255,255,.06);border-radius:10px;padding:3px">
-          <button id="${tabId}-single" onclick="document.getElementById('${tabId}-single').style.background='var(--accent)';document.getElementById('${tabId}-single').style.color='#fff';document.getElementById('${tabId}-all').style.background='transparent';document.getElementById('${tabId}-all').style.color='var(--muted)';document.getElementById('${tabId}-spanel').style.display='block';document.getElementById('${tabId}-apanel').style.display='none'"
-            style="padding:4px 12px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:900;background:var(--accent);color:#fff;transition:all .15s">This Account</button>
-          <button id="${tabId}-all" onclick="document.getElementById('${tabId}-all').style.background='var(--accent)';document.getElementById('${tabId}-all').style.color='#fff';document.getElementById('${tabId}-single').style.background='transparent';document.getElementById('${tabId}-single').style.color='var(--muted)';document.getElementById('${tabId}-apanel').style.display='block';document.getElementById('${tabId}-spanel').style.display='none'"
-            style="padding:4px 12px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:900;background:transparent;color:var(--muted);transition:all .15s">All Accounts</button>
+          <button onclick="state._savLedgerAll=false;renderSavings()" style="padding:4px 12px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:900;background:${!showAll?'var(--accent)':'transparent'};color:${!showAll?'#fff':'var(--muted)'};transition:all .15s">This Account</button>
+          <button onclick="state._savLedgerAll=true;renderSavings()" style="padding:4px 12px;border-radius:8px;border:none;cursor:pointer;font-size:11px;font-weight:900;background:${showAll?'var(--accent)':'transparent'};color:${showAll?'#fff':'var(--muted)'};transition:all .15s">All Deposits</button>
         </div>
       </div>
-      <div id="${tabId}-spanel">${indivHTML}</div>
-      <div id="${tabId}-apanel" style="display:none">${allAcctsHTML}</div>
+      ${rows || '<p class="empty">No deposits or scheduled contributions found.</p>'}
+      ${entries.length > 30 ? '<div style="text-align:center;padding:8px;font-size:12px;color:var(--muted)">Showing 30 of '+entries.length+'</div>' : ''}
     </div>`;
   })();
 
@@ -6245,8 +6270,29 @@ async function syncOnLoad() {
   if (changed) saveState();
 })();
 
+// Auto-mark autopay bills on their due date
+function autoMarkAutopayBills() {
+  if (!settings.autoMarkAutopay) return;
+  const now = new Date();
+  const curMonth = now.getMonth();
+  const curYear = now.getFullYear();
+  const todayDate = now.getDate();
+  let changed = false;
+  state.bills.forEach(b => {
+    if (b.payMethod !== 'autopay') return;
+    if (isPaid(b.id, curMonth, curYear)) return;
+    if (!isDueThisMonth(b)) return;
+    if (b.dueDay <= todayDate) {
+      state.payments.push({ billId: b.id, month: curMonth, year: curYear, paidDate: now.toISOString().slice(0,10) });
+      changed = true;
+    }
+  });
+  if (changed) saveState();
+}
+
 // Init
 initCategorySelect();
+autoMarkAutopayBills();
 render();
 checkAndNotify();
 checkMonthEndSummary();
