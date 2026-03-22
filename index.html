@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>SimpleLedger</title>
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css?v=4">
+</head>
+<body>
+<div class="status-bar"></div>
+
+<!-- ═══ Header ═══ -->
+<div class="header">
+  <div class="header-left">
+    <img class="header-icon" src="icon.svg" alt="SimpleLedger icon">
+    <div>
+      <h1><span class="t-light">Simple</span><span class="t-bold">Ledger</span></h1>
+      <p id="headerDate"></p>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="header-btn" onclick="openAddModal()" title="Add">＋</button>
+    <button class="header-btn" onclick="openModal('dataModal')" title="Import / Export" style="font-size:14px">⚙️</button>
+  </div>
+</div>
+
+<!-- ═══ Tab: Home ═══ -->
+<div id="tab-home" class="tab-content active">
+  <div class="zone zone-summary">
+    <div class="summary-strip" id="summaryStrip"></div>
+    <div id="progressBars" style="padding:0 10px 12px"></div>
+  </div>
+  <div class="zone zone-calendar">
+    <div class="month-nav cal-month-nav">
+      <button onclick="changeMonth(-1)">‹</button>
+      <span class="month-label" id="monthLabel"></span>
+      <button onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="calendar">
+      <div class="cal-weekdays">
+        <div class="cal-weekday">Sun</div><div class="cal-weekday">Mon</div><div class="cal-weekday">Tue</div>
+        <div class="cal-weekday">Wed</div><div class="cal-weekday">Thu</div><div class="cal-weekday">Fri</div>
+        <div class="cal-weekday">Sat</div>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+    <div id="dayDetail"></div>
+  </div>
+  <div class="zone zone-paycheck" id="zone-paycheck">
+    <div class="section-header collapsible" onclick="toggleSection('zone-paycheck')">
+      <span><span class="section-title">Paycheck Planner</span><span class="section-chevron">▼</span></span>
+      <span class="section-count" id="paycheckCount"></span>
+    </div>
+    <div class="collapsible-body" id="paycheckList" style="padding:0 10px 10px"></div>
+  </div>
+  <div class="zone zone-upcoming" id="zone-upcoming">
+    <div class="section-header collapsible" onclick="toggleSection('zone-upcoming')">
+      <span><span class="section-title">Upcoming</span><span class="section-chevron">▼</span></span>
+      <span class="section-count" id="upcomingCount"></span>
+    </div>
+    <div class="collapsible-body upcoming-list" id="upcomingList"></div>
+  </div>
+</div>
+
+<!-- ═══ Tab: Bills ═══ -->
+<div id="tab-bills" class="tab-content">
+  <div class="zone zone-bills">
+    <div class="section-header" style="padding-top:10px">
+      <span class="section-title">Bills</span>
+      <button class="header-btn" onclick="openBillModal()" style="width:28px;height:28px;font-size:14px">＋</button>
+    </div>
+    <div class="filter-tabs" id="filterTabs"></div>
+    <div class="bill-list" id="billList"></div>
+  </div>
+</div>
+
+<!-- ═══ Tab: Income ═══ -->
+<div id="tab-income" class="tab-content">
+  <div class="zone zone-income">
+    <div class="section-header" style="padding-top:10px">
+      <span class="section-title">Income</span>
+      <button class="header-btn" onclick="openIncomeModal()" style="width:28px;height:28px;font-size:14px">＋</button>
+    </div>
+    <div class="upcoming-list" id="incomeList"></div>
+  </div>
+</div>
+
+<!-- ═══ Tab: Savings ═══ -->
+<div id="tab-savings" class="tab-content">
+  <div class="zone zone-savings">
+    <div class="section-header" style="padding-top:10px">
+      <span class="section-title">Savings</span>
+    </div>
+    <div class="upcoming-list" id="savingsList"></div>
+  </div>
+</div>
+
+<!-- ═══ Bottom nav ═══ -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" data-tab="home" onclick="switchTab('home')"><span class="nav-icon">📅</span><span class="nav-label">Home</span></button>
+  <button class="nav-btn" data-tab="bills" onclick="switchTab('bills')"><span class="nav-icon">📋</span><span class="nav-label">Bills</span></button>
+  <button class="nav-btn" data-tab="income" onclick="switchTab('income')"><span class="nav-icon">💵</span><span class="nav-label">Income</span></button>
+  <button class="nav-btn" data-tab="savings" onclick="switchTab('savings')"><span class="nav-icon">🏦</span><span class="nav-label">Savings</span></button>
+</nav>
+
+<!-- ═══ Add choice modal ═══ -->
+<div class="modal-overlay" id="addModal" onclick="if(event.target===this)closeModal('addModal')">
+  <div class="modal-sheet" style="padding-bottom:calc(28px + var(--safe-bottom))">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Add New</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn-primary" onclick="closeModal('addModal');openBillModal()" style="background:var(--expense)">＋ New Bill</button>
+      <button class="btn-primary" onclick="closeModal('addModal');openIncomeModal()" style="background:var(--income);color:#000">＋ New Income</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Bill modal ═══ -->
+<div class="modal-overlay" id="billModal" onclick="if(event.target===this)closeModal('billModal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="billModalTitle">Add Bill</div>
+    <div class="field-row">
+      <div class="field" style="flex:1"><label>Name</label><input id="bName" placeholder="e.g. Electric Bill"></div>
+      <div class="field" style="width:56px"><label>Icon</label><input id="bIcon" placeholder="⚡" maxlength="2" style="text-align:center;font-size:18px"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Amount ($)</label><input id="bAmount" type="number" step="0.01" placeholder="0.00"></div>
+      <div class="field"><label>Due Day</label><input id="bDay" type="number" min="1" max="31" value="1"></div>
+    </div>
+    <div class="field"><label>Category</label><select id="bCat"></select></div>
+    <div class="field-row">
+      <div class="field"><label>Frequency</label>
+        <select id="bFreq">
+          <option value="monthly">Monthly</option>
+          <option value="quarterly">Quarterly</option>
+          <option value="yearly">Yearly</option>
+          <option value="once">One-Time</option>
+        </select>
+      </div>
+      <div class="field"><label>Payment</label>
+        <select id="bPay">
+          <option value="manual">Manual</option>
+          <option value="autopay">Autopay</option>
+        </select>
+      </div>
+    </div>
+    <div class="toggle-row">
+      <div><div class="toggle-label">Include in Paycheck Planner</div><div class="toggle-desc">Uncheck for bills paid from a different account</div></div>
+      <label class="toggle-switch"><input type="checkbox" id="bPlanner" checked><span class="toggle-track"></span></label>
+    </div>
+    <button class="btn-primary" id="billSaveBtn" onclick="saveBill()">Add Bill</button>
+    <button class="btn-danger hidden" id="billDelBtn" onclick="deleteBill()">Delete This Bill</button>
+  </div>
+</div>
+
+<!-- ═══ Income modal ═══ -->
+<div class="modal-overlay" id="incomeModal" onclick="if(event.target===this)closeModal('incomeModal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="incomeModalTitle">Add Income</div>
+    <div class="field"><label>Source Name</label><input id="iName" placeholder="e.g. Salary, Freelance"></div>
+    <div class="field-row">
+      <div class="field"><label>Amount ($)</label><input id="iAmount" type="number" step="0.01" placeholder="0.00"></div>
+      <div class="field"><label>Last Paid Date</label><input id="iLastPaid" type="date"></div>
+    </div>
+    <div class="field"><label>Frequency</label>
+      <select id="iFreq">
+        <option value="monthly">Monthly</option>
+        <option value="biweekly">Bi-Weekly</option>
+        <option value="weekly">Weekly</option>
+        <option value="yearly">Yearly</option>
+      </select>
+    </div>
+    <div class="toggle-row">
+      <div><div class="toggle-label">Include in Paycheck Planner</div><div class="toggle-desc">Uncheck for income not used for main bills</div></div>
+      <label class="toggle-switch"><input type="checkbox" id="iPlanner" checked><span class="toggle-track"></span></label>
+    </div>
+    <button class="btn-primary" id="incomeSaveBtn" onclick="saveIncome()">Add Income</button>
+    <button class="btn-danger hidden" id="incomeDelBtn" onclick="deleteIncome()">Delete This Income</button>
+  </div>
+</div>
+
+<!-- ═══ Confirm modal ═══ -->
+<div class="modal-overlay" id="confirmModal" onclick="if(event.target===this)closeModal('confirmModal')">
+  <div class="modal-sheet" style="padding-bottom:calc(24px + var(--safe-bottom))">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="confirmTitle">Confirm</div>
+    <p id="confirmText" style="font-size:13px;color:var(--text2);margin-bottom:16px"></p>
+    <div style="display:flex;gap:8px">
+      <button class="btn-primary" style="background:var(--surface2);color:var(--text)" onclick="closeModal('confirmModal')">Cancel</button>
+      <button class="btn-primary" style="background:var(--expense)" id="confirmBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ History modal ═══ -->
+<div class="modal-overlay" id="historyModal" onclick="if(event.target===this)closeModal('historyModal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">12-Month History</div>
+    <div id="historyContent"></div>
+    <button class="btn-primary" style="background:var(--surface2);color:var(--text);margin-top:12px" onclick="closeModal('historyModal')">Close</button>
+  </div>
+</div>
+
+<!-- ═══ Pay amount modal ═══ -->
+<div class="modal-overlay" id="payAmtModal" onclick="if(event.target===this)closeModal('payAmtModal')">
+  <div class="modal-sheet" style="padding-bottom:calc(24px + var(--safe-bottom))">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="payAmtTitle">Adjust Paid Amount</div>
+    <p id="payAmtDesc" style="font-size:12px;color:var(--text3);margin-bottom:14px"></p>
+    <div class="field">
+      <label>Amount Actually Paid</label>
+      <input id="payAmtInput" type="number" step="0.01" min="0" style="font-size:18px;font-weight:800">
+    </div>
+    <p style="font-size:11px;color:var(--text3);margin-bottom:14px">Only changes the recorded amount for this month. The bill's default amount stays the same.</p>
+    <div style="display:flex;gap:8px">
+      <button class="btn-primary" style="background:var(--surface2);color:var(--text)" onclick="closeModal('payAmtModal')">Cancel</button>
+      <button class="btn-primary" id="payAmtSaveBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Data modal ═══ -->
+<div class="modal-overlay" id="dataModal" onclick="if(event.target===this)closeModal('dataModal')">
+  <div class="modal-sheet" style="padding-bottom:calc(28px + var(--safe-bottom))">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Data Management</div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:16px">Import a backup from the full app or export your current data. Both apps use the same data format.</p>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn-primary" onclick="document.getElementById('importFile').click()" style="background:var(--accent)">⬆️ Import JSON Backup</button>
+      <button class="btn-primary" onclick="exportData()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border)">⬇️ Export JSON Backup</button>
+    </div>
+    <div id="importStatus" style="margin-top:12px;font-size:12px;text-align:center;color:var(--text3)"></div>
+  </div>
+</div>
+<input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+<script src="app.js?v=8"></script>
+</body>
+</html>
