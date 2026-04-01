@@ -1,15 +1,118 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="background:#0f0f14">
 <head>
 <meta charset="UTF-8">
+<meta name="color-scheme" content="dark">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0f0f14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+/* Critical inline CSS — renders splash before external stylesheet arrives */
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-height:100%}
+.splash{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#0f0f14!important;perspective:900px;transition:opacity .7s ease,visibility .7s ease}
+.splash.hide{opacity:0;visibility:hidden;pointer-events:none}
+.splash-content{position:relative;width:220px;height:340px}
+.ledger-book{position:absolute;top:0;left:0;right:0;height:290px;transform-style:preserve-3d;transform:scale(0);animation:book-enter 1s cubic-bezier(.34,1.56,.64,1) forwards}
+.ledger-cover{position:absolute;inset:0;background:linear-gradient(145deg,#1e4d35 0%,#15362a 40%,#0d2818 100%);border-radius:4px 12px 12px 4px;border:1px solid rgba(255,255,255,.06);box-shadow:-3px 0 10px rgba(0,0,0,.5),0 6px 30px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.06);transform-origin:left center;z-index:10;overflow:hidden}
+.ledger-spine{position:absolute;left:0;top:0;bottom:0;width:16px;background:linear-gradient(90deg,rgba(0,0,0,.4) 0%,rgba(0,0,0,.1) 60%,transparent 100%);border-right:1px solid rgba(255,255,255,.04)}
+.cover-emboss{position:absolute;inset:10px 10px 10px 22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.cover-logo{width:52px;height:52px;opacity:0}
+.cover-title{font-size:18px;letter-spacing:-.3px;opacity:0}
+.cover-title .cl{font-weight:300;color:rgba(200,180,140,.45);text-shadow:0 1px 1px rgba(0,0,0,.5),0 -1px 0 rgba(255,255,255,.04)}
+.cover-title .cb{font-weight:800;color:rgba(200,180,140,.6);text-shadow:0 1px 1px rgba(0,0,0,.5),0 -1px 0 rgba(255,255,255,.05)}
+.cover-rule,.cover-sub,.splash-tagline{opacity:0}
+.cover-border{position:absolute;inset:10px 10px 10px 22px;border:1px solid rgba(200,180,140,.15);border-radius:2px}
+.cover-corner{position:absolute;width:12px;height:12px;border-color:rgba(200,180,140,.12);border-style:solid;border-width:0}
+.ledger-pages{position:absolute;inset:4px 4px 4px 16px;transform-style:preserve-3d}
+.ledger-page{position:absolute;inset:0;border-radius:0 8px 8px 0;background:#ede7d9}
+.ledger-page.p4{background:#f2ecda;overflow:hidden}
+.entry-header,.entry-divider,.ledger-entry,.stamp{opacity:0}
+@keyframes book-enter{0%{transform:scale(0)}100%{transform:scale(1)}}
+</style>
 <title>SimpleLedger</title>
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="style.css?v=4">
+<!-- Non-blocking stylesheet: splash is fully styled by inline CSS above -->
+<link rel="stylesheet" href="style.css?v=30" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="style.css?v=30"></noscript>
 </head>
-<body>
+<body style="background:#0f0f14">
+
+<!-- ═══ Splash Screen ═══ -->
+<div id="splash" class="splash" style="background:#0f0f14">
+  <div class="splash-content">
+    <div class="ledger-book">
+      <!-- Front cover with embossed logo + name -->
+      <div class="ledger-cover">
+        <div class="ledger-spine"></div>
+        <div class="cover-border"></div>
+        <div class="cover-emboss">
+          <svg class="cover-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+            <path d="M399.9,394.9 A200,200 0 0,1 138.4,417.8 L185.5,353.1 A120,120 0 0,0 342.3,339.4 Z" fill="rgba(45,212,168,.5)"/>
+            <path d="M117.1,399.9 A200,200 0 0,1 190.9,66.9 L216.9,142.5 A120,120 0 0,0 172.6,342.3 Z" fill="rgba(248,113,113,.45)"/>
+            <path d="M217.8,59.7 A200,200 0 0,1 417.8,373.6 L353.1,326.5 A120,120 0 0,0 233.1,138.2 Z" fill="rgba(232,181,0,.5)"/>
+            <text x="256" y="290" text-anchor="middle" font-family="Georgia,serif" font-size="165" font-weight="bold" fill="rgba(212,160,32,.55)">$</text>
+          </svg>
+          <div class="cover-title"><span class="cl">Simple</span><span class="cb">Ledger</span></div>
+          <div class="cover-rule"></div>
+          <div class="cover-sub">TRACK YOUR BILLS &amp; INCOME</div>
+        </div>
+        <div class="cover-corner tl"></div>
+        <div class="cover-corner tr"></div>
+        <div class="cover-corner bl"></div>
+        <div class="cover-corner br"></div>
+      </div>
+      <!-- Pages with ledger entries -->
+      <div class="ledger-pages">
+        <div class="ledger-page p1"></div>
+        <div class="ledger-page p2"></div>
+        <div class="ledger-page p3"></div>
+        <div class="ledger-page p4">
+          <!-- Ledger header row -->
+          <div class="entry-header">
+            <span class="eh-date">DATE</span>
+            <span class="eh-desc">DESCRIPTION</span>
+            <span class="eh-amt">AMOUNT</span>
+          </div>
+          <div class="entry-divider"></div>
+          <!-- Animated entries -->
+          <div class="ledger-entry e1">
+            <span class="le-date">03/01</span>
+            <span class="le-desc">Rent Payment</span>
+            <span class="le-amt debit">-$1,850.00</span>
+          </div>
+          <div class="ledger-entry e2">
+            <span class="le-date">03/05</span>
+            <span class="le-desc">Electric Bill</span>
+            <span class="le-amt debit">-$142.50</span>
+          </div>
+          <div class="ledger-entry e3">
+            <span class="le-date">03/08</span>
+            <span class="le-desc">Salary Deposit</span>
+            <span class="le-amt credit">+$4,834.25</span>
+          </div>
+          <div class="ledger-entry e4">
+            <span class="le-date">03/12</span>
+            <span class="le-desc">Insurance</span>
+            <span class="le-amt debit">-$285.00</span>
+          </div>
+          <div class="ledger-entry e5">
+            <span class="le-date">03/15</span>
+            <span class="le-desc">Savings Transfer</span>
+            <span class="le-amt savings">-$500.00</span>
+          </div>
+          <!-- PAID stamp -->
+          <div class="ledger-stamp">PAID</div>
+        </div>
+      </div>
+    </div>
+    <div class="splash-tagline">Your Money, Simplified</div>
+  </div>
+</div>
+
 <div class="status-bar"></div>
 
 <!-- ═══ Header ═══ -->
@@ -48,13 +151,6 @@
       <div class="cal-grid" id="calGrid"></div>
     </div>
     <div id="dayDetail"></div>
-  </div>
-  <div class="zone zone-paycheck" id="zone-paycheck">
-    <div class="section-header collapsible" onclick="toggleSection('zone-paycheck')">
-      <span><span class="section-title">Paycheck Planner</span><span class="section-chevron">▼</span></span>
-      <span class="section-count" id="paycheckCount"></span>
-    </div>
-    <div class="collapsible-body" id="paycheckList" style="padding:0 10px 10px"></div>
   </div>
   <div class="zone zone-upcoming" id="zone-upcoming">
     <div class="section-header collapsible" onclick="toggleSection('zone-upcoming')">
@@ -98,10 +194,30 @@
   </div>
 </div>
 
+<!-- ═══ Tab: Planner ═══ -->
+<div id="tab-planner" class="tab-content">
+  <div class="zone zone-planner">
+    <div class="section-header" style="padding-top:10px">
+      <span class="section-title">Paycheck Planner</span>
+    </div>
+    <!-- Forecast summary bar -->
+    <div id="plannerForecast" class="planner-forecast"></div>
+    <!-- Month nav for planner -->
+    <div class="month-nav planner-month-nav">
+      <button onclick="changePlannerMonth(-1)">‹</button>
+      <span class="month-label" id="plannerMonthLabel"></span>
+      <button onclick="changePlannerMonth(1)">›</button>
+    </div>
+    <!-- Paycheck periods -->
+    <div id="plannerPeriods" style="padding:0 10px 10px"></div>
+  </div>
+</div>
+
 <!-- ═══ Bottom nav ═══ -->
 <nav class="bottom-nav">
   <button class="nav-btn active" data-tab="home" onclick="switchTab('home')"><span class="nav-icon">📅</span><span class="nav-label">Home</span></button>
   <button class="nav-btn" data-tab="bills" onclick="switchTab('bills')"><span class="nav-icon">📋</span><span class="nav-label">Bills</span></button>
+  <button class="nav-btn" data-tab="planner" onclick="switchTab('planner')"><span class="nav-icon">📊</span><span class="nav-label">Planner</span></button>
   <button class="nav-btn" data-tab="income" onclick="switchTab('income')"><span class="nav-icon">💵</span><span class="nav-label">Income</span></button>
   <button class="nav-btn" data-tab="savings" onclick="switchTab('savings')"><span class="nav-icon">🏦</span><span class="nav-label">Savings</span></button>
 </nav>
@@ -114,6 +230,7 @@
     <div style="display:flex;flex-direction:column;gap:8px">
       <button class="btn-primary" onclick="closeModal('addModal');openBillModal()" style="background:var(--expense)">＋ New Bill</button>
       <button class="btn-primary" onclick="closeModal('addModal');openIncomeModal()" style="background:var(--income);color:#000">＋ New Income</button>
+      <button class="btn-primary" onclick="closeModal('addModal');openSavingsModal()" style="background:var(--paid)">＋ New Savings Account</button>
     </div>
   </div>
 </div>
@@ -184,6 +301,48 @@
   </div>
 </div>
 
+<!-- ═══ Savings Account modal ═══ -->
+<div class="modal-overlay" id="savingsModal" onclick="if(event.target===this)closeModal('savingsModal')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="savingsModalTitle">Add Savings Account</div>
+    <div class="field-row">
+      <div class="field" style="flex:1"><label>Account Name</label><input id="sName" placeholder="e.g. Emergency Fund"></div>
+      <div class="field" style="width:110px"><label>Type</label>
+        <select id="sType">
+          <option value="Savings">Savings</option>
+          <option value="HYSA">HYSA</option>
+          <option value="CD">CD</option>
+          <option value="Money Market">Money Market</option>
+          <option value="Investment">Investment</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Current Balance ($)</label><input id="sBalance" type="number" step="0.01" placeholder="0.00"></div>
+      <div class="field"><label>Goal ($)</label><input id="sGoal" type="number" step="0.01" placeholder="Optional"></div>
+    </div>
+    <div class="field-section-label">Auto-Deposit (optional)</div>
+    <div class="field-row">
+      <div class="field"><label>Amount ($)</label><input id="sContrib" type="number" step="0.01" placeholder="0.00"></div>
+      <div class="field"><label>Day of Month</label><input id="sContribDay" type="number" min="1" max="31" value="1"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Frequency</label>
+        <select id="sContribFreq">
+          <option value="monthly">Monthly</option>
+          <option value="biweekly">Bi-Weekly</option>
+          <option value="weekly">Weekly</option>
+        </select>
+      </div>
+      <div class="field"><label>Start Date</label><input id="sContribStart" type="date"></div>
+    </div>
+    <button class="btn-primary" id="savingsSaveBtn" onclick="saveSavingsAccount()">Add Account</button>
+    <button class="btn-danger hidden" id="savingsDelBtn" onclick="deleteSavingsAccount()">Delete This Account</button>
+  </div>
+</div>
+
 <!-- ═══ Confirm modal ═══ -->
 <div class="modal-overlay" id="confirmModal" onclick="if(event.target===this)closeModal('confirmModal')">
   <div class="modal-sheet" style="padding-bottom:calc(24px + var(--safe-bottom))">
@@ -229,8 +388,37 @@
 <div class="modal-overlay" id="dataModal" onclick="if(event.target===this)closeModal('dataModal')">
   <div class="modal-sheet" style="padding-bottom:calc(28px + var(--safe-bottom))">
     <div class="modal-handle"></div>
-    <div class="modal-title">Data Management</div>
-    <p style="font-size:12px;color:var(--text3);margin-bottom:16px">Import a backup from the full app or export your current data. Both apps use the same data format.</p>
+    <div class="modal-title">Settings</div>
+
+    <!-- Notifications -->
+    <div class="notif-section">
+      <div class="notif-header">
+        <div>
+          <div style="font-size:14px;font-weight:600">Bill Reminders</div>
+          <div id="notifStatus" style="font-size:11px;margin-top:2px;color:var(--text3)"></div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="notifToggle" onchange="toggleNotifications()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="notif-options">
+        <label class="notif-opt-row">
+          <input type="checkbox" id="notifDayBefore" checked onchange="toggleNotifOption('dayBefore')">
+          <span>Day before bill is due</span>
+        </label>
+        <label class="notif-opt-row">
+          <input type="checkbox" id="notifDayOf" checked onchange="toggleNotifOption('dayOf')">
+          <span>Day bill is due</span>
+        </label>
+      </div>
+    </div>
+
+    <div style="height:1px;background:var(--border);margin:16px 0"></div>
+
+    <!-- Data Management -->
+    <div style="font-size:14px;font-weight:600;margin-bottom:10px">Data Management</div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:16px">Import a backup from the full app or export your current data.</p>
     <div style="display:flex;flex-direction:column;gap:8px">
       <button class="btn-primary" onclick="document.getElementById('importFile').click()" style="background:var(--accent)">⬆️ Import JSON Backup</button>
       <button class="btn-primary" onclick="exportData()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border)">⬇️ Export JSON Backup</button>
@@ -239,6 +427,6 @@
   </div>
 </div>
 <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
-<script src="app.js?v=8"></script>
+<script src="app.js?v=30"></script>
 </body>
 </html>

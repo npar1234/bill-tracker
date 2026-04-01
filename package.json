@@ -1,0 +1,24 @@
+{
+  "name": "simpleledger",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/npar1234/i-swear-i-paid-that.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/npar1234/i-swear-i-paid-that/issues"
+  },
+  "homepage": "https://github.com/npar1234/i-swear-i-paid-that#readme",
+  "dependencies": {
+    "@netlify/blobs": "^10.7.4",
+    "web-push": "^3.6.7"
+  }
+}
