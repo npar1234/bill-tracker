@@ -38,8 +38,8 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
 <!-- Non-blocking stylesheet: splash is fully styled by inline CSS above -->
-<link rel="stylesheet" href="style.css?v=33" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="style.css?v=33"></noscript>
+<link rel="stylesheet" href="style.css?v=34" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="style.css?v=34"></noscript>
 </head>
 <body style="background:#0f0f14">
 
@@ -361,6 +361,15 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
   </div>
 </div>
 
+<!-- ═══ Move bill modal (planner) ═══ -->
+<div class="modal-overlay" id="moveBillModal" onclick="if(event.target===this)closeModal('moveBillModal')">
+  <div class="modal-sheet" style="padding-bottom:calc(24px + var(--safe-bottom))">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="moveBillTitle">Move Bill</div>
+    <div id="moveBillOptions" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
+
 <!-- ═══ Confirm modal ═══ -->
 <div class="modal-overlay" id="confirmModal" onclick="if(event.target===this)closeModal('confirmModal')">
   <div class="modal-sheet" style="padding-bottom:calc(24px + var(--safe-bottom))">
@@ -445,6 +454,6 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
   </div>
 </div>
 <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
-<script src="app.js?v=33"></script>
+<script src="app.js?v=34"></script>
 </body>
 </html>

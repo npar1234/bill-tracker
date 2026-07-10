@@ -600,7 +600,7 @@ function renderHome(monthBills) {
   document.getElementById('summaryStrip').innerHTML = `
     <div class="summary-chip chip-income${_prev.inc !== undefined && _prev.inc !== _cur.inc ? ' pop' : ''}"><div class="chip-label">Income</div><div class="chip-value">${fmtShort(totalIncome)}</div></div>
     <div class="summary-chip chip-bills${_prev.bill !== undefined && _prev.bill !== _cur.bill ? ' pop' : ''}"><div class="chip-label">Bills</div><div class="chip-value">${fmtShort(totalBills)}</div></div>
-    <div class="summary-chip chip-left${_prev.left !== undefined && _prev.left !== _cur.left ? ' pop' : ''}"><div class="chip-label">Left Over</div><div class="chip-value${remaining < 0 ? ' negative' : ''}">${fmtShort(remaining)}</div></div>
+    <div class="summary-chip chip-left${_prev.left !== undefined && _prev.left !== _cur.left ? ' pop' : ''}"><div class="chip-label">Uncommitted</div><div class="chip-value${remaining < 0 ? ' negative' : ''}">${fmtShort(remaining)}</div></div>
   `;
   window._chipVals = _cur;
 
@@ -1057,15 +1057,40 @@ function changePlannerMonth(delta) {
   render();
 }
 
-// Move a bill from one paycheck period to another
+// Context handed from renderPlannerTab to the move sheet
+let _plannerCtx = null;
+
+// Move a bill from one paycheck period to another — always user-initiated, always undoable
 function moveBillToPeriod(billId, fromIdx, toIdx) {
   // Store overrides in state so they persist
   if (!state.plannerOverrides) state.plannerOverrides = {};
   const key = `${plannerYear}-${plannerMonth}`;
   if (!state.plannerOverrides[key]) state.plannerOverrides[key] = {};
+  const prev = state.plannerOverrides[key][billId]; // undefined = was in its due-date check
   state.plannerOverrides[key][billId] = toIdx;
   saveState();
+  closeModal('moveBillModal');
   render();
+  haptic(10);
+  const name = escHtml(state.bills.find(b => b.id === billId)?.name || 'Bill');
+  showToast(`${name} moved`, { undo: () => {
+    if (state.plannerOverrides?.[key]) {
+      if (prev === undefined) delete state.plannerOverrides[key][billId];
+      else state.plannerOverrides[key][billId] = prev;
+    }
+    saveState();
+    render();
+  }});
+}
+
+// Return a bill to the check its due date puts it in
+function clearBillOverride(billId) {
+  const key = `${plannerYear}-${plannerMonth}`;
+  if (state.plannerOverrides?.[key]) delete state.plannerOverrides[key][billId];
+  saveState();
+  closeModal('moveBillModal');
+  render();
+  showToast('Returned to due-date check');
 }
 
 function clearPlannerOverrides() {
@@ -1074,6 +1099,34 @@ function clearPlannerOverrides() {
   delete state.plannerOverrides[key];
   saveState();
   render();
+  showToast('All bills back on due-date checks');
+}
+
+// Dismiss a suggested move for this session
+function dismissSuggestion(billId) {
+  const dismissed = JSON.parse(sessionStorage.getItem('sl_sug_dismissed') || '{}');
+  dismissed[`${plannerYear}-${plannerMonth}_${billId}`] = true;
+  sessionStorage.setItem('sl_sug_dismissed', JSON.stringify(dismissed));
+  render();
+}
+
+// Bottom sheet: pick which check pays this bill
+function openMoveBillSheet(billId, curIdx) {
+  const ctx = _plannerCtx;
+  if (!ctx || !ctx.bills[billId]) return;
+  const bill = ctx.bills[billId];
+  const mo = SHORT_MONTHS[plannerMonth];
+  document.getElementById('moveBillTitle').textContent = `Pay "${ctx.bills[billId].name}" from…`;
+  const options = ctx.periods.filter(p => p.idx !== curIdx).map(p => `
+    <button class="move-opt" onclick="moveBillToPeriod('${billId}',${curIdx},${p.idx})">
+      <span class="move-opt-name">💵 ${escHtml(p.name)} — ${mo} ${p.date}</span>
+      <span class="move-opt-rem ${p.remaining < 0 ? 'neg' : ''}">${fmt(p.remaining)} left</span>
+    </button>`).join('');
+  const resetOpt = bill.overridden
+    ? `<button class="move-opt move-opt-reset" onclick="clearBillOverride('${billId}')">↺ Return to due-date check</button>` : '';
+  document.getElementById('moveBillOptions').innerHTML = options + resetOpt +
+    `<button class="btn-primary" style="background:var(--surface2);color:var(--text);margin-top:8px" onclick="closeModal('moveBillModal')">Cancel</button>`;
+  openModal('moveBillModal');
 }
 
 function renderPlannerTab() {
@@ -1101,7 +1154,7 @@ function renderPlannerTab() {
   // Empty state
   if (!payDates.length) {
     document.getElementById('plannerForecast').innerHTML = '';
-    document.getElementById('plannerPeriods').innerHTML = `<div class="empty-state" style="padding:20px"><div class="empty-icon">📊</div>${plannerIncomes.length === 0 && state.incomes.length > 0 ? 'All income excluded from planner.<br><span style="font-size:11px;color:var(--text3)">Edit an income source to include it.</span>' : 'Add income sources to plan your paychecks'}</div>`;
+    document.getElementById('plannerPeriods').innerHTML = `<div class="empty-state" style="padding:20px"><div class="empty-icon">📊</div>${plannerIncomes.length === 0 && state.incomes.length > 0 ? 'All income excluded from planner.<br><span style="font-size:11px;color:var(--text3)">Edit an income source to include it.</span>' : 'Add income sources to plan your paychecks<br><button class="empty-cta" onclick="openIncomeModal()">＋ Add Income</button>'}</div>`;
     return;
   }
 
@@ -1141,127 +1194,151 @@ function renderPlannerTab() {
 
   periods.forEach(p => p.bills.sort((a, b) => a.dueDay - b.dueDay));
 
-  // Auto-rebalance (only bills without overrides)
+  // NO silent rebalancing — assignment is due-date rule + explicit user moves only.
+  // Per-period money math with paid-state (the "in → paid → owed → left" rollup)
+  periods.forEach(p => {
+    p.totalBills = p.bills.reduce((s, b) => s + b.amount, 0);
+    p.paidAmt = p.bills.filter(b => isPaid(b.id, m, y))
+      .reduce((s, b) => s + (getPaidAmount(b.id, m, y) ?? b.amount), 0);
+    p.owedAmt = p.bills.filter(b => !isPaid(b.id, m, y)).reduce((s, b) => s + b.amount, 0);
+    p.remaining = p.amount - p.totalBills;
+  });
+
+  // Suggestion (consent-based): if a check is short, propose ONE move the user can accept or dismiss
+  let suggestion = null;
   if (periods.length > 1) {
-    const getRem = p => p.amount - p.bills.reduce((s, b) => s + b.amount, 0);
-    for (let pass = 0; pass < 20; pass++) {
-      const remainings = periods.map(getRem);
-      const pctRemaining = remainings.map((r, i) => r / periods[i].amount);
-      let worstIdx = 0, bestIdx = 0;
-      for (let i = 1; i < periods.length; i++) {
-        if (pctRemaining[i] < pctRemaining[worstIdx]) worstIdx = i;
-        if (pctRemaining[i] > pctRemaining[bestIdx]) bestIdx = i;
+    const dismissed = JSON.parse(sessionStorage.getItem('sl_sug_dismissed') || '{}');
+    const shortIdx = periods.findIndex(p => p.remaining < 0);
+    if (shortIdx >= 0) {
+      let bestIdx = -1;
+      periods.forEach((p, i) => {
+        if (i !== shortIdx && (bestIdx < 0 || p.remaining > periods[bestIdx].remaining)) bestIdx = i;
+      });
+      if (bestIdx >= 0 && periods[bestIdx].remaining > 0) {
+        // Largest unpaid, unmoved bill that fits in the healthiest check
+        const cands = periods[shortIdx].bills
+          .filter(b => overrides[b.id] === undefined && !isPaid(b.id, m, y) && !b._isSavingsContrib
+            && b.amount <= periods[bestIdx].remaining && !dismissed[`${overrideKey}_${b.id}`])
+          .sort((a, b) => b.amount - a.amount);
+        if (cands.length) suggestion = { bill: cands[0], fromIdx: shortIdx, toIdx: bestIdx };
       }
-      if (pctRemaining[bestIdx] - pctRemaining[worstIdx] < 0.10) break;
-      const worstP = periods[worstIdx], bestP = periods[bestIdx];
-      let bestMove = null, bestDelta = Infinity;
-      for (const b of worstP.bills) {
-        if (overrides[b.id] !== undefined) continue;
-        const newWorst = remainings[worstIdx] + b.amount;
-        const newBest = remainings[bestIdx] - b.amount;
-        if (newBest < remainings[worstIdx]) continue;
-        const delta = Math.abs(newWorst - newBest);
-        if (delta < bestDelta) { bestDelta = delta; bestMove = b; }
-      }
-      if (!bestMove) break;
-      worstP.bills = worstP.bills.filter(b => b !== bestMove);
-      bestP.bills.push(bestMove);
-      bestP.bills.sort((a, b) => a.dueDay - b.dueDay);
-      bestP.movedBills.add(bestMove.id);
     }
   }
 
-  // ── Compute totals
-  const startingBalance = state.plannerStartBalance || 0;
-  const totalIncome = periods.reduce((s, p) => s + p.amount, 0);
-  const totalBills = periods.reduce((s, p) => s + p.bills.reduce((ss, b) => ss + b.amount, 0), 0);
-  const available = startingBalance + totalIncome - totalBills;
-  const adjustMode = window._plannerAdjustMode || false;
+  // Context for the tap-to-move sheet
+  _plannerCtx = {
+    overrideKey,
+    periods: periods.map((p, i) => ({ idx: i, name: p.income.name, date: p.date, remaining: p.remaining })),
+    bills: Object.fromEntries(plannerBills.map(b => [b.id, { name: b.name, overridden: overrides[b.id] !== undefined }])),
+  };
 
-  // ── Top: "Available for Spending" hero + month math
-  const availCls = available < 0 ? 'pl-hero-neg' : available < totalIncome * 0.1 ? 'pl-hero-tight' : 'pl-hero-ok';
+  // ── Compute totals
+  const totalIncome = periods.reduce((s, p) => s + p.amount, 0);
+  const totalBills = periods.reduce((s, p) => s + p.totalBills, 0);
+  const monthLeft = totalIncome - totalBills;
+
+  // ── Hero: per-check safe-to-spend when viewing the current pay period, month rollup otherwise
+  const today = new Date();
+  const isCurMonth = today.getFullYear() === y && today.getMonth() === m;
+  const curIdx = isCurMonth
+    ? periods.findIndex(p => today.getDate() >= p.periodStart && today.getDate() <= p.periodEnd)
+    : -1;
+
+  let heroLabel, heroAmt, heroSub;
+  if (curIdx >= 0) {
+    const cp = periods[curIdx];
+    const nextP = periods[curIdx + 1];
+    heroLabel = 'Left to Spend This Check';
+    heroAmt = cp.remaining;
+    heroSub = `${escHtml(cp.income.name)} · ${mo} ${cp.date} check · ${nextP ? `until ${mo} ${nextP.date}` : `through end of ${mo}`}`;
+  } else {
+    heroLabel = `Uncommitted in ${MONTHS[m]}`;
+    heroAmt = monthLeft;
+    heroSub = 'after all planned bills';
+  }
+  const availCls = heroAmt < 0 ? 'pl-hero-neg' : heroAmt < totalIncome * 0.08 ? 'pl-hero-tight' : 'pl-hero-ok';
+
+  // Consent-based suggestion banner (replaces the old silent rebalancer)
+  let suggestHtml = '';
+  if (suggestion) {
+    const sp = periods[suggestion.fromIdx], tp = periods[suggestion.toIdx];
+    suggestHtml = `<div class="pl-suggest">
+      <div class="pl-suggest-text">⚠️ The <b>${mo} ${sp.date}</b> check is short <b>${fmt(Math.abs(sp.remaining))}</b>. Move <b>${escHtml(suggestion.bill.name)}</b> (${fmt(suggestion.bill.amount)}) to the ${mo} ${tp.date} check?</div>
+      <div class="pl-suggest-actions">
+        <button class="pl-suggest-yes" onclick="moveBillToPeriod('${suggestion.bill.id}',${suggestion.fromIdx},${suggestion.toIdx})">Move it</button>
+        <button class="pl-suggest-no" onclick="dismissSuggestion('${suggestion.bill.id}')">Dismiss</button>
+      </div>
+    </div>`;
+  }
 
   document.getElementById('plannerForecast').innerHTML = `
     <div class="pl-hero">
-      <div class="pl-hero-label">Available for Spending</div>
-      <div class="pl-hero-amount ${availCls}">${fmt(available)}</div>
-      <div class="pl-hero-math">
-        ${startingBalance ? `<span>${fmt(startingBalance)} carry-over</span><span class="pl-hero-op">+</span>` : ''}
-        <span class="pl-hero-inc">${fmt(totalIncome)} income</span>
-        <span class="pl-hero-op">−</span>
-        <span class="pl-hero-exp">${fmt(totalBills)} bills</span>
-      </div>
+      <div class="pl-hero-label">${heroLabel}</div>
+      <div class="pl-hero-amount ${availCls}">${fmt(heroAmt)}</div>
+      <div class="pl-hero-sub">${heroSub}</div>
     </div>
-    <div class="pl-controls">
-      <div class="pl-bal-row">
-        <label class="pl-bal-label">Carry-over balance</label>
-        <input type="number" class="pl-bal-input" value="${startingBalance}" step="0.01" placeholder="0.00"
-          onchange="state.plannerStartBalance=parseFloat(this.value)||0;saveState();render()">
-      </div>
-      <div class="pl-adjust-row">
-        <button class="pl-adjust-btn ${adjustMode ? 'active' : ''}"
-          onclick="window._plannerAdjustMode=!window._plannerAdjustMode;render()">
-          ${adjustMode ? '✓ Done' : '⇄ Reassign Bills'}
-        </button>
-        ${hasOverrides ? '<button class="pl-reset-btn" onclick="clearPlannerOverrides()">↺ Reset</button>' : ''}
-      </div>
-    </div>`;
+    <div class="pl-month-strip">
+      <span class="pl-hero-inc">${fmt(totalIncome)} in</span>
+      <span class="pl-hero-op">−</span>
+      <span class="pl-hero-exp">${fmt(totalBills)} bills</span>
+      <span class="pl-hero-op">=</span>
+      <span class="${monthLeft < 0 ? 'pl-hero-exp' : 'pl-hero-inc'}">${fmt(monthLeft)} this month</span>
+      ${hasOverrides ? '<button class="pl-reset-btn" onclick="clearPlannerOverrides()">↺ Reset moves</button>' : ''}
+    </div>
+    ${suggestHtml}`;
 
   // Animate the hero amount when it changes (count-up/down)
-  animateAmount(document.querySelector('.pl-hero-amount'), window._plHeroPrev, available);
-  window._plHeroPrev = available;
+  animateAmount(document.querySelector('.pl-hero-amount'), window._plHeroPrev, heroAmt);
+  window._plHeroPrev = heroAmt;
 
-  // ── Paycheck cards: ledger-style
+  // ── Paycheck cards: in → paid → owed → left, tap a bill to move it
   document.getElementById('plannerPeriods').innerHTML = periods.map((p, idx) => {
-    const totalBillAmt = p.bills.reduce((s, b) => s + b.amount, 0);
-    const remaining = p.amount - totalBillAmt;
-    const usedPct = p.amount > 0 ? Math.min((totalBillAmt / p.amount) * 100, 100) : 0;
-    const healthCls = remaining < 0 ? 'pc-health-neg' : usedPct > 85 ? 'pc-health-tight' : 'pc-health-ok';
-    const payDateLabel = `${mo} ${p.date}`;
+    const isCurrent = idx === curIdx;
+    const remaining = p.remaining;
+    const paidPct = p.amount > 0 ? Math.min((p.paidAmt / p.amount) * 100, 100) : 0;
+    const owedPct = p.amount > 0 ? Math.min((p.owedAmt / p.amount) * 100, 100 - paidPct) : 0;
+    const healthCls = remaining < 0 ? 'pc-health-neg' : (p.totalBills / p.amount) > 0.85 ? 'pc-health-tight' : 'pc-health-ok';
 
     const billRows = p.bills.map(b => {
       const cat = catInfo(b.category);
-      const paid = isPaid(b.id);
+      const paid = isPaid(b.id, m, y);
       const dueDay = Math.min(b.dueDay, daysInMonth);
       const isMoved = p.movedBills.has(b.id);
+      const canMove = !b._isSavingsContrib && periods.length > 1;
 
-      // Reassign controls (only visible in adjust mode)
-      const moveHtml = (adjustMode && periods.length > 1) ? `<div class="pl-move-row">` + periods.map((tp, ti) => {
-        if (ti === idx) return '';
-        return `<button class="pl-move-btn" onclick="event.stopPropagation();moveBillToPeriod('${b.id}',${idx},${ti})">→ ${escHtml(tp.income.name).substring(0, 12)} (${mo} ${tp.date})</button>`;
-      }).filter(Boolean).join('') + '</div>' : '';
-
-      return `<div class="pl-bill${paid ? ' pl-paid' : ''}${isMoved ? ' pl-moved' : ''}">
-        <span class="pl-bill-icon" style="background:${cat.color}22">${b.icon || cat.icon}</span>
-        <span class="pl-bill-name">${escHtml(b.name)}${isMoved ? '<span class="pl-tag">moved</span>' : ''}</span>
-        <span class="pl-bill-due">${mo} ${dueDay}</span>
+      return `<div class="pl-bill${paid ? ' pl-paid' : ''}${isMoved ? ' pl-moved' : ''}${canMove ? ' pl-movable' : ''}"${canMove ? ` onclick="openMoveBillSheet('${b.id}',${idx})"` : ''}>
+        <span class="pl-bill-icon" style="background:${cat.color}22">${paid ? '✓' : (b.icon || cat.icon)}</span>
+        <span class="pl-bill-name">${escHtml(b.name)}${isMoved ? '<span class="pl-tag">moved by you</span>' : ''}</span>
+        <span class="pl-bill-due">${paid ? 'Paid' : `Due ${mo} ${dueDay}`}</span>
         <span class="pl-bill-amt${paid ? ' pl-paid' : ''}">${fmt(b.amount)}</span>
-        ${moveHtml}
+        ${canMove ? '<span class="pl-move-hint">›</span>' : ''}
       </div>`;
     }).join('');
 
     const warningHtml = remaining < 0
-      ? `<div class="pl-card-warning">⚠️ Over by ${fmt(Math.abs(remaining))}</div>` : '';
+      ? `<div class="pl-card-warning">⚠️ Bills exceed this check by ${fmt(Math.abs(remaining))} — tap a bill to move it</div>` : '';
 
-    return `<div class="pl-card ${healthCls}">
+    return `<div class="pl-card ${healthCls}${isCurrent ? ' pl-current' : ''}">
+      ${isCurrent ? '<div class="pl-now-badge">CURRENT CHECK</div>' : ''}
       <div class="pl-card-top">
         <div class="pl-card-source">
           <div class="pl-card-name">💵 ${escHtml(p.income.name)}</div>
-          <div class="pl-card-date">${payDateLabel} · covers ${mo} ${p.periodStart}–${p.periodEnd}</div>
+          <div class="pl-card-date">${mo} ${p.date} · covers ${mo} ${p.periodStart}–${p.periodEnd}</div>
         </div>
         <div class="pl-card-pay">+${fmt(p.amount)}</div>
       </div>
       <div class="pl-card-bar">
-        <div class="pl-card-bar-fill ${healthCls}" style="width:${usedPct}%"></div>
+        <div class="pl-seg-paid" style="width:${paidPct}%"></div>
+        <div class="pl-seg-owed ${healthCls}" style="width:${owedPct}%"></div>
       </div>
       <div class="pl-card-bar-labels">
-        <span>${p.bills.length} bill${p.bills.length !== 1 ? 's' : ''}: ${fmt(totalBillAmt)}</span>
-        <span>${usedPct.toFixed(0)}% committed</span>
+        <span><span class="pl-lbl-paid">✓ ${fmt(p.paidAmt)} paid</span> · ${fmt(p.owedAmt)} to pay</span>
+        <span class="pl-lbl-left ${remaining < 0 ? 'neg' : ''}">${fmt(remaining)} left</span>
       </div>
       ${warningHtml}
-      ${p.bills.length ? `<div class="pl-bill-list">${billRows}</div>` : '<div class="pl-empty-bills">No bills this period</div>'}
+      ${p.bills.length ? `<div class="pl-bill-list">${billRows}</div>` : '<div class="pl-empty-bills">No bills come out of this check</div>'}
       <div class="pl-card-footer ${healthCls}">
-        <span class="pl-footer-label">Remaining</span>
+        <span class="pl-footer-label">Left after all bills</span>
         <span class="pl-footer-amount">${fmt(remaining)}</span>
       </div>
     </div>`;
