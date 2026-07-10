@@ -5,7 +5,7 @@
 set -e
 
 MSG="${1:-Update SimpleLedger}"
-REPO="https://github.com/npar1234/i-swear-i-paid-that.git"
+REPO="https://github.com/npar1234/bill-tracker.git"
 BRANCH="main"
 
 # Init git if needed

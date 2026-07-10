@@ -1256,6 +1256,17 @@ body.glow-savings::after {
 .hg-cell.missed { background: var(--expense-soft); border-color: var(--expense); }
 .hg-cell.future { background: rgba(255,255,255,.03); opacity: .5; }
 .hg-cell.untracked { background: rgba(255,255,255,.02); border-color: transparent; opacity: .35; }
+
+/* ─── Bill Section Headers ─── */
+.bill-section { margin-bottom: 16px; }
+.bill-section-hdr {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+  color: var(--text3); padding: 8px 4px 6px; margin-bottom: 2px;
+}
+.bill-section.overdue .bill-section-hdr { color: var(--expense); }
+.bill-section.today .bill-section-hdr { color: var(--warn); }
+.bill-section.upcoming .bill-section-hdr { color: var(--text2); }
+.bill-section.paid .bill-section-hdr { color: var(--paid); opacity: .7; }
 .hg-month { font-size: 10px; font-weight: 700; color: var(--text2); }
 .hg-status { font-size: 16px; margin: 2px 0; }
 .hg-date { font-size: 9px; color: var(--text3); }

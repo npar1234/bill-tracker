@@ -34,6 +34,14 @@ function loadState() {
       if (!p.incomeReceipts) p.incomeReceipts = [];
       // Normalize bills
       p.bills = (p.bills || []).map(b => ({ biller: "", accountId: "", frequency: b.isRecurring === false ? "once" : "monthly", startMonth: 0, ...b }));
+      // Legacy one-time bills have no startYear — infer it from their payment record
+      // so they stop reappearing every month (unpaid legacy bills stay visible)
+      p.bills.forEach(b => {
+        if (b.frequency === 'once' && b.startYear === undefined) {
+          const pay = (p.payments || []).find(pp => pp.billId === b.id);
+          if (pay) { b.startMonth = pay.month; b.startYear = pay.year; }
+        }
+      });
       return p;
     }
   } catch(e) {}
@@ -85,7 +93,13 @@ function isDueThisMonth(bill, month, year) {
     return bill._savingsFixedMonth === m && bill._savingsFixedYear === y;
   }
   const freq = bill.frequency || "monthly";
-  if (freq === "monthly" || freq === "once") return true;
+  if (freq === "monthly") return true;
+  if (freq === "once") {
+    // One-time bills only appear in their creation month/year
+    if (bill.startYear === undefined) return true; // legacy, unpaid — keep visible until paid
+    const y = year !== undefined ? year : state.currentYear;
+    return m === (bill.startMonth || 0) && y === bill.startYear;
+  }
   if (freq === "quarterly") {
     const startM = bill.startMonth !== undefined ? bill.startMonth : 0;
     return ((m - startM) % 3 + 3) % 3 === 0;
@@ -467,6 +481,23 @@ function changeMonth(delta) {
   if (state.currentMonth < 0) { state.currentMonth = 11; state.currentYear--; }
   selectedDay = null;
   saveState();
+  render();
+}
+
+// Tap the month label to jump back to the current month
+function goToToday() {
+  const now = new Date();
+  state.currentMonth = now.getMonth();
+  state.currentYear = now.getFullYear();
+  selectedDay = null;
+  saveState();
+  render();
+}
+
+function plannerGoToToday() {
+  const now = new Date();
+  plannerMonth = now.getMonth();
+  plannerYear = now.getFullYear();
   render();
 }
 
@@ -1200,62 +1231,79 @@ function renderBills(monthBills) {
   `;
 
   const filtered = filterCat === 'all' ? monthBills : monthBills.filter(b => b.category === filterCat);
-  // Sort: unpaid first, then by due day
-  const sorted = [...filtered].sort((a, b) => {
-    const ap = isPaid(a.id) ? 1 : 0, bp = isPaid(b.id) ? 1 : 0;
-    if (ap !== bp) return ap - bp;
-    return a.dueDay - b.dueDay;
-  });
 
-  if (!sorted.length) {
+  // Bucket bills into sections: Overdue → Due Today → Upcoming → Paid
+  const overdue = [], dueToday = [], upcoming = [], paid = [];
+  filtered.forEach(b => {
+    if (isPaid(b.id)) { paid.push(b); return; }
+    const du = daysUntil(getDueDate(b));
+    if (du < 0) overdue.push(b);
+    else if (du === 0) dueToday.push(b);
+    else upcoming.push(b);
+  });
+  // Sort each bucket by due day
+  [overdue, dueToday, upcoming, paid].forEach(arr => arr.sort((a, b) => a.dueDay - b.dueDay));
+
+  if (!filtered.length) {
     document.getElementById('billList').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>No bills this month<br><span style="font-size:11px;color:var(--text3)">Tap ＋ to add your first bill</span></div>';
     return;
   }
 
-  document.getElementById('billList').innerHTML = sorted.map(b => {
-    const paid = isPaid(b.id);
-    const cat = catInfo(b.category);
-    const dueStr = getDueDate(b);
-    const du = daysUntil(dueStr);
-    let meta = `Due ${SHORT_MONTHS[state.currentMonth]} ${b.dueDay}`;
-    if (paid) meta = 'Paid';
-    else if (du < 0) meta = `${Math.abs(du)}d overdue`;
-    else if (du === 0) meta = 'Due today';
-    else if (du === 1) meta = 'Due tomorrow';
+  // Build section HTML with headers
+  const sections = [];
+  if (overdue.length) sections.push({ label: `Overdue · ${overdue.length}`, cls: 'overdue', bills: overdue });
+  if (dueToday.length) sections.push({ label: `Due Today · ${dueToday.length}`, cls: 'today', bills: dueToday });
+  if (upcoming.length) sections.push({ label: `Upcoming · ${upcoming.length}`, cls: 'upcoming', bills: upcoming });
+  if (paid.length) sections.push({ label: `Paid · ${paid.length}`, cls: 'paid', bills: paid });
 
-    const isSav = b._isSavingsContrib;
-    const paidAmt = paid ? getPaidAmount(b.id) : null;
-    const paidDiff = (paidAmt !== null && paidAmt !== b.amount) ? `<div style="font-size:10px;color:var(--paid);font-weight:700">paid ${fmt(paidAmt)}</div>` : '';
+  document.getElementById('billList').innerHTML = sections.map(sec =>
+    `<div class="bill-section ${sec.cls}"><div class="bill-section-hdr">${sec.label}</div>${sec.bills.map(b => renderBillCard(b)).join('')}</div>`
+  ).join('');
+}
 
-    // Savings: meta shows auto status, no pay button, no actions
-    if (isSav) {
-      const savMeta = paid ? '✓ Auto-deposited' : `Auto-deposits ${SHORT_MONTHS[state.currentMonth]} ${b.dueDay}`;
-      return `<div class="bill-card${paid ? ' is-paid' : ''} is-savings" id="bc-${b.id}">
-        <div class="bc-main">
-          <div class="bc-icon" style="background:${cat.color}22">${b.icon || cat.icon}</div>
-          <div class="bc-info"><div class="bc-name${paid ? ' struck' : ''}">${escHtml(b.name)}</div><div class="bc-meta">${savMeta}</div></div>
-          <div class="bc-right"><div class="bc-amount" style="color:${paid ? 'var(--paid)' : 'var(--text)'}">${fmt(b.amount)}</div></div>
-        </div>
-      </div>`;
-    }
+function renderBillCard(b) {
+  const paid = isPaid(b.id);
+  const cat = catInfo(b.category);
+  const dueStr = getDueDate(b);
+  const du = daysUntil(dueStr);
+  let meta = `Due ${SHORT_MONTHS[state.currentMonth]} ${b.dueDay}`;
+  if (paid) meta = 'Paid';
+  else if (du < 0) meta = `${Math.abs(du)}d overdue`;
+  else if (du === 0) meta = 'Due today';
+  else if (du === 1) meta = 'Due tomorrow';
 
-    // Regular bills: tap card → payment history, quick-action icons inline
-    const quickActions = `<div class="bc-quick">
-      <button class="bc-qbtn" onclick="event.stopPropagation();openBillModal('${b.id}')" title="Edit">✏️</button>
-      <button class="bc-qbtn" onclick="event.stopPropagation();cloneBill('${b.id}')" title="Duplicate">📋</button>
-      <button class="bc-qbtn" onclick="event.stopPropagation();deleteBillDirect('${b.id}')" title="Delete">🗑️</button>
-    </div>`;
+  const isSav = b._isSavingsContrib;
+  const paidAmt = paid ? getPaidAmount(b.id) : null;
+  const paidDiff = (paidAmt !== null && paidAmt !== b.amount) ? `<div style="font-size:10px;color:var(--paid);font-weight:700">paid ${fmt(paidAmt)}</div>` : '';
 
-    return `<div class="bill-card${paid ? ' is-paid' : ''}" id="bc-${b.id}">
-      <div class="bc-main" onclick="openPayeeHistory('${b.id}')">
-        <button class="bill-pay-btn${paid ? ' is-paid' : ''}" onclick="event.stopPropagation();togglePaid('${b.id}')">${paid ? '✓ Paid' : 'Pay'}</button>
+  // Savings: meta shows auto status, no pay button, no actions
+  if (isSav) {
+    const savMeta = paid ? '✓ Auto-deposited' : `Auto-deposits ${SHORT_MONTHS[state.currentMonth]} ${b.dueDay}`;
+    return `<div class="bill-card${paid ? ' is-paid' : ''} is-savings" id="bc-${b.id}">
+      <div class="bc-main">
         <div class="bc-icon" style="background:${cat.color}22">${b.icon || cat.icon}</div>
-        <div class="bc-info"><div class="bc-name${paid ? ' struck' : ''}">${escHtml(b.name)}</div><div class="bc-meta">${meta}${b.payMethod === 'autopay' ? ' · Autopay' : ''}${b.excludeFromPlanner ? ' · <span style="color:var(--text3);font-style:italic">Not in planner</span>' : ''}</div></div>
-        <div class="bc-right"><div class="bc-amount" style="color:${paid ? 'var(--paid)' : 'var(--text)'}">${fmt(b.amount)}</div>${paidDiff}</div>
-        ${quickActions}
+        <div class="bc-info"><div class="bc-name${paid ? ' struck' : ''}">${escHtml(b.name)}</div><div class="bc-meta">${savMeta}</div></div>
+        <div class="bc-right"><div class="bc-amount" style="color:${paid ? 'var(--paid)' : 'var(--text)'}">${fmt(b.amount)}</div></div>
       </div>
     </div>`;
-  }).join('');
+  }
+
+  // Regular bills: tap card → payment history, quick-action icons inline
+  const quickActions = `<div class="bc-quick">
+    <button class="bc-qbtn" onclick="event.stopPropagation();openBillModal('${b.id}')" title="Edit">✏️</button>
+    <button class="bc-qbtn" onclick="event.stopPropagation();cloneBill('${b.id}')" title="Duplicate">📋</button>
+    <button class="bc-qbtn" onclick="event.stopPropagation();deleteBillDirect('${b.id}')" title="Delete">🗑️</button>
+  </div>`;
+
+  return `<div class="bill-card${paid ? ' is-paid' : ''}" id="bc-${b.id}">
+    <div class="bc-main" onclick="openPayeeHistory('${b.id}')">
+      <button class="bill-pay-btn${paid ? ' is-paid' : ''}" onclick="event.stopPropagation();togglePaid('${b.id}')">${paid ? '✓ Paid' : 'Pay'}</button>
+      <div class="bc-icon" style="background:${cat.color}22">${b.icon || cat.icon}</div>
+      <div class="bc-info"><div class="bc-name${paid ? ' struck' : ''}">${escHtml(b.name)}</div><div class="bc-meta">${meta}${b.payMethod === 'autopay' ? ' · Autopay' : ''}${b.excludeFromPlanner ? ' · <span style="color:var(--text3);font-style:italic">Not in planner</span>' : ''}</div></div>
+      <div class="bc-right"><div class="bc-amount" style="color:${paid ? 'var(--paid)' : 'var(--text)'}">${fmt(b.amount)}</div>${paidDiff}</div>
+      ${quickActions}
+    </div>
+  </div>`;
 }
 
 // Filter persists across renders via module-level var (not saved to localStorage)
@@ -1471,6 +1519,7 @@ function saveBill() {
     isRecurring: document.getElementById('bFreq').value !== 'once',
     excludeFromPlanner: !document.getElementById('bPlanner').checked,
     startMonth: state.currentMonth, // quarter/yearly cycle starts from creation month
+    startYear: state.currentYear,   // pins one-time bills to a specific month+year
     biller: '',
     accountId: '',
   };
@@ -1727,8 +1776,8 @@ function incomesDueOn(targetDate) {
     const dates = getNextPayDates(inc, 6);
     return dates.some(dt => dt.getMonth() === m && dt.getFullYear() === y && dt.getDate() === d);
   }).filter(inc => {
-    // Skip received
-    return !s.incomeReceipts.some(r => r.incomeId === inc.id && r.month === m && r.year === y);
+    // Skip received — match on exact day so a second biweekly check in the same month still notifies
+    return !s.incomeReceipts.some(r => r.incomeId === inc.id && r.month === m && r.year === y && r.day === d);
   });
 }
 
@@ -1778,7 +1827,7 @@ function checkAndNotify() {
     // Income due today
     const inc = incomesDueOn(today);
     if (inc.length > 0) {
-      const names = inc.map(i => i.source).join(', ');
+      const names = inc.map(i => i.name).join(', ');
       const total = inc.reduce((s, i) => s + Number(i.amount), 0);
       fireNotification(
         `${names} expected today`,
@@ -1839,7 +1888,8 @@ async function syncBillScheduleToServer() {
     frequency: b.frequency || 'monthly', startMonth: b.startMonth || 0,
   }));
   const incomes = (s.incomes || []).map(i => ({
-    id: i.id, source: i.source, amount: i.amount, payDay: i.payDay,
+    // Server payload keeps the 'source' key for compat, but income objects store the name in .name
+    id: i.id, source: i.name || i.source, amount: i.amount, payDay: i.payDay,
     frequency: i.frequency || 'monthly', lastPaidDate: i.lastPaidDate || null,
   }));
   try {
@@ -1950,14 +2000,20 @@ document.body.classList.add('glow-home');
 restoreCollapsed();
 render();
 
-// Dismiss splash screen after render completes
-setTimeout(() => {
+// Dismiss splash screen — tap anywhere to skip, or auto-dismiss when the animation finishes
+(function initSplash() {
   const splash = document.getElementById('splash');
-  if (splash) {
+  if (!splash) return;
+  let dismissed = false;
+  const dismiss = () => {
+    if (dismissed) return;
+    dismissed = true;
     splash.classList.add('hide');
-    setTimeout(() => splash.remove(), 600);
-  }
-}, 11500); // Cover shows → opens → pages flip → entries write → PAID stamp → tagline → fade out
+    setTimeout(() => splash.remove(), 700);
+  };
+  splash.addEventListener('click', dismiss);
+  setTimeout(dismiss, 11500); // Cover shows → opens → pages flip → entries write → PAID stamp → tagline → fade out
+})();
 
 // Re-render when tab becomes visible (covers switching from full app)
 document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });

@@ -30,14 +30,16 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
 .ledger-page.p4{background:#f2ecda;overflow:hidden}
 .entry-header,.entry-divider,.ledger-entry,.stamp{opacity:0}
 @keyframes book-enter{0%{transform:scale(0)}100%{transform:scale(1)}}
+.splash-skip{position:absolute;bottom:32px;left:0;right:0;text-align:center;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(240,240,245,.35);opacity:0;animation:skip-in .8s ease 2s forwards}
+@keyframes skip-in{to{opacity:1}}
 </style>
 <title>SimpleLedger</title>
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
 <!-- Non-blocking stylesheet: splash is fully styled by inline CSS above -->
-<link rel="stylesheet" href="style.css?v=30" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="style.css?v=30"></noscript>
+<link rel="stylesheet" href="style.css?v=32" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="style.css?v=32"></noscript>
 </head>
 <body style="background:#0f0f14">
 
@@ -111,6 +113,7 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
     </div>
     <div class="splash-tagline">Your Money, Simplified</div>
   </div>
+  <div class="splash-skip">Tap to skip</div>
 </div>
 
 <div class="status-bar"></div>
@@ -139,7 +142,7 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
   <div class="zone zone-calendar">
     <div class="month-nav cal-month-nav">
       <button onclick="changeMonth(-1)">‹</button>
-      <span class="month-label" id="monthLabel"></span>
+      <span class="month-label" id="monthLabel" onclick="goToToday()" title="Jump to today" style="cursor:pointer"></span>
       <button onclick="changeMonth(1)">›</button>
     </div>
     <div class="calendar">
@@ -205,7 +208,7 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
     <!-- Month nav for planner -->
     <div class="month-nav planner-month-nav">
       <button onclick="changePlannerMonth(-1)">‹</button>
-      <span class="month-label" id="plannerMonthLabel"></span>
+      <span class="month-label" id="plannerMonthLabel" onclick="plannerGoToToday()" title="Jump to today" style="cursor:pointer"></span>
       <button onclick="changePlannerMonth(1)">›</button>
     </div>
     <!-- Paycheck periods -->
@@ -427,6 +430,6 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
   </div>
 </div>
 <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
-<script src="app.js?v=30"></script>
+<script src="app.js?v=32"></script>
 </body>
 </html>
