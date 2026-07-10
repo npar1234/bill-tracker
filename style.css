@@ -2016,3 +2016,97 @@ body.glow-planner::after {
   to { transform: rotate(360deg); }
 }
 .opacity-75 { opacity: 0.75; }
+
+/* ═══════════════════════════════════════
+   POLISH LAYER — toasts, motion, icons
+   ═══════════════════════════════════════ */
+
+/* ── Toast with undo ── */
+#toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(76px + var(--safe-bottom));
+  transform: translateX(-50%) translateY(16px);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: min(90%, 400px);
+  padding: 12px 18px;
+  background: rgba(30, 30, 42, .92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 14px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.5);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  z-index: 500;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease, transform .25s ease;
+}
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+.toast-msg { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.toast-undo {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .3px;
+  cursor: pointer;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  flex-shrink: 0;
+}
+.toast-undo:active { opacity: .6; }
+
+/* ── SVG nav icons ── */
+.nav-icon svg { width: 22px; height: 22px; display: block; transition: transform .2s cubic-bezier(.34,1.56,.64,1); }
+.nav-btn.active .nav-icon svg { transform: translateY(-1px) scale(1.08); }
+
+/* ── Tab switch transition ── */
+.tab-content.active { animation: tab-in .25s ease; }
+@keyframes tab-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── Tactile press states on cards ── */
+.upcoming-card, .bill-card, .income-card, .savings-card, .pl-card, .day-item {
+  transition: transform .12s ease;
+}
+.upcoming-card:active, .bill-card:active, .income-card:active, .savings-card:active { transform: scale(.98); }
+.header-btn:active, .empty-cta:active { transform: scale(.92); }
+
+/* ── Empty-state CTA button ── */
+.empty-cta {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 10px 20px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(59,130,246,.3);
+  transition: transform .12s ease;
+}
+
+/* ── Reduced motion: respect the OS setting ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

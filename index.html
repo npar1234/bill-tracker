@@ -38,8 +38,8 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
 <!-- Non-blocking stylesheet: splash is fully styled by inline CSS above -->
-<link rel="stylesheet" href="style.css?v=32" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="style.css?v=32"></noscript>
+<link rel="stylesheet" href="style.css?v=33" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="style.css?v=33"></noscript>
 </head>
 <body style="background:#0f0f14">
 
@@ -128,8 +128,8 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
     </div>
   </div>
   <div class="header-actions">
-    <button class="header-btn" onclick="openAddModal()" title="Add">＋</button>
-    <button class="header-btn" onclick="openModal('dataModal')" title="Import / Export" style="font-size:14px">⚙️</button>
+    <button class="header-btn" onclick="openAddModal()" title="Add" aria-label="Add new">＋</button>
+    <button class="header-btn" onclick="openModal('dataModal')" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .32 1.77l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.6 1.6 0 0 0-1.77-.32 1.6 1.6 0 0 0-.97 1.47V21a2 2 0 1 1-4 0v-.09a1.6 1.6 0 0 0-1.05-1.47 1.6 1.6 0 0 0-1.77.32l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.6 1.6 0 0 0 4.6 15a1.6 1.6 0 0 0-1.47-.97H3a2 2 0 1 1 0-4h.09A1.6 1.6 0 0 0 4.56 9a1.6 1.6 0 0 0-.32-1.77l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.6 1.6 0 0 0 1.77.32h.05A1.6 1.6 0 0 0 9.86 3.2V3a2 2 0 1 1 4 0v.09c0 .64.38 1.21.97 1.47a1.6 1.6 0 0 0 1.77-.32l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.6 1.6 0 0 0-.32 1.77v.05c.26.58.83.96 1.47.97H21a2 2 0 1 1 0 4h-.09a1.6 1.6 0 0 0-1.47.97z"/></svg></button>
   </div>
 </div>
 
@@ -218,11 +218,26 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
 
 <!-- ═══ Bottom nav ═══ -->
 <nav class="bottom-nav">
-  <button class="nav-btn active" data-tab="home" onclick="switchTab('home')"><span class="nav-icon">📅</span><span class="nav-label">Home</span></button>
-  <button class="nav-btn" data-tab="bills" onclick="switchTab('bills')"><span class="nav-icon">📋</span><span class="nav-label">Bills</span></button>
-  <button class="nav-btn" data-tab="planner" onclick="switchTab('planner')"><span class="nav-icon">📊</span><span class="nav-label">Planner</span></button>
-  <button class="nav-btn" data-tab="income" onclick="switchTab('income')"><span class="nav-icon">💵</span><span class="nav-label">Income</span></button>
-  <button class="nav-btn" data-tab="savings" onclick="switchTab('savings')"><span class="nav-icon">🏦</span><span class="nav-label">Savings</span></button>
+  <button class="nav-btn active" data-tab="home" onclick="switchTab('home')" aria-label="Home">
+    <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span>
+    <span class="nav-label">Home</span>
+  </button>
+  <button class="nav-btn" data-tab="bills" onclick="switchTab('bills')" aria-label="Bills">
+    <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h12M9 12h12M9 18h12"/><path d="M3.5 5.5l1 1 2-2M3.5 11.5l1 1 2-2M3.5 17.5l1 1 2-2"/></svg></span>
+    <span class="nav-label">Bills</span>
+  </button>
+  <button class="nav-btn" data-tab="planner" onclick="switchTab('planner')" aria-label="Planner">
+    <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20v-6M11 20V5M17 20v-9"/><path d="M3 20h18"/></svg></span>
+    <span class="nav-label">Planner</span>
+  </button>
+  <button class="nav-btn" data-tab="income" onclick="switchTab('income')" aria-label="Income">
+    <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.2v9.6M14.6 9.3c-.55-.75-1.5-1.2-2.6-1.2-1.5 0-2.7.9-2.7 2.05s1.15 1.75 2.7 1.95c1.7.2 2.7.85 2.7 2s-1.2 2.05-2.7 2.05c-1.1 0-2.05-.45-2.6-1.2"/></svg></span>
+    <span class="nav-label">Income</span>
+  </button>
+  <button class="nav-btn" data-tab="savings" onclick="switchTab('savings')" aria-label="Savings">
+    <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L12 3l9 6.5"/><path d="M5 10v8M9.7 10v8M14.3 10v8M19 10v8M3 20.5h18"/></svg></span>
+    <span class="nav-label">Savings</span>
+  </button>
 </nav>
 
 <!-- ═══ Add choice modal ═══ -->
@@ -430,6 +445,6 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
   </div>
 </div>
 <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
-<script src="app.js?v=32"></script>
+<script src="app.js?v=33"></script>
 </body>
 </html>

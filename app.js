@@ -78,6 +78,43 @@ function saveState() {
 }
 
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+// ── Haptic feedback (Android Chrome; silently ignored on iOS)
+function haptic(ms = 10) { if (navigator.vibrate) { try { navigator.vibrate(ms); } catch(e) {} } }
+
+// ── Toast with optional Undo — replaces silent state flips
+let _toastTimer = null, _toastUndoFn = null;
+function showToast(msg, opts = {}) {
+  let t = document.getElementById('toast');
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
+  _toastUndoFn = opts.undo || null;
+  t.innerHTML = `<span class="toast-msg">${msg}</span>${opts.undo ? '<button class="toast-undo" onclick="undoToast()">Undo</button>' : ''}`;
+  t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { t.classList.remove('show'); _toastUndoFn = null; }, opts.duration || 4500);
+}
+function undoToast() {
+  const fn = _toastUndoFn;
+  _toastUndoFn = null;
+  clearTimeout(_toastTimer);
+  document.getElementById('toast')?.classList.remove('show');
+  haptic(8);
+  if (fn) fn();
+}
+
+// ── Animated number transitions for hero amounts
+function animateAmount(el, from, to) {
+  if (!el) return;
+  if (from === undefined || from === to || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const start = performance.now(), dur = 450;
+  const step = now => {
+    const p = Math.min((now - start) / dur, 1);
+    const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
+    el.textContent = fmt(from + (to - from) * eased);
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
 function fmt(n) { return "$" + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
 function fmtShort(n) { return "$" + (n >= 1000 ? (n/1000).toFixed(1).replace(/\.0$/,"") + "k" : Number(n).toFixed(0)); }
 function escHtml(s) { return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
@@ -147,10 +184,18 @@ function togglePaid(billId) {
   // Savings contrib bills auto-clear by date — no manual toggle
   if (billId && billId.startsWith('sav_')) return;
 
+  const name = escHtml(state.bills.find(b => b.id === billId)?.name || 'Bill');
   if (isPaid(billId, m, y)) {
     state.payments = state.payments.filter(p => !(p.billId === billId && p.month === m && p.year === y));
+    showToast(`${name} marked unpaid`);
   } else {
     state.payments.push({ billId, month: m, year: y, date: new Date().toISOString().slice(0, 10), paidDate: new Date().toISOString().slice(0, 10) });
+    haptic(15);
+    showToast(`✓ ${name} paid`, { undo: () => {
+      state.payments = state.payments.filter(p => !(p.billId === billId && p.month === m && p.year === y));
+      saveState();
+      render();
+    }});
   }
   saveState();
   render();
@@ -448,6 +493,7 @@ function computedBalance(acctId) {
 //  NAVIGATION
 // ═══════════════════════════════════════
 function switchTab(tab) {
+  if (tab !== currentTab) haptic(5);
   currentTab = tab;
   document.querySelectorAll('.tab-content').forEach(el => el.classList.toggle('active', el.id === 'tab-' + tab));
   document.querySelectorAll('.nav-btn').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
@@ -785,7 +831,7 @@ function renderUpcoming(monthBills) {
   document.getElementById('upcomingCount').textContent = `${count} upcoming`;
 
   if (!events.length) {
-    document.getElementById('upcomingList').innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div>No upcoming bills or paydays<br><span style="font-size:11px;color:var(--text3)">Add bills and income to get started</span></div>';
+    document.getElementById('upcomingList').innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div>No upcoming bills or paydays<br><button class="empty-cta" onclick="openAddModal()">＋ Get Started</button></div>';
     return;
   }
 
@@ -1161,6 +1207,10 @@ function renderPlannerTab() {
       </div>
     </div>`;
 
+  // Animate the hero amount when it changes (count-up/down)
+  animateAmount(document.querySelector('.pl-hero-amount'), window._plHeroPrev, available);
+  window._plHeroPrev = available;
+
   // ── Paycheck cards: ledger-style
   document.getElementById('plannerPeriods').innerHTML = periods.map((p, idx) => {
     const totalBillAmt = p.bills.reduce((s, b) => s + b.amount, 0);
@@ -1245,7 +1295,7 @@ function renderBills(monthBills) {
   [overdue, dueToday, upcoming, paid].forEach(arr => arr.sort((a, b) => a.dueDay - b.dueDay));
 
   if (!filtered.length) {
-    document.getElementById('billList').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>No bills this month<br><span style="font-size:11px;color:var(--text3)">Tap ＋ to add your first bill</span></div>';
+    document.getElementById('billList').innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>No bills this month<br><button class="empty-cta" onclick="openBillModal()">＋ Add a Bill</button></div>';
     return;
   }
 
@@ -1321,7 +1371,7 @@ function renderIncomeTab() {
   const FREQ_LABELS = { monthly: "Monthly", biweekly: "Bi-Weekly", weekly: "Weekly", yearly: "Yearly" };
 
   if (!state.incomes.length) {
-    document.getElementById('incomeList').innerHTML = '<div class="empty-state"><div class="empty-icon">💵</div>No income sources added<br><span style="font-size:11px;color:var(--text3)">Tap ＋ to add your first income</span></div>';
+    document.getElementById('incomeList').innerHTML = '<div class="empty-state"><div class="empty-icon">💵</div>No income sources added<br><button class="empty-cta" onclick="openIncomeModal()">＋ Add Income</button></div>';
     return;
   }
 
@@ -1343,7 +1393,7 @@ function renderSavings() {
   const accts = state.savingsAccounts || [];
   const container = document.getElementById('savingsList');
   if (!accts.length) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🏦</div>No savings accounts<br><span style="font-size:11px;color:var(--text3)">Tap ＋ to add one</span></div>';
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🏦</div>No savings accounts<br><button class="empty-cta" onclick="openSavingsModal()">＋ Add Account</button></div>';
     return;
   }
 
@@ -1386,6 +1436,25 @@ function renderSavings() {
 // ═══════════════════════════════════════
 function openModal(id) { document.getElementById(id).classList.add('show'); }
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+// Focus the first field when adding (not editing — avoids keyboard pop on review)
+function focusField(inputId) {
+  setTimeout(() => document.getElementById(inputId)?.focus(), 280); // after sheet slide-in
+}
+
+// Enter in any modal input saves — maps modal → save action
+const MODAL_SAVE = {
+  billModal: () => saveBill(),
+  incomeModal: () => saveIncome(),
+  savingsModal: () => saveSavingsAccount(),
+  payAmtModal: () => document.getElementById('payAmtSaveBtn')?.click(),
+};
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || e.target.tagName !== 'INPUT') return;
+  const overlay = e.target.closest('.modal-overlay');
+  const save = overlay && MODAL_SAVE[overlay.id];
+  if (save) { e.preventDefault(); save(); }
+});
 
 function exportData() {
   const payload = {
@@ -1499,6 +1568,7 @@ function openBillModal(id) {
     document.getElementById('bPlanner').checked = true;
     document.getElementById('billSaveBtn').textContent = 'Add Bill';
     document.getElementById('billDelBtn').classList.add('hidden');
+    focusField('bName');
   }
   openModal('billModal');
 }
@@ -1533,6 +1603,8 @@ function saveBill() {
   saveState();
   closeModal('billModal');
   render();
+  haptic(10);
+  showToast(editBillId ? `${escHtml(name)} updated` : `✓ ${escHtml(name)} added`);
 }
 
 function deleteBill() {
@@ -1540,12 +1612,20 @@ function deleteBill() {
   document.getElementById('confirmTitle').textContent = 'Delete Bill?';
   document.getElementById('confirmText').textContent = 'This will permanently remove this bill.';
   document.getElementById('confirmBtn').onclick = () => {
+    const removed = state.bills.find(b => b.id === editBillId);
+    const removedPayments = state.payments.filter(p => p.billId === editBillId);
     state.bills = state.bills.filter(b => b.id !== editBillId);
     state.payments = state.payments.filter(p => p.billId !== editBillId);
     saveState();
     closeModal('confirmModal');
     closeModal('billModal');
     render();
+    if (removed) showToast(`${escHtml(removed.name)} deleted`, { undo: () => {
+      state.bills.push(removed);
+      state.payments.push(...removedPayments);
+      saveState();
+      render();
+    }});
   };
   openModal('confirmModal');
 }
@@ -1556,11 +1636,18 @@ function deleteBillDirect(id) {
   document.getElementById('confirmTitle').textContent = 'Delete Bill?';
   document.getElementById('confirmText').textContent = `Permanently remove "${bill.name}"?`;
   document.getElementById('confirmBtn').onclick = () => {
+    const removedPayments = state.payments.filter(p => p.billId === id);
     state.bills = state.bills.filter(b => b.id !== id);
     state.payments = state.payments.filter(p => p.billId !== id);
     saveState();
     closeModal('confirmModal');
     render();
+    showToast(`${escHtml(bill.name)} deleted`, { undo: () => {
+      state.bills.push(bill);
+      state.payments.push(...removedPayments);
+      saveState();
+      render();
+    }});
   };
   openModal('confirmModal');
 }
@@ -1596,6 +1683,7 @@ function openIncomeModal(id) {
     document.getElementById('iPlanner').checked = true;
     document.getElementById('incomeSaveBtn').textContent = 'Add Income';
     document.getElementById('incomeDelBtn').classList.add('hidden');
+    focusField('iName');
   }
   openModal('incomeModal');
 }
@@ -1622,6 +1710,8 @@ function saveIncome() {
   saveState();
   closeModal('incomeModal');
   render();
+  haptic(10);
+  showToast(editIncomeId ? `${escHtml(name)} updated` : `✓ ${escHtml(name)} added`);
 }
 
 function deleteIncome() {
@@ -1629,11 +1719,17 @@ function deleteIncome() {
   document.getElementById('confirmTitle').textContent = 'Delete Income?';
   document.getElementById('confirmText').textContent = 'This will remove this income source.';
   document.getElementById('confirmBtn').onclick = () => {
+    const removed = state.incomes.find(i => i.id === editIncomeId);
     state.incomes = state.incomes.filter(i => i.id !== editIncomeId);
     saveState();
     closeModal('confirmModal');
     closeModal('incomeModal');
     render();
+    if (removed) showToast(`${escHtml(removed.name)} deleted`, { undo: () => {
+      state.incomes.push(removed);
+      saveState();
+      render();
+    }});
   };
   openModal('confirmModal');
 }
@@ -1667,6 +1763,7 @@ function openSavingsModal(id) {
     document.getElementById('sContribStart').value = '';
     document.getElementById('savingsSaveBtn').textContent = 'Add Account';
     document.getElementById('savingsDelBtn').classList.add('hidden');
+    focusField('sName');
   }
   openModal('savingsModal');
 }
@@ -1698,6 +1795,8 @@ function saveSavingsAccount() {
   saveState();
   closeModal('savingsModal');
   render();
+  haptic(10);
+  showToast(editSavingsId ? `${escHtml(name)} updated` : `✓ ${escHtml(name)} added`);
 }
 
 function deleteSavingsAccount() {
@@ -1705,12 +1804,20 @@ function deleteSavingsAccount() {
   document.getElementById('confirmTitle').textContent = 'Delete Savings Account?';
   document.getElementById('confirmText').textContent = 'This will remove this account and all its transaction history.';
   document.getElementById('confirmBtn').onclick = () => {
+    const removed = (state.savingsAccounts || []).find(a => a.id === editSavingsId);
+    const removedTx = (state.savingsTransactions || []).filter(t => t.accountId === editSavingsId);
     state.savingsAccounts = (state.savingsAccounts || []).filter(a => a.id !== editSavingsId);
     state.savingsTransactions = (state.savingsTransactions || []).filter(t => t.accountId !== editSavingsId);
     saveState();
     closeModal('confirmModal');
     closeModal('savingsModal');
     render();
+    if (removed) showToast(`${escHtml(removed.name)} deleted`, { undo: () => {
+      state.savingsAccounts.push(removed);
+      state.savingsTransactions.push(...removedTx);
+      saveState();
+      render();
+    }});
   };
   openModal('confirmModal');
 }
