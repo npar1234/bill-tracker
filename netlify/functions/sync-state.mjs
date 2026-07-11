@@ -19,7 +19,8 @@ const headers = {
 export default async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers });
 
-  const store = getStore("household-sync");
+  // Strong consistency: a device pulling right after the other one pushed sees the fresh blob
+  const store = getStore({ name: "household-sync", consistency: "strong" });
 
   if (req.method === "GET") {
     const h = new URL(req.url).searchParams.get("household") || "";
