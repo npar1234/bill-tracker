@@ -1,19 +1,17 @@
-// Scheduled function — runs twice daily (8am and 6pm ET).
+// Scheduled function — runs twice daily (8am and 6pm ET, UTC cron below).
 // Reads all stored subscriptions, checks which bills are due today/tomorrow,
 // and sends web push notifications.
+// Functions v2 format — Netlify Blobs auto-configures here.
 
-const { getStore } = require("@netlify/blobs");
-const webpush = require("web-push");
+import { getStore } from "@netlify/blobs";
+import webpush from "web-push";
+
+// 12:00 & 22:00 UTC = 8am & 6pm EDT (7am/5pm EST in winter)
+export const config = { schedule: "0 12,22 * * *" };
 
 // VAPID keys — public key is also in app.js client-side
 const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY;
-
-webpush.setVapidDetails(
-  "mailto:npar1234@live.com",
-  VAPID_PUBLIC,
-  VAPID_PRIVATE
-);
 
 // Determine if a bill is due on a given day-of-month in a given month
 function isBillDueOn(bill, day, month, year) {
@@ -32,11 +30,12 @@ function fmt(n) {
   return "$" + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-exports.handler = async () => {
+export default async () => {
   if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
     console.error("VAPID keys not set in environment variables");
-    return { statusCode: 500, body: "VAPID keys missing" };
+    return new Response("VAPID keys missing", { status: 500 });
   }
+  webpush.setVapidDetails("mailto:npar1234@live.com", VAPID_PUBLIC, VAPID_PRIVATE);
 
   const store = getStore("push-subscriptions");
   const { blobs } = await store.list();
@@ -56,15 +55,13 @@ exports.handler = async () => {
 
       const notifications = [];
 
-      // Check bills due today
+      // Bills due today
       const dueToday = (data.bills || []).filter(b =>
         isBillDueOn(b, today.getDate(), today.getMonth(), today.getFullYear())
       );
       if (dueToday.length > 0) {
         const total = dueToday.reduce((s, b) => s + Number(b.amount), 0);
-        const names = dueToday.length <= 3
-          ? dueToday.map(b => b.name).join(", ")
-          : `${dueToday.length} bills`;
+        const names = dueToday.length <= 3 ? dueToday.map(b => b.name).join(", ") : `${dueToday.length} bills`;
         notifications.push({
           title: `${names} due today`,
           body: `${fmt(total)} total due`,
@@ -72,15 +69,13 @@ exports.handler = async () => {
         });
       }
 
-      // Check bills due tomorrow
+      // Bills due tomorrow
       const dueTmrw = (data.bills || []).filter(b =>
         isBillDueOn(b, tomorrow.getDate(), tomorrow.getMonth(), tomorrow.getFullYear())
       );
       if (dueTmrw.length > 0) {
         const total = dueTmrw.reduce((s, b) => s + Number(b.amount), 0);
-        const names = dueTmrw.length <= 3
-          ? dueTmrw.map(b => b.name).join(", ")
-          : `${dueTmrw.length} bills`;
+        const names = dueTmrw.length <= 3 ? dueTmrw.map(b => b.name).join(", ") : `${dueTmrw.length} bills`;
         notifications.push({
           title: `${names} due tomorrow`,
           body: `${fmt(total)} total — heads up!`,
@@ -88,7 +83,7 @@ exports.handler = async () => {
         });
       }
 
-      // Check incomes due today (monthly only for server-side; weekly/biweekly is harder without full logic)
+      // Incomes due today (monthly only server-side)
       const incToday = (data.incomes || []).filter(i =>
         i.payDay === today.getDate() && (!i.frequency || i.frequency === "monthly")
       );
@@ -102,13 +97,9 @@ exports.handler = async () => {
         });
       }
 
-      // Send all notifications for this subscriber
       for (const notif of notifications) {
         try {
-          await webpush.sendNotification(
-            data.subscription,
-            JSON.stringify(notif)
-          );
+          await webpush.sendNotification(data.subscription, JSON.stringify(notif));
           sent++;
         } catch (pushErr) {
           // 410 Gone = subscription expired, clean up
@@ -125,10 +116,5 @@ exports.handler = async () => {
   }
 
   console.log(`Push notify complete: ${sent} sent, ${errors} errors, ${blobs.length} subscribers`);
-  return { statusCode: 200, body: JSON.stringify({ sent, errors }) };
-};
-
-// Netlify scheduled function config — runs at 8am and 6pm ET (13:00 and 23:00 UTC)
-exports.config = {
-  schedule: "0 13,23 * * *",
+  return new Response(JSON.stringify({ sent, errors }), { status: 200 });
 };
