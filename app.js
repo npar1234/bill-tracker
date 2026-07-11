@@ -132,12 +132,22 @@ function animateAmount(el, from, to) {
   const step = now => {
     const p = Math.min((now - start) / dur, 1);
     const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
-    el.textContent = fmt(from + (to - from) * eased);
-    if (p < 1) requestAnimationFrame(step);
+    if (p < 1) {
+      el.textContent = fmt(from + (to - from) * eased);
+      requestAnimationFrame(step);
+    } else {
+      el.innerHTML = fmtHero(to); // settle on the styled treatment
+    }
   };
   requestAnimationFrame(step);
 }
 function fmt(n) { return "$" + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+// Hero money treatment (Copilot/Monarch style): big dollars, de-emphasized cents
+function fmtHero(n) {
+  const neg = n < 0;
+  const [d, c] = Math.abs(Number(n)).toFixed(2).split('.');
+  return `${neg ? '−' : ''}$${d.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}<span class="cents">.${c}</span>`;
+}
 function fmtShort(n) { return "$" + (n >= 1000 ? (n/1000).toFixed(1).replace(/\.0$/,"") + "k" : Number(n).toFixed(0)); }
 function escHtml(s) { return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
@@ -579,8 +589,30 @@ function plannerGoToToday() {
 // ═══════════════════════════════════════
 //  RENDER
 // ═══════════════════════════════════════
+// Autopay bills clear themselves once their due date passes (Bills Organizer pattern).
+// Respects tombstones: if the user manually un-paid it, we don't re-clear it.
+function autoClearAutopay() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  let changed = false;
+  state.bills.filter(b => b.payMethod === 'autopay').forEach(b => {
+    for (let off = 1; off >= 0; off--) { // previous + current month
+      const d = new Date(today.getFullYear(), today.getMonth() - off, 1);
+      const mm = d.getMonth(), yy = d.getFullYear();
+      if (!isDueThisMonth(b, mm, yy)) continue;
+      const dueDate = new Date(yy, mm, Math.min(b.dueDay, new Date(yy, mm + 1, 0).getDate()));
+      if (dueDate > today) continue;
+      if (isPaid(b.id, mm, yy)) continue;
+      if ((state.deletions || []).some(dd => dd.k === `pay:${b.id}:${yy}-${mm}`)) continue; // user said no
+      state.payments.push({ billId: b.id, month: mm, year: yy, paidDate: dueDate.toISOString().slice(0, 10), at: Date.now(), auto: true });
+      changed = true;
+    }
+  });
+  if (changed) saveState();
+}
+
 function render() {
   state = loadState(); // Re-read in case the full app wrote changes
+  autoClearAutopay();
 
   const now = new Date();
   const todayStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -674,6 +706,41 @@ function renderHome(monthBills) {
       </div>
     </div>
   `;
+
+  // ── Money headline pills: due this week, overdue, month-over-month delta
+  const today0 = new Date(); today0.setHours(0,0,0,0);
+  let dueWeek = 0, overdueAmt = 0;
+  [0, 1].forEach(offset => {
+    const cm = (state.currentMonth + offset) % 12;
+    const cy = state.currentMonth + offset > 11 ? state.currentYear + 1 : state.currentYear;
+    const dim = new Date(cy, cm + 1, 0).getDate();
+    state.bills.concat(getSavingsContribBills()).filter(b => isDueThisMonth(b, cm, cy)).forEach(b => {
+      if (isPaid(b.id, cm, cy)) return;
+      const dt = new Date(cy, cm, Math.min(b.dueDay, dim));
+      const du = Math.ceil((dt - today0) / 86400000);
+      if (du >= 0 && du < 7) dueWeek += b.amount;
+      if (offset === 0 && du < 0) overdueAmt += b.amount;
+    });
+  });
+  // Delta vs last month (real bills only, not savings pseudo-bills)
+  const pm = state.currentMonth === 0 ? 11 : state.currentMonth - 1;
+  const py = state.currentMonth === 0 ? state.currentYear - 1 : state.currentYear;
+  const prevTotal = state.bills.filter(b => isDueThisMonth(b, pm, py)).reduce((s, b) => s + b.amount, 0);
+  const curTotal = state.bills.filter(b => isDueThisMonth(b, state.currentMonth, state.currentYear)).reduce((s, b) => s + b.amount, 0);
+  const diff = curTotal - prevTotal;
+  const pills = [];
+  if (dueWeek > 0) pills.push(`<span class="home-pill">📅 ${fmt(dueWeek)} due in the next 7 days</span>`);
+  if (overdueAmt > 0) pills.push(`<span class="home-pill pill-red">⚠️ ${fmt(overdueAmt)} overdue</span>`);
+  if (prevTotal > 0 && Math.abs(diff) >= 1) {
+    pills.push(`<span class="home-pill ${diff > 0 ? 'pill-red' : 'pill-green'}">${diff > 0 ? '▲' : '▼'} ${fmt(Math.abs(diff))} ${diff > 0 ? 'more' : 'less'} than ${SHORT_MONTHS[pm]}</span>`);
+  }
+  let pillsEl = document.getElementById('homePills');
+  if (!pillsEl) {
+    pillsEl = document.createElement('div');
+    pillsEl.id = 'homePills';
+    document.getElementById('progressBars').after(pillsEl);
+  }
+  pillsEl.innerHTML = pills.join('');
 
   // ── Calendar
   renderCalendar(monthBills);
@@ -1309,7 +1376,7 @@ function renderPlannerTab() {
   document.getElementById('plannerForecast').innerHTML = `
     <div class="pl-hero">
       <div class="pl-hero-label">${heroLabel}</div>
-      <div class="pl-hero-amount ${availCls}">${fmt(heroAmt)}</div>
+      <div class="pl-hero-amount ${availCls}">${fmtHero(heroAmt)}</div>
       <div class="pl-hero-sub">${heroSub}</div>
     </div>
     <div class="pl-month-strip">
@@ -1429,10 +1496,20 @@ function renderBillCard(b) {
   const dueStr = getDueDate(b);
   const du = daysUntil(dueStr);
   let meta = `Due ${SHORT_MONTHS[state.currentMonth]} ${b.dueDay}`;
-  if (paid) meta = 'Paid';
+  const payRec = paid ? state.payments.find(p => p.billId === b.id && p.month === state.currentMonth && p.year === state.currentYear) : null;
+  if (paid) meta = payRec?.auto ? 'Paid automatically' : 'Paid';
   else if (du < 0) meta = `${Math.abs(du)}d overdue`;
   else if (du === 0) meta = 'Due today';
   else if (du === 1) meta = 'Due tomorrow';
+
+  // Variable-bill estimate (Chronicle pattern): average of recent adjusted payments
+  if (!paid) {
+    const hist = state.payments.filter(p => p.billId === b.id && p.paidAmount != null && p.paidAmount !== b.amount).slice(-3);
+    if (hist.length >= 2) {
+      const est = hist.reduce((s, p) => s + p.paidAmount, 0) / hist.length;
+      meta += ` · usually ~${fmtShort(est)}`;
+    }
+  }
 
   const isSav = b._isSavingsContrib;
   const paidAmt = paid ? getPaidAmount(b.id) : null;
@@ -1517,7 +1594,7 @@ function renderSavings() {
 
   const totalHtml = `<div class="savings-total-bar">
     <span class="savings-total-label">Total Saved</span>
-    <span class="savings-total-amount">${fmt(total)}</span>
+    <span class="savings-total-amount">${fmtHero(total)}</span>
   </div>`;
 
   const cardsHtml = accts.map((a, i) => {
@@ -2424,6 +2501,51 @@ setTimeout(() => syncNow(), 1500); // pull the household's latest shortly after 
 setTimeout(checkAndNotify, 2000); // Local check shortly after load
 setTimeout(syncBillScheduleToServer, 5000); // Sync bill schedule to push server
 setInterval(checkAndNotify, 4 * 60 * 60 * 1000); // Re-check every 4h while open
+
+// ═══════════════════════════════════════
+//  SWIPE-TO-PAY (Bills tab)
+//  Swipe a bill card right past the threshold to toggle paid — one gesture,
+//  no detail view. Vertical intent falls through to normal scrolling.
+// ═══════════════════════════════════════
+(function initSwipeToPay() {
+  const list = document.getElementById('billList');
+  if (!list) return;
+  let card = null, sx = 0, sy = 0, dx = 0, active = false, locked = false;
+  const THRESHOLD = 72;
+
+  list.addEventListener('touchstart', e => {
+    card = e.target.closest('.bill-card');
+    if (!card || card.classList.contains('is-savings')) { card = null; return; }
+    sx = e.touches[0].clientX;
+    sy = e.touches[0].clientY;
+    dx = 0; active = false; locked = false;
+  }, { passive: true });
+
+  list.addEventListener('touchmove', e => {
+    if (!card || locked) return;
+    dx = e.touches[0].clientX - sx;
+    const dy = e.touches[0].clientY - sy;
+    if (!active) {
+      if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { locked = true; return; } // scrolling
+      if (dx > 14 && dx > Math.abs(dy)) active = true; // right-swipe intent
+    }
+    if (active) {
+      const pull = Math.max(0, Math.min(dx, 110));
+      card.style.transform = `translateX(${pull}px)`;
+      card.classList.toggle('swipe-ready', pull >= THRESHOLD);
+    }
+  }, { passive: true });
+
+  list.addEventListener('touchend', () => {
+    if (!card) return;
+    const fire = active && card.classList.contains('swipe-ready');
+    const id = card.id.replace('bc-', '');
+    card.style.transform = '';
+    card.classList.remove('swipe-ready');
+    if (fire) togglePaid(id); // togglePaid handles haptic + undo toast
+    card = null;
+  });
+})();
 
 // ═══════════════════════════════════════
 //  PULL-TO-REFRESH
