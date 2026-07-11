@@ -1,4 +1,4 @@
-const CACHE = 'simpleledger-v16';
+const CACHE = 'simpleledger-v17';
 const ASSETS = ['./', 'index.html', 'style.css', 'app.js', 'icon.svg', 'icon-192.png', 'icon-512.png', 'manifest.json'];
 
 self.addEventListener('install', e => {
@@ -67,6 +67,8 @@ self.addEventListener('notificationclick', e => {
 
 // Network-first: try network, fall back to cache (works offline, always fresh when online)
 self.addEventListener('fetch', e => {
+  // Don't intercept non-GET or API calls (sync/push functions) — cache.put on POST throws
+  if (e.request.method !== 'GET' || e.request.url.includes('/.netlify/functions/')) return;
   e.respondWith(
     fetch(e.request)
       .then(res => {

@@ -38,8 +38,8 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
 <!-- Non-blocking stylesheet: splash is fully styled by inline CSS above -->
-<link rel="stylesheet" href="style.css?v=34" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="style.css?v=34"></noscript>
+<link rel="stylesheet" href="style.css?v=35" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="style.css?v=35"></noscript>
 </head>
 <body style="background:#0f0f14">
 
@@ -443,6 +443,15 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
 
     <div style="height:1px;background:var(--border);margin:16px 0"></div>
 
+    <!-- Household Sync & Backup -->
+    <div>
+      <div style="font-size:14px;font-weight:600">Backup & Household Sync</div>
+      <div id="syncStatus" style="font-size:11px;margin:2px 0 10px;color:var(--text3)"></div>
+      <div id="syncControls"></div>
+    </div>
+
+    <div style="height:1px;background:var(--border);margin:16px 0"></div>
+
     <!-- Data Management -->
     <div style="font-size:14px;font-weight:600;margin-bottom:10px">Data Management</div>
     <p style="font-size:12px;color:var(--text3);margin-bottom:16px">Import a backup from the full app or export your current data.</p>
@@ -454,6 +463,6 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
   </div>
 </div>
 <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
-<script src="app.js?v=34"></script>
+<script src="app.js?v=35"></script>
 </body>
 </html>

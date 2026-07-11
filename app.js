@@ -2,6 +2,7 @@
 //  SHARED DATA LAYER — same localStorage
 // ═══════════════════════════════════════
 const STORAGE_KEY = "billTracker_v3";
+const SCHEMA_VERSION = 4; // v4: sync support — updatedAt stamps, deletion tombstones, plannerOvAt
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -42,18 +43,37 @@ function loadState() {
           if (pay) { b.startMonth = pay.month; b.startYear = pay.year; }
         }
       });
+      // Schema migration guard — snapshot the old state before upgrading shape
+      if ((p.schemaVersion || 3) < SCHEMA_VERSION) {
+        try { localStorage.setItem(STORAGE_KEY + '_pre_v' + SCHEMA_VERSION, s); } catch(e) {}
+        p.schemaVersion = SCHEMA_VERSION;
+      }
+      if (!p.deletions) p.deletions = [];      // tombstones for sync merge
+      if (!p.plannerOvAt) p.plannerOvAt = {};  // per-month timestamps for planner overrides
       return p;
     }
   } catch(e) {}
   const now = new Date();
   return {
+    schemaVersion: SCHEMA_VERSION,
     currentMonth: now.getMonth(),
     currentYear: now.getFullYear(),
     bills: [], incomes: [], payments: [], incomeReceipts: [],
     savingsAccounts: [], savingsTransactions: [],
     categories: JSON.parse(JSON.stringify(CATEGORIES)),
     accounts: [],
+    deletions: [],
+    plannerOvAt: {},
   };
+}
+
+// ── Sync merge primitives: tombstones mark deletions so a second device doesn't resurrect them
+function markDeleted(k) {
+  if (!state.deletions) state.deletions = [];
+  state.deletions.push({ k, at: Date.now() });
+}
+function unmarkDeleted(k) {
+  if (state.deletions) state.deletions = state.deletions.filter(d => d.k !== k);
 }
 
 // Debounced push sync — avoids hammering server on rapid saves
@@ -64,6 +84,8 @@ function saveState() {
     // Debounce: sync bill schedule to push server 10s after last save
     clearTimeout(_pushSyncTimer);
     _pushSyncTimer = setTimeout(() => { if (typeof syncBillScheduleToServer === 'function') syncBillScheduleToServer(); }, 10000);
+    // Household sync: push merged state 3s after last change
+    if (typeof queueSync === 'function') queueSync();
   } catch(e) {
     // Show a non-blocking warning if storage fails
     if (!document.getElementById('storageWarning')) {
@@ -185,14 +207,18 @@ function togglePaid(billId) {
   if (billId && billId.startsWith('sav_')) return;
 
   const name = escHtml(state.bills.find(b => b.id === billId)?.name || 'Bill');
+  const payKey = `pay:${billId}:${y}-${m}`;
   if (isPaid(billId, m, y)) {
     state.payments = state.payments.filter(p => !(p.billId === billId && p.month === m && p.year === y));
+    markDeleted(payKey); // so a synced device doesn't resurrect the payment
     showToast(`${name} marked unpaid`);
   } else {
-    state.payments.push({ billId, month: m, year: y, date: new Date().toISOString().slice(0, 10), paidDate: new Date().toISOString().slice(0, 10) });
+    unmarkDeleted(payKey);
+    state.payments.push({ billId, month: m, year: y, date: new Date().toISOString().slice(0, 10), paidDate: new Date().toISOString().slice(0, 10), at: Date.now() });
     haptic(15);
     showToast(`✓ ${name} paid`, { undo: () => {
       state.payments = state.payments.filter(p => !(p.billId === billId && p.month === m && p.year === y));
+      markDeleted(payKey);
       saveState();
       render();
     }});
@@ -209,10 +235,13 @@ function isIncomeReceived(incId, month, year, day) {
 
 function toggleIncomeReceived(incId, month, year, day) {
   if (!state.incomeReceipts) state.incomeReceipts = [];
+  const rcvKey = `rcv:${incId}:${year}-${month}-${day}`;
   if (isIncomeReceived(incId, month, year, day)) {
     state.incomeReceipts = state.incomeReceipts.filter(r => !(r.incomeId === incId && r.month === month && r.year === year && r.day === day));
+    markDeleted(rcvKey);
   } else {
-    state.incomeReceipts.push({ incomeId: incId, month, year, day, date: new Date().toISOString().slice(0,10) });
+    unmarkDeleted(rcvKey);
+    state.incomeReceipts.push({ incomeId: incId, month, year, day, date: new Date().toISOString().slice(0,10), at: Date.now() });
   }
   saveState();
   render();
@@ -239,8 +268,8 @@ function openPayAmountModal(billId) {
     const amount = parseFloat(document.getElementById('payAmtInput').value);
     if (isNaN(amount) || amount < 0) return;
     const p = state.payments.find(p => p.billId === billId && p.month === state.currentMonth && p.year === state.currentYear);
-    if (p) { p.paidAmount = amount; }
-    else { state.payments.push({ billId, month: state.currentMonth, year: state.currentYear, paidDate: new Date().toISOString().slice(0,10), paidAmount: amount }); }
+    if (p) { p.paidAmount = amount; p.at = Date.now(); }
+    else { state.payments.push({ billId, month: state.currentMonth, year: state.currentYear, paidDate: new Date().toISOString().slice(0,10), paidAmount: amount, at: Date.now() }); }
     closeModal('payAmtModal');
     saveState();
     render();
@@ -1068,6 +1097,8 @@ function moveBillToPeriod(billId, fromIdx, toIdx) {
   if (!state.plannerOverrides[key]) state.plannerOverrides[key] = {};
   const prev = state.plannerOverrides[key][billId]; // undefined = was in its due-date check
   state.plannerOverrides[key][billId] = toIdx;
+  if (!state.plannerOvAt) state.plannerOvAt = {};
+  state.plannerOvAt[key] = Date.now();
   saveState();
   closeModal('moveBillModal');
   render();
@@ -1087,6 +1118,8 @@ function moveBillToPeriod(billId, fromIdx, toIdx) {
 function clearBillOverride(billId) {
   const key = `${plannerYear}-${plannerMonth}`;
   if (state.plannerOverrides?.[key]) delete state.plannerOverrides[key][billId];
+  if (!state.plannerOvAt) state.plannerOvAt = {};
+  state.plannerOvAt[key] = Date.now();
   saveState();
   closeModal('moveBillModal');
   render();
@@ -1097,6 +1130,8 @@ function clearPlannerOverrides() {
   if (!state.plannerOverrides) return;
   const key = `${plannerYear}-${plannerMonth}`;
   delete state.plannerOverrides[key];
+  if (!state.plannerOvAt) state.plannerOvAt = {};
+  state.plannerOvAt[key] = Date.now();
   saveState();
   render();
   showToast('All bills back on due-date checks');
@@ -1669,6 +1704,7 @@ function saveBill() {
     startYear: state.currentYear,   // pins one-time bills to a specific month+year
     biller: '',
     accountId: '',
+    updatedAt: Date.now(),          // sync: newest edit wins across devices
   };
 
   if (editBillId) {
@@ -1693,11 +1729,14 @@ function deleteBill() {
     const removedPayments = state.payments.filter(p => p.billId === editBillId);
     state.bills = state.bills.filter(b => b.id !== editBillId);
     state.payments = state.payments.filter(p => p.billId !== editBillId);
+    if (removed) markDeleted('bill:' + removed.id);
     saveState();
     closeModal('confirmModal');
     closeModal('billModal');
     render();
     if (removed) showToast(`${escHtml(removed.name)} deleted`, { undo: () => {
+      unmarkDeleted('bill:' + removed.id);
+      removed.updatedAt = Date.now(); // restamp so the restore beats the tombstone on other devices
       state.bills.push(removed);
       state.payments.push(...removedPayments);
       saveState();
@@ -1716,10 +1755,13 @@ function deleteBillDirect(id) {
     const removedPayments = state.payments.filter(p => p.billId === id);
     state.bills = state.bills.filter(b => b.id !== id);
     state.payments = state.payments.filter(p => p.billId !== id);
+    markDeleted('bill:' + id);
     saveState();
     closeModal('confirmModal');
     render();
     showToast(`${escHtml(bill.name)} deleted`, { undo: () => {
+      unmarkDeleted('bill:' + id);
+      bill.updatedAt = Date.now();
       state.bills.push(bill);
       state.payments.push(...removedPayments);
       saveState();
@@ -1732,7 +1774,7 @@ function deleteBillDirect(id) {
 function cloneBill(id) {
   const bill = state.bills.find(b => b.id === id);
   if (!bill) return;
-  const clone = { ...bill, id: genId(), name: bill.name + ' (copy)' };
+  const clone = { ...bill, id: genId(), name: bill.name + ' (copy)', updatedAt: Date.now() };
   state.bills.push(clone);
   saveState();
   render();
@@ -1776,6 +1818,7 @@ function saveIncome() {
     lastPaidDate: document.getElementById('iLastPaid').value || '',
     frequency: document.getElementById('iFreq').value,
     excludeFromPlanner: !document.getElementById('iPlanner').checked,
+    updatedAt: Date.now(),
   };
 
   if (editIncomeId) {
@@ -1798,11 +1841,14 @@ function deleteIncome() {
   document.getElementById('confirmBtn').onclick = () => {
     const removed = state.incomes.find(i => i.id === editIncomeId);
     state.incomes = state.incomes.filter(i => i.id !== editIncomeId);
+    if (removed) markDeleted('income:' + removed.id);
     saveState();
     closeModal('confirmModal');
     closeModal('incomeModal');
     render();
     if (removed) showToast(`${escHtml(removed.name)} deleted`, { undo: () => {
+      unmarkDeleted('income:' + removed.id);
+      removed.updatedAt = Date.now();
       state.incomes.push(removed);
       saveState();
       render();
@@ -1859,6 +1905,7 @@ function saveSavingsAccount() {
     contribDay: parseInt(document.getElementById('sContribDay').value) || 1,
     contribFreq: document.getElementById('sContribFreq').value,
     contribStart: document.getElementById('sContribStart').value || '',
+    updatedAt: Date.now(),
   };
 
   if (!state.savingsAccounts) state.savingsAccounts = [];
@@ -1885,11 +1932,14 @@ function deleteSavingsAccount() {
     const removedTx = (state.savingsTransactions || []).filter(t => t.accountId === editSavingsId);
     state.savingsAccounts = (state.savingsAccounts || []).filter(a => a.id !== editSavingsId);
     state.savingsTransactions = (state.savingsTransactions || []).filter(t => t.accountId !== editSavingsId);
+    if (removed) markDeleted('sav:' + removed.id);
     saveState();
     closeModal('confirmModal');
     closeModal('savingsModal');
     render();
     if (removed) showToast(`${escHtml(removed.name)} deleted`, { undo: () => {
+      unmarkDeleted('sav:' + removed.id);
+      removed.updatedAt = Date.now();
       state.savingsAccounts.push(removed);
       state.savingsTransactions.push(...removedTx);
       saveState();
@@ -2177,6 +2227,157 @@ function initNotifUI() {
 }
 
 // ═══════════════════════════════════════
+//  HOUSEHOLD SYNC & BACKUP
+//  Full-state blob on Netlify, merged per-record (newest-wins + tombstones)
+//  so two active devices can't silently erase each other's changes.
+// ═══════════════════════════════════════
+const SYNC_KEY = 'sl_sync';
+
+function getSyncCfg() { try { return JSON.parse(localStorage.getItem(SYNC_KEY)) || {}; } catch(e) { return {}; } }
+function saveSyncCfg(c) { localStorage.setItem(SYNC_KEY, JSON.stringify(c)); }
+
+// Passphrase → SHA-256 hex. Server only ever sees the hash.
+async function hashHousehold(phrase) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('simpleledger:' + phrase.trim().toLowerCase()));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Merge two full states. Per-record newest-wins; tombstones prevent resurrection.
+function mergeStates(a, b) {
+  const del = {};
+  [...(a.deletions || []), ...(b.deletions || [])].forEach(d => {
+    if (!del[d.k] || del[d.k] < d.at) del[d.k] = d.at;
+  });
+  const ts = o => o.updatedAt || o.at || 0;
+  const mergeById = (x = [], y = [], prefix) => {
+    const map = {};
+    [...x, ...y].forEach(r => { if (r && r.id && (!map[r.id] || ts(r) > ts(map[r.id]))) map[r.id] = r; });
+    return Object.values(map).filter(r => !(del[prefix + r.id] > ts(r)));
+  };
+  const mergeByKey = (x = [], y = [], keyFn, prefix) => {
+    const map = {};
+    [...x, ...y].forEach(r => { if (!r) return; const k = keyFn(r); if (!map[k] || ts(r) > ts(map[k])) map[k] = r; });
+    return Object.values(map).filter(r => !(del[prefix + keyFn(r)] > ts(r)));
+  };
+
+  const m = { ...b, ...a }; // scalars/unknown keys: local wins
+  m.bills = mergeById(a.bills, b.bills, 'bill:');
+  m.incomes = mergeById(a.incomes, b.incomes, 'income:');
+  m.savingsAccounts = mergeById(a.savingsAccounts, b.savingsAccounts, 'sav:');
+  m.savingsTransactions = mergeById(a.savingsTransactions, b.savingsTransactions, 'stx:');
+  m.payments = mergeByKey(a.payments, b.payments, p => `${p.billId}:${p.year}-${p.month}`, 'pay:');
+  m.incomeReceipts = mergeByKey(a.incomeReceipts, b.incomeReceipts, r => `${r.incomeId}:${r.year}-${r.month}-${r.day}`, 'rcv:');
+
+  // Planner overrides: newest month-key wins wholesale
+  const ovA = a.plannerOverrides || {}, ovB = b.plannerOverrides || {};
+  const atA = a.plannerOvAt || {}, atB = b.plannerOvAt || {};
+  m.plannerOverrides = {}; m.plannerOvAt = {};
+  new Set([...Object.keys(ovA), ...Object.keys(ovB), ...Object.keys(atA), ...Object.keys(atB)]).forEach(k => {
+    const useA = (atA[k] || 0) >= (atB[k] || 0);
+    const ov = useA ? ovA[k] : ovB[k];
+    if (ov && Object.keys(ov).length) m.plannerOverrides[k] = ov;
+    m.plannerOvAt[k] = Math.max(atA[k] || 0, atB[k] || 0);
+  });
+
+  // Tombstones: union, pruned to 90 days
+  const cutoff = Date.now() - 90 * 86400000;
+  m.deletions = Object.entries(del).filter(([, at]) => at > cutoff).map(([k, at]) => ({ k, at }));
+
+  // Navigation state never syncs
+  m.currentMonth = a.currentMonth;
+  m.currentYear = a.currentYear;
+  m.schemaVersion = SCHEMA_VERSION;
+  return m;
+}
+
+let _syncTimer = null, _syncing = false;
+function queueSync() {
+  if (!getSyncCfg().enabled) return;
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(() => syncNow(), 3000); // debounce bursts of edits
+}
+
+async function syncNow(manual) {
+  const cfg = getSyncCfg();
+  if (!cfg.enabled || !cfg.key || _syncing || !navigator.onLine) return;
+  _syncing = true;
+  updateSyncStatus('Syncing…');
+  try {
+    // Pull → merge → save → push
+    const res = await fetch('/.netlify/functions/sync-state?household=' + cfg.key);
+    let remote = null;
+    if (res.ok) { const j = await res.json(); remote = j.state || null; }
+    const local = loadState();
+    const merged = remote ? mergeStates(local, remote) : local;
+    state = merged;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); // direct write — avoid saveState → queueSync loop
+    const push = await fetch('/.netlify/functions/sync-state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ household: cfg.key, state: merged }),
+    });
+    if (!push.ok) throw new Error('push failed');
+    cfg.lastSync = Date.now();
+    saveSyncCfg(cfg);
+    updateSyncStatus();
+    render();
+    if (manual) showToast('✓ Synced');
+  } catch (e) {
+    updateSyncStatus('Offline — will retry on next change');
+    if (manual) showToast('Sync failed — check connection');
+  }
+  _syncing = false;
+}
+
+// ── Sync settings UI (inside the Settings modal)
+function initSyncUI() {
+  const el = document.getElementById('syncControls');
+  if (!el) return;
+  const cfg = getSyncCfg();
+  if (cfg.enabled) {
+    el.innerHTML = `<div style="display:flex;gap:8px">
+      <button class="btn-primary" style="flex:1;background:var(--accent)" onclick="syncNow(true)">🔄 Sync Now</button>
+      <button class="btn-primary" style="flex:1;background:var(--surface2);color:var(--text);border:1px solid var(--border)" onclick="disableSync()">Turn Off</button>
+    </div>
+    <p style="font-size:11px;color:var(--text3);margin-top:10px">Use the same passphrase on another phone to share this data.</p>`;
+  } else {
+    el.innerHTML = `
+      <p style="font-size:12px;color:var(--text3);margin-bottom:10px">Automatic cloud backup — and enter the same passphrase on a second phone to share the household data. Data is stored under a hashed key; pick something unguessable.</p>
+      <div class="field"><label>Household Passphrase</label><input id="syncPhrase" type="text" placeholder="e.g. two words and a number" autocomplete="off"></div>
+      <button class="btn-primary" onclick="enableSync()">Enable Backup & Sync</button>`;
+  }
+  updateSyncStatus();
+}
+
+async function enableSync() {
+  const phrase = document.getElementById('syncPhrase')?.value || '';
+  if (phrase.trim().length < 8) { showToast('Passphrase needs at least 8 characters'); return; }
+  const key = await hashHousehold(phrase);
+  saveSyncCfg({ enabled: true, key, lastSync: null });
+  initSyncUI();
+  haptic(10);
+  await syncNow(true); // first sync doubles as restore-on-new-device
+}
+
+function disableSync() {
+  const cfg = getSyncCfg();
+  cfg.enabled = false;
+  saveSyncCfg(cfg);
+  initSyncUI();
+  showToast('Backup off — data stays on this phone only');
+}
+
+function updateSyncStatus(msg) {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  if (msg) { el.textContent = msg; return; }
+  const cfg = getSyncCfg();
+  el.textContent = cfg.enabled
+    ? (cfg.lastSync ? 'On · last synced ' + new Date(cfg.lastSync).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'On')
+    : 'Off — data lives only on this phone';
+}
+
+// ═══════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════
 state = loadState();
@@ -2199,8 +2400,10 @@ render();
   setTimeout(dismiss, 11500); // Cover shows → opens → pages flip → entries write → PAID stamp → tagline → fade out
 })();
 
-// Re-render when tab becomes visible (covers switching from full app)
-document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
+// Re-render when tab becomes visible; also pull household changes made on the other phone
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) { render(); syncNow(); }
+});
 
 // Utility class
 document.querySelectorAll('.hidden').forEach(el => el.style.display = 'none');
@@ -2214,8 +2417,10 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
-// Init notifications
+// Init notifications + sync
 initNotifUI();
+initSyncUI();
+setTimeout(() => syncNow(), 1500); // pull the household's latest shortly after load
 setTimeout(checkAndNotify, 2000); // Local check shortly after load
 setTimeout(syncBillScheduleToServer, 5000); // Sync bill schedule to push server
 setInterval(checkAndNotify, 4 * 60 * 60 * 1000); // Re-check every 4h while open
