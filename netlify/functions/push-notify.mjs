@@ -66,6 +66,10 @@ export default async () => {
           title: `${names} due today`,
           body: `${fmt(total)} total due`,
           tag: `bills-today-${today.toISOString().slice(0, 10)}`,
+          // Enables the "✓ Mark Paid" notification action in the service worker
+          billIds: dueToday.map(b => b.id),
+          month: today.getMonth(),
+          year: today.getFullYear(),
         });
       }
 

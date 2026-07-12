@@ -38,8 +38,8 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
 <!-- Non-blocking stylesheet: splash is fully styled by inline CSS above -->
-<link rel="stylesheet" href="style.css?v=36" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="style.css?v=36"></noscript>
+<link rel="stylesheet" href="style.css?v=37" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="style.css?v=37"></noscript>
 </head>
 <body style="background:#0f0f14">
 
@@ -283,6 +283,7 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
         </select>
       </div>
     </div>
+    <div class="field"><label>Pay Online URL (optional)</label><input id="bUrl" type="url" placeholder="https://billpay.example.com" autocomplete="off"></div>
     <div class="toggle-row">
       <div><div class="toggle-label">Include in Paycheck Planner</div><div class="toggle-desc">Uncheck for bills paid from a different account</div></div>
       <label class="toggle-switch"><input type="checkbox" id="bPlanner" checked><span class="toggle-track"></span></label>
@@ -403,6 +404,10 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
       <label>Amount Actually Paid</label>
       <input id="payAmtInput" type="number" step="0.01" min="0" style="font-size:18px;font-weight:800">
     </div>
+    <div class="field">
+      <label>Confirmation # (optional)</label>
+      <input id="payConfInput" type="text" placeholder="e.g. TXN-48213" autocomplete="off">
+    </div>
     <p style="font-size:11px;color:var(--text3);margin-bottom:14px">Only changes the recorded amount for this month. The bill's default amount stays the same.</p>
     <div style="display:flex;gap:8px">
       <button class="btn-primary" style="background:var(--surface2);color:var(--text)" onclick="closeModal('payAmtModal')">Cancel</button>
@@ -463,6 +468,6 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
   </div>
 </div>
 <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
-<script src="app.js?v=36"></script>
+<script src="app.js?v=37"></script>
 </body>
 </html>

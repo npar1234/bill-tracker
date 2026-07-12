@@ -274,12 +274,15 @@ function openPayAmountModal(billId) {
   document.getElementById('payAmtTitle').textContent = 'Adjust Paid Amount';
   document.getElementById('payAmtDesc').textContent = `${bill.name} · default ${fmt(bill.amount)}`;
   document.getElementById('payAmtInput').value = current.toFixed(2);
+  const existing = state.payments.find(p => p.billId === billId && p.month === state.currentMonth && p.year === state.currentYear);
+  document.getElementById('payConfInput').value = existing?.confirmation || '';
   document.getElementById('payAmtSaveBtn').onclick = () => {
     const amount = parseFloat(document.getElementById('payAmtInput').value);
     if (isNaN(amount) || amount < 0) return;
+    const conf = document.getElementById('payConfInput').value.trim();
     const p = state.payments.find(p => p.billId === billId && p.month === state.currentMonth && p.year === state.currentYear);
-    if (p) { p.paidAmount = amount; p.at = Date.now(); }
-    else { state.payments.push({ billId, month: state.currentMonth, year: state.currentYear, paidDate: new Date().toISOString().slice(0,10), paidAmount: amount, at: Date.now() }); }
+    if (p) { p.paidAmount = amount; if (conf) p.confirmation = conf; p.at = Date.now(); }
+    else { state.payments.push({ billId, month: state.currentMonth, year: state.currentYear, paidDate: new Date().toISOString().slice(0,10), paidAmount: amount, confirmation: conf || undefined, at: Date.now() }); }
     closeModal('payAmtModal');
     saveState();
     render();
@@ -330,7 +333,8 @@ function openPayeeHistory(billId) {
       cls = 'untracked'; statusIcon = '—'; sub = '<div class="hg-date">Not tracked</div>';
     } else if (paid) {
       cls = 'paid'; statusIcon = '✅';
-      sub = dayPaid ? `<div class="hg-date">Paid ${ordinal(dayPaid)}</div>` : '<div class="hg-date">Paid</div>';
+      const conf = pRec?.confirmation ? ` <span title="${escHtml(pRec.confirmation)}">#</span>` : '';
+      sub = dayPaid ? `<div class="hg-date">Paid ${ordinal(dayPaid)}${conf}</div>` : `<div class="hg-date">Paid${conf}</div>`;
     } else {
       cls = 'missed'; statusIcon = '❌'; sub = '<div class="hg-date">Missed</div>';
     }
@@ -627,9 +631,28 @@ function render() {
   if (currentTab === 'planner') renderPlannerTab();
   if (currentTab === 'income') renderIncomeTab();
   if (currentTab === 'savings') renderSavings();
+  if (typeof updateAppBadge === 'function') updateAppBadge();
 }
 
 function renderHome(monthBills) {
+  // ── First-launch welcome: teach the two actions that make the app useful
+  const oldWelcome = document.getElementById('welcomeCard');
+  if (oldWelcome) oldWelcome.remove();
+  if (!state.bills.length && !state.incomes.length) {
+    const w = document.createElement('div');
+    w.id = 'welcomeCard';
+    w.className = 'welcome-card';
+    w.innerHTML = `
+      <div class="welcome-title">👋 Welcome to SimpleLedger</div>
+      <p class="welcome-text">Track bills, plan paychecks, never miss a due date. Two steps to get going:</p>
+      <div class="welcome-actions">
+        <button class="empty-cta" style="margin-top:0" onclick="openIncomeModal()">1 · Add your income</button>
+        <button class="empty-cta" style="margin-top:0;background:var(--expense)" onclick="openBillModal()">2 · Add your bills</button>
+      </div>`;
+    const homeTab = document.getElementById('tab-home');
+    homeTab.insertBefore(w, homeTab.firstChild);
+  }
+
   // ── Pay-date reminder: warn if any income is missing lastPaidDate
   const missingPayDate = state.incomes.filter(i => !i.lastPaidDate);
   const reminderEl = document.getElementById('payDateReminder');
@@ -1508,6 +1531,9 @@ function renderBillCard(b) {
     if (hist.length >= 2) {
       const est = hist.reduce((s, p) => s + p.paidAmount, 0) / hist.length;
       meta += ` · usually ~${fmtShort(est)}`;
+    } else if (b.frequency === 'quarterly' || b.frequency === 'yearly') {
+      // Amount-to-save (Chronicle): pro-rate lumpy bills into a monthly set-aside
+      meta += ` · set aside ${fmtShort(b.amount / (b.frequency === 'quarterly' ? 3 : 12))}/mo`;
     }
   }
 
@@ -1529,6 +1555,7 @@ function renderBillCard(b) {
 
   // Regular bills: tap card → payment history, quick-action icons inline
   const quickActions = `<div class="bc-quick">
+    ${b.payUrl ? `<button class="bc-qbtn" onclick="event.stopPropagation();openPayUrl('${b.id}')" title="Pay online">🔗</button>` : ''}
     <button class="bc-qbtn" onclick="event.stopPropagation();openBillModal('${b.id}')" title="Edit">✏️</button>
     <button class="bc-qbtn" onclick="event.stopPropagation();cloneBill('${b.id}')" title="Duplicate">📋</button>
     <button class="bc-qbtn" onclick="event.stopPropagation();deleteBillDirect('${b.id}')" title="Delete">🗑️</button>
@@ -1742,6 +1769,7 @@ function openBillModal(id) {
     catSel.value = bill.category;
     document.getElementById('bFreq').value = bill.frequency || 'monthly';
     document.getElementById('bPay').value = bill.payMethod || 'manual';
+    document.getElementById('bUrl').value = bill.payUrl || '';
     document.getElementById('bPlanner').checked = !bill.excludeFromPlanner;
     document.getElementById('billSaveBtn').textContent = 'Save Changes';
     document.getElementById('billDelBtn').classList.remove('hidden');
@@ -1754,6 +1782,7 @@ function openBillModal(id) {
     catSel.value = 'housing';
     document.getElementById('bFreq').value = 'monthly';
     document.getElementById('bPay').value = 'manual';
+    document.getElementById('bUrl').value = '';
     document.getElementById('bPlanner').checked = true;
     document.getElementById('billSaveBtn').textContent = 'Add Bill';
     document.getElementById('billDelBtn').classList.add('hidden');
@@ -1775,6 +1804,7 @@ function saveBill() {
     category: document.getElementById('bCat').value,
     frequency: document.getElementById('bFreq').value,
     payMethod: document.getElementById('bPay').value,
+    payUrl: document.getElementById('bUrl').value.trim(),
     isRecurring: document.getElementById('bFreq').value !== 'once',
     excludeFromPlanner: !document.getElementById('bPlanner').checked,
     startMonth: state.currentMonth, // quarter/yearly cycle starts from creation month
@@ -1846,6 +1876,14 @@ function deleteBillDirect(id) {
     }});
   };
   openModal('confirmModal');
+}
+
+// Open the bill's stored payment site (Chronicle's "Pay online" pattern)
+function openPayUrl(id) {
+  const b = state.bills.find(x => x.id === id);
+  if (!b?.payUrl) return;
+  const url = /^https?:\/\//i.test(b.payUrl) ? b.payUrl : 'https://' + b.payUrl;
+  window.open(url, '_blank', 'noopener');
 }
 
 function cloneBill(id) {
@@ -2492,6 +2530,52 @@ document.head.appendChild(style);
 // Register service worker for PWA install
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
+
+  // "Mark Paid" tapped on a notification while the app was open
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data?.type === 'MARK_PAID' && Array.isArray(e.data.billIds)) {
+      markPaidFromNotification(e.data.billIds, e.data.month, e.data.year);
+    }
+  });
+}
+
+// "Mark Paid" tapped while the app was closed — action arrives via launch URL
+(function handleMarkPaidLaunch() {
+  const params = new URLSearchParams(location.search);
+  if (!params.has('markpaid')) return;
+  const ids = params.get('markpaid').split(',').filter(Boolean);
+  const m = parseInt(params.get('m')), y = parseInt(params.get('y'));
+  history.replaceState(null, '', location.pathname); // clean the URL
+  if (ids.length && !isNaN(m) && !isNaN(y)) markPaidFromNotification(ids, m, y);
+})();
+
+function markPaidFromNotification(ids, m, y) {
+  let n = 0;
+  ids.forEach(id => {
+    if (!state.bills.some(b => b.id === id)) return;
+    if (isPaid(id, m, y)) return;
+    unmarkDeleted(`pay:${id}:${y}-${m}`);
+    state.payments.push({ billId: id, month: m, year: y, paidDate: new Date().toISOString().slice(0, 10), at: Date.now() });
+    n++;
+  });
+  if (n) {
+    saveState();
+    render();
+    haptic(15);
+    showToast(`✓ ${n} bill${n > 1 ? 's' : ''} marked paid`);
+  }
+}
+
+// PWA app badge: count of unpaid bills due today or overdue (real today, not viewed month)
+function updateAppBadge() {
+  if (!('setAppBadge' in navigator)) return;
+  const now = new Date();
+  const m = now.getMonth(), y = now.getFullYear();
+  const dim = new Date(y, m + 1, 0).getDate();
+  const n = state.bills.concat(getSavingsContribBills())
+    .filter(b => isDueThisMonth(b, m, y) && !isPaid(b.id, m, y) && Math.min(b.dueDay, dim) <= now.getDate())
+    .length;
+  (n > 0 ? navigator.setAppBadge(n) : navigator.clearAppBadge())?.catch?.(() => {});
 }
 
 // Init notifications + sync

@@ -1,4 +1,4 @@
-const CACHE = 'simpleledger-v18';
+const CACHE = 'simpleledger-v19';
 const ASSETS = ['./', 'index.html', 'style.css', 'app.js', 'icon.svg', 'icon-192.png', 'icon-512.png', 'manifest.json'];
 
 self.addEventListener('install', e => {
@@ -32,7 +32,7 @@ self.addEventListener('message', e => {
 self.addEventListener('push', e => {
   if (!e.data) return;
   try {
-    const data = e.data.json(); // { title, body, tag }
+    const data = e.data.json(); // { title, body, tag, billIds?, month?, year? }
     e.waitUntil(
       self.registration.showNotification(data.title, {
         body: data.body,
@@ -40,7 +40,9 @@ self.addEventListener('push', e => {
         icon: 'icon-192.png',
         badge: 'icon-192.png',
         vibrate: [100, 50, 100],
-        data: { url: './' },
+        data: { url: './', billIds: data.billIds, month: data.month, year: data.year },
+        // One-gesture mark-paid straight from the notification
+        actions: data.billIds ? [{ action: 'markpaid', title: '✓ Mark Paid' }] : [],
       })
     );
   } catch (err) {
@@ -54,11 +56,20 @@ self.addEventListener('push', e => {
   }
 });
 
-// Tapping a notification opens the app
+// Tapping a notification opens the app; "Mark Paid" applies without navigation
 self.addEventListener('notificationclick', e => {
   e.notification.close();
+  const d = e.notification.data || {};
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(wins => {
+      if (e.action === 'markpaid' && d.billIds) {
+        if (wins.length > 0) {
+          wins[0].postMessage({ type: 'MARK_PAID', billIds: d.billIds, month: d.month, year: d.year });
+          return wins[0].focus();
+        }
+        // App closed — pass the action through the launch URL
+        return clients.openWindow(`./?markpaid=${d.billIds.join(',')}&m=${d.month}&y=${d.year}`);
+      }
       if (wins.length > 0) { wins[0].focus(); return; }
       clients.openWindow('./');
     })
