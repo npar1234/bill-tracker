@@ -2238,6 +2238,81 @@ body { font-variant-numeric: tabular-nums; } /* amounts align and don't jitter w
 }
 .bill-card { will-change: transform; }
 
+/* ── Planner segmented toggle + Forecast view ── */
+.seg-toggle {
+  display: flex;
+  gap: 4px;
+  margin: 0 10px 10px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.seg-btn {
+  flex: 1;
+  padding: 8px 0;
+  border: none;
+  border-radius: 9px;
+  background: none;
+  color: var(--text3);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.seg-btn.active { background: var(--accent); color: #fff; }
+
+.fc-legend {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 14px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+.fc-row {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform .12s ease;
+}
+.fc-row:active { transform: scale(.99); }
+.fc-row.open { border-color: rgba(59,130,246,.3); }
+.fc-row-top {
+  display: grid;
+  grid-template-columns: 1fr auto auto 16px;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+}
+.fc-month { font-size: 13px; font-weight: 700; }
+.fc-bills { font-size: 13px; font-weight: 700; color: var(--text2); }
+.fc-net { font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; }
+.fc-net.pos { color: var(--paid); background: var(--paid-soft); }
+.fc-net.neg { color: var(--expense); background: var(--expense-soft); }
+.fc-chev { color: var(--text3); font-size: 11px; text-align: right; }
+.fc-detail { border-top: 1px solid var(--border); padding: 6px 14px 10px; }
+.fc-bill {
+  display: grid;
+  grid-template-columns: 22px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 12px;
+}
+.fc-bill-icon { font-size: 13px; }
+.fc-bill-name { color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-bill-day { color: var(--text3); font-size: 10px; }
+.fc-bill-amt { font-weight: 700; }
+.fc-bill.fc-inc .fc-bill-amt { color: var(--income); }
+.fc-none { padding: 8px 0; font-size: 12px; color: var(--text3); text-align: center; }
+
 /* ── First-launch welcome card ── */
 .welcome-card {
   margin: 10px;

@@ -1168,6 +1168,14 @@ function togglePaycheckPeriod(idx) {
 // ═══════════════════════════════════════
 let plannerMonth = new Date().getMonth();
 let plannerYear = new Date().getFullYear();
+let _plannerView = 'checks';   // 'checks' | 'forecast'
+let _forecastOpen = -1;        // expanded forecast month index
+
+function setPlannerView(v) {
+  _plannerView = v;
+  haptic(5);
+  render();
+}
 
 function changePlannerMonth(delta) {
   plannerMonth += delta;
@@ -1254,10 +1262,103 @@ function openMoveBillSheet(billId, curIdx) {
   openModal('moveBillModal');
 }
 
+// ── 12-month Forecast (Chronicle pattern): what's due each month, a year out
+function computeMonthForecast(m, y) {
+  const dim = new Date(y, m + 1, 0).getDate();
+  const bills = state.bills.filter(b => isDueThisMonth(b, m, y))
+    .map(b => ({ name: b.name, day: Math.min(b.dueDay, dim), amount: b.amount, icon: b.icon || catInfo(b.category).icon }))
+    .sort((a, b) => a.day - b.day);
+  let billTotal = bills.reduce((s, b) => s + b.amount, 0);
+
+  // Savings auto-deposits: monthly recur; weekly/biweekly counted arithmetically from contribStart
+  let savTotal = 0, savCount = 0;
+  const first = new Date(y, m, 1), last = new Date(y, m, dim);
+  (state.savingsAccounts || []).filter(a => a.contrib > 0).forEach(a => {
+    const freq = a.contribFreq || 'monthly';
+    if (freq === 'monthly') { savTotal += a.contrib; savCount++; return; }
+    if (!a.contribStart) return;
+    const interval = (freq === 'biweekly' ? 14 : 7) * 86400000;
+    const start = new Date(a.contribStart + 'T00:00:00');
+    if (start > last) return;
+    // first occurrence on/after the 1st of this month
+    let t = start.getTime();
+    if (t < first.getTime()) t += Math.ceil((first.getTime() - t) / interval) * interval;
+    for (; t <= last.getTime(); t += interval) { savTotal += a.contrib; savCount++; }
+  });
+
+  // Income: bucket computed pay dates into this month
+  let incTotal = 0, incCount = 0;
+  state.incomes.forEach(inc => {
+    getNextPayDates(inc, 54).forEach(dt => {
+      if (dt.getMonth() === m && dt.getFullYear() === y) { incTotal += inc.amount; incCount++; }
+    });
+  });
+
+  return { bills, billTotal, savTotal, savCount, incTotal, incCount, total: billTotal + savTotal };
+}
+
+function renderForecast() {
+  const now = new Date();
+  document.querySelector('.planner-month-nav').style.display = 'none';
+
+  let grand = 0, rows = '';
+  const data = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    data.push({ m: d.getMonth(), y: d.getFullYear(), f: computeMonthForecast(d.getMonth(), d.getFullYear()) });
+    grand += data[i].f.total;
+  }
+
+  document.getElementById('plannerForecast').innerHTML = `
+    <div class="pl-hero">
+      <div class="pl-hero-label">Next 12 Months of Bills</div>
+      <div class="pl-hero-amount pl-hero-ok">${fmtHero(grand)}</div>
+      <div class="pl-hero-sub">avg ${fmt(grand / 12)}/month · tap a month for the breakdown</div>
+    </div>`;
+
+  rows = data.map(({ m, y, f }, i) => {
+    const net = f.incTotal - f.total;
+    const netCls = net < 0 ? 'neg' : 'pos';
+    const open = _forecastOpen === i;
+    const detail = !open ? '' : `<div class="fc-detail">
+      ${f.bills.map(b => `<div class="fc-bill"><span class="fc-bill-icon">${b.icon}</span><span class="fc-bill-name">${escHtml(b.name)}</span><span class="fc-bill-day">${SHORT_MONTHS[m]} ${b.day}</span><span class="fc-bill-amt">${fmt(b.amount)}</span></div>`).join('') || '<div class="fc-none">No bills due</div>'}
+      ${f.savCount ? `<div class="fc-bill"><span class="fc-bill-icon">💰</span><span class="fc-bill-name">Savings deposits ×${f.savCount}</span><span class="fc-bill-day"></span><span class="fc-bill-amt">${fmt(f.savTotal)}</span></div>` : ''}
+      ${f.incCount ? `<div class="fc-bill fc-inc"><span class="fc-bill-icon">💵</span><span class="fc-bill-name">${f.incCount} paycheck${f.incCount > 1 ? 's' : ''}</span><span class="fc-bill-day"></span><span class="fc-bill-amt">+${fmt(f.incTotal)}</span></div>` : ''}
+    </div>`;
+    return `<div class="fc-row${open ? ' open' : ''}" onclick="_forecastOpen=_forecastOpen===${i}?-1:${i};render()">
+      <div class="fc-row-top">
+        <span class="fc-month">${MONTHS[m]}${m === 0 || i === 0 ? ` ${y}` : ''}</span>
+        <span class="fc-bills">${fmt(f.total)}</span>
+        <span class="fc-net ${netCls}">${net >= 0 ? '+' : '−'}${fmtShort(Math.abs(net))}</span>
+        <span class="fc-chev">${open ? '▾' : '▸'}</span>
+      </div>
+      ${detail}
+    </div>`;
+  }).join('');
+
+  document.getElementById('plannerPeriods').innerHTML =
+    `<div class="fc-legend"><span>Month</span><span>Bills out</span><span>Net after income</span></div>` + rows;
+}
+
 function renderPlannerTab() {
   const y = plannerYear, m = plannerMonth;
   const daysInMonth = new Date(y, m+1, 0).getDate();
   const mo = SHORT_MONTHS[m];
+
+  // Segmented view toggle: paycheck allocation vs 12-month forecast
+  let seg = document.getElementById('plannerSeg');
+  if (!seg) {
+    seg = document.createElement('div');
+    seg.id = 'plannerSeg';
+    seg.className = 'seg-toggle';
+    document.getElementById('plannerForecast').before(seg);
+  }
+  seg.innerHTML = `
+    <button class="seg-btn${_plannerView === 'checks' ? ' active' : ''}" onclick="setPlannerView('checks')">Paychecks</button>
+    <button class="seg-btn${_plannerView === 'forecast' ? ' active' : ''}" onclick="setPlannerView('forecast')">Forecast</button>`;
+
+  if (_plannerView === 'forecast') { renderForecast(); return; }
+  document.querySelector('.planner-month-nav').style.display = '';
 
   document.getElementById('plannerMonthLabel').textContent = `${MONTHS[m]} ${y}`;
 
