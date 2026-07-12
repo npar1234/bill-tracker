@@ -2313,6 +2313,77 @@ body { font-variant-numeric: tabular-nums; } /* amounts align and don't jitter w
 .fc-bill.fc-inc .fc-bill-amt { color: var(--income); }
 .fc-none { padding: 8px 0; font-size: 12px; color: var(--text3); text-align: center; }
 
+/* ── Cash Flow Ribbon ── */
+.ribbon-card {
+  margin: 0 10px 10px;
+  padding: 8px 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  touch-action: pan-y; /* horizontal drags scrub, vertical still scrolls the page */
+  user-select: none;
+  -webkit-user-select: none;
+}
+.ribbon-tip {
+  min-height: 16px;
+  padding: 8px 8px 0;
+  font-size: 11px;
+  color: var(--text3);
+}
+.ribbon-tip b { color: var(--text); }
+.ribbon-warn {
+  margin: 10px 6px 0;
+  padding: 9px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--expense);
+  background: var(--expense-soft);
+  border: 1px solid rgba(248,113,113,.25);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.ribbon-anchor-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-family: var(--font);
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 5px 11px;
+  cursor: pointer;
+}
+.ribbon-anchor-btn:active { transform: scale(.95); }
+
+/* ── Payday moment banner ── */
+.payday-banner {
+  position: relative;
+  margin: 10px;
+  padding: 16px;
+  background: linear-gradient(145deg, rgba(45,212,168,.16), rgba(59,130,246,.10));
+  border: 1px solid rgba(45,212,168,.3);
+  border-radius: var(--radius);
+  animation: payday-in .5s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes payday-in {
+  from { opacity: 0; transform: scale(.96) translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+.payday-title { font-size: 13px; font-weight: 800; color: var(--paid); letter-spacing: .2px; }
+.payday-amt { font-size: 30px; font-weight: 800; margin: 4px 0 2px; }
+.payday-sub { font-size: 12px; color: var(--text2); line-height: 1.5; }
+.payday-close {
+  position: absolute;
+  top: 10px; right: 12px;
+  background: none;
+  border: none;
+  color: var(--text3);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px;
+}
+
 /* ── First-launch welcome card ── */
 .welcome-card {
   margin: 10px;

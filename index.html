@@ -37,8 +37,8 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
 <!-- Non-blocking stylesheet: splash is fully styled by inline CSS above -->
-<link rel="stylesheet" href="style.css?v=39" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="style.css?v=39"></noscript>
+<link rel="stylesheet" href="style.css?v=40" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="style.css?v=40"></noscript>
 </head>
 <body style="background:#0f0f14">
 
@@ -80,6 +80,13 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
   <div class="zone zone-summary">
     <div class="summary-strip" id="summaryStrip"></div>
     <div id="progressBars" style="padding:0 10px 12px"></div>
+  </div>
+  <div class="zone zone-ribbon" id="zone-ribbon">
+    <div class="section-header" style="padding-top:10px">
+      <span class="section-title">Cash Flow · 60 Days</span>
+      <button class="ribbon-anchor-btn" id="ribbonAnchorBtn" onclick="openCashModal()">Set balance</button>
+    </div>
+    <div id="cashRibbon"></div>
   </div>
   <div class="zone zone-calendar">
     <div class="month-nav cal-month-nav">
@@ -304,6 +311,23 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
   </div>
 </div>
 
+<!-- ═══ Cash anchor modal ═══ -->
+<div class="modal-overlay" id="cashModal" onclick="if(event.target===this)closeModal('cashModal')">
+  <div class="modal-sheet" style="padding-bottom:calc(24px + var(--safe-bottom))">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Starting Balance</div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:14px">What's in your checking account right now? The cash flow curve projects forward from this number. Leave it blank to see relative flow instead.</p>
+    <div class="field">
+      <label>Current Balance ($)</label>
+      <input id="cashInput" type="number" step="0.01" style="font-size:18px;font-weight:800" placeholder="0.00">
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-primary" style="background:var(--surface2);color:var(--text)" onclick="closeModal('cashModal')">Cancel</button>
+      <button class="btn-primary" onclick="saveCashAnchor()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ Move bill modal (planner) ═══ -->
 <div class="modal-overlay" id="moveBillModal" onclick="if(event.target===this)closeModal('moveBillModal')">
   <div class="modal-sheet" style="padding-bottom:calc(24px + var(--safe-bottom))">
@@ -410,6 +434,6 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
   </div>
 </div>
 <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
-<script src="app.js?v=39"></script>
+<script src="app.js?v=40"></script>
 </body>
 </html>

@@ -765,6 +765,55 @@ function renderHome(monthBills) {
   }
   pillsEl.innerHTML = pills.join('');
 
+  // ── Payday moment: contextual hero on the day a check lands
+  const payToday = new Date(); payToday.setHours(0,0,0,0);
+  const payISO = payToday.toISOString().slice(0,10);
+  const oldPd = document.getElementById('paydayBanner');
+  if (oldPd) oldPd.remove();
+  if (!sessionStorage.getItem('sl_payday_' + payISO)) {
+    const smv = state.currentMonth, syv = state.currentYear;
+    state.currentMonth = payToday.getMonth(); state.currentYear = payToday.getFullYear();
+    const landed = state.incomes.filter(inc =>
+      getNextPayDates(inc, 8).some(dt => dt.getFullYear() === payToday.getFullYear() && dt.getMonth() === payToday.getMonth() && dt.getDate() === payToday.getDate()));
+    // Next payday across all incomes (horizon for "this check covers…")
+    let nextPay = null;
+    state.incomes.forEach(inc => getNextPayDates(inc, 8).forEach(dt => {
+      const dd = new Date(dt); dd.setHours(0,0,0,0);
+      if (dd > payToday && (!nextPay || dd < nextPay)) nextPay = dd;
+    }));
+    state.currentMonth = smv; state.currentYear = syv;
+    if (landed.length) {
+      const landedTotal = landed.reduce((s, i) => s + i.amount, 0);
+      const horizon = nextPay || new Date(payToday.getTime() + 14 * 86400000);
+      // Unpaid bills due between today and the next check
+      let covers = [], coverTotal = 0;
+      [0, 1].forEach(off => {
+        const base = new Date(payToday.getFullYear(), payToday.getMonth() + off, 1);
+        const bm = base.getMonth(), by = base.getFullYear();
+        const dim = new Date(by, bm + 1, 0).getDate();
+        state.bills.concat(getSavingsContribBills()).filter(b => isDueThisMonth(b, bm, by)).forEach(b => {
+          if (isPaid(b.id, bm, by)) return;
+          const dd = new Date(by, bm, Math.min(b.dueDay, dim));
+          if (dd >= payToday && dd < horizon) { covers.push(b); coverTotal += b.amount; }
+        });
+      });
+      const left = landedTotal - coverTotal;
+      const pd = document.createElement('div');
+      pd.id = 'paydayBanner';
+      pd.className = 'payday-banner';
+      pd.innerHTML = `
+        <button class="payday-close" onclick="sessionStorage.setItem('sl_payday_${payISO}','1');this.parentNode.remove()">✕</button>
+        <div class="payday-title">💵 Payday — ${landed.map(i => escHtml(i.name)).join(' + ')} landed</div>
+        <div class="payday-amt">+${fmtHero(landedTotal)}</div>
+        <div class="payday-sub">Covers ${covers.length} bill${covers.length !== 1 ? 's' : ''} (${fmt(coverTotal)}) until your next check · <b style="color:${left < 0 ? 'var(--expense)' : 'var(--paid)'}">${fmt(left)}</b> yours to spend</div>`;
+      const homeTab = document.getElementById('tab-home');
+      homeTab.insertBefore(pd, homeTab.firstChild);
+    }
+  }
+
+  // ── Cash Flow Ribbon
+  renderCashRibbon();
+
   // ── Calendar
   renderCalendar(monthBills);
 
@@ -1571,6 +1620,165 @@ function renderPlannerTab() {
   }).join('');
 }
 
+// ═══════════════════════════════════════
+//  CASH FLOW RIBBON
+//  Day-by-day projected balance for the next 60 days: paychecks spike it,
+//  bills notch it, savings deposits drain it. The one chart no bill app has.
+// ═══════════════════════════════════════
+let _ribbonSeries = null;
+
+function computeCashFlow(days = 60) {
+  const start = new Date(); start.setHours(0, 0, 0, 0);
+  const events = {}; // iso date -> [{name, amt}]
+  const addEv = (d, name, amt) => {
+    const k = d.toISOString().slice(0, 10);
+    (events[k] = events[k] || []).push({ name, amt });
+  };
+
+  // Incomes — getNextPayDates anchors on the VIEWED month; pin it to real today for the projection
+  const sm = state.currentMonth, sy = state.currentYear;
+  state.currentMonth = start.getMonth(); state.currentYear = start.getFullYear();
+  state.incomes.forEach(inc => {
+    getNextPayDates(inc, 54).forEach(dt => {
+      const dd = new Date(dt); dd.setHours(0, 0, 0, 0);
+      const diff = (dd - start) / 86400000;
+      if (diff >= 0 && diff < days) addEv(dd, inc.name, inc.amount);
+    });
+  });
+  state.currentMonth = sm; state.currentYear = sy;
+
+  // Bills + monthly savings deposits across the window's months
+  [0, 1, 2].forEach(off => {
+    const base = new Date(start.getFullYear(), start.getMonth() + off, 1);
+    const m = base.getMonth(), y = base.getFullYear();
+    const dim = new Date(y, m + 1, 0).getDate();
+    state.bills.filter(b => isDueThisMonth(b, m, y)).forEach(b => {
+      if (isPaid(b.id, m, y)) return; // already left the account
+      const dd = new Date(y, m, Math.min(b.dueDay, dim));
+      const diff = (dd - start) / 86400000;
+      if (diff >= 0 && diff < days) addEv(dd, b.name, -b.amount);
+    });
+    (state.savingsAccounts || []).filter(a => a.contrib > 0 && (a.contribFreq || 'monthly') === 'monthly').forEach(a => {
+      const dd = new Date(y, m, Math.min(a.contribDay || 1, dim));
+      const diff = (dd - start) / 86400000;
+      if (diff >= 0 && diff < days) addEv(dd, a.name + ' deposit', -a.contrib);
+    });
+  });
+  // Weekly/biweekly savings deposits
+  (state.savingsAccounts || []).filter(a => a.contrib > 0 && (a.contribFreq === 'weekly' || a.contribFreq === 'biweekly')).forEach(a => {
+    if (!a.contribStart) return;
+    const interval = (a.contribFreq === 'biweekly' ? 14 : 7) * 86400000;
+    let t = new Date(a.contribStart + 'T00:00:00').getTime();
+    const endT = start.getTime() + days * 86400000;
+    if (t < start.getTime()) t += Math.ceil((start.getTime() - t) / interval) * interval;
+    for (; t < endT; t += interval) addEv(new Date(t), a.name + ' deposit', -a.contrib);
+  });
+
+  // Accumulate from the anchor (or 0 for relative mode)
+  let bal = state.cashAnchor ? state.cashAnchor.amount : 0;
+  const series = [];
+  for (let i = 0; i < days; i++) {
+    const d = new Date(start.getTime() + i * 86400000);
+    const k = d.toISOString().slice(0, 10);
+    (events[k] || []).forEach(e => bal += e.amt);
+    series.push({ d, bal, events: events[k] || [] });
+  }
+  return series;
+}
+
+function renderCashRibbon() {
+  const zone = document.getElementById('zone-ribbon');
+  if (!zone) return;
+  if (!state.bills.length && !state.incomes.length) { zone.style.display = 'none'; return; }
+  zone.style.display = '';
+
+  const s = computeCashFlow(60);
+  _ribbonSeries = s;
+  const W = 360, H = 120, PT = 14, PB = 20, PL = 8, PR = 8;
+  const vals = s.map(p => p.bal);
+  let mn = Math.min(0, ...vals), mx = Math.max(0, ...vals);
+  if (mx === mn) mx = mn + 1;
+  const y = v => PT + (mx - v) / (mx - mn) * (H - PT - PB);
+  const x = i => PL + i * (W - PL - PR) / (s.length - 1);
+
+  // Step-after path — cash moves in steps, not slopes; the honest shape
+  let line = `M${x(0)},${y(s[0].bal).toFixed(1)}`;
+  for (let i = 1; i < s.length; i++) {
+    line += `L${x(i).toFixed(1)},${y(s[i-1].bal).toFixed(1)}L${x(i).toFixed(1)},${y(s[i].bal).toFixed(1)}`;
+  }
+  const area = line + `L${x(s.length-1).toFixed(1)},${H-PB}L${x(0)},${H-PB}Z`;
+  const yz = y(0);
+
+  const dots = s.map((p, i) => p.events.some(e => e.amt > 0)
+    ? `<circle cx="${x(i).toFixed(1)}" cy="${y(p.bal).toFixed(1)}" r="3" fill="#2dd4a8" stroke="#0f0f14" stroke-width="1"/>` : '').join('');
+  const minI = vals.indexOf(Math.min(...vals));
+  const minP = s[minI];
+  const ticks = s.map((p, i) => p.d.getDate() === 1
+    ? `<text x="${x(i).toFixed(1)}" y="${H - 6}" font-size="8" fill="#55556a" text-anchor="middle">${SHORT_MONTHS[p.d.getMonth()]}</text>` : '').join('');
+
+  const lowPill = minP.bal < 0
+    ? `<div class="ribbon-warn" onclick="switchTab('planner')">⚠️ Dips ${fmt(Math.abs(minP.bal))} below zero around ${SHORT_MONTHS[minP.d.getMonth()]} ${minP.d.getDate()} — open the Planner to move a bill →</div>`
+    : '';
+
+  const anchor = state.cashAnchor;
+  const btn = document.getElementById('ribbonAnchorBtn');
+  if (btn) btn.textContent = anchor ? `from ${fmtShort(anchor.amount)} · edit` : 'Set balance';
+
+  document.getElementById('cashRibbon').innerHTML = `
+    <div class="ribbon-card" onpointerdown="ribbonScrub(event)" onpointermove="if(event.buttons||event.pointerType==='touch')ribbonScrub(event)">
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:130px;display:block">
+        <defs>
+          <linearGradient id="rgA" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="rgba(45,212,168,.32)"/><stop offset="1" stop-color="rgba(45,212,168,0)"/>
+          </linearGradient>
+          <clipPath id="cpA"><rect x="0" y="0" width="${W}" height="${yz.toFixed(1)}"/></clipPath>
+          <clipPath id="cpB"><rect x="0" y="${yz.toFixed(1)}" width="${W}" height="${(H - yz).toFixed(1)}"/></clipPath>
+        </defs>
+        <line x1="0" y1="${yz.toFixed(1)}" x2="${W}" y2="${yz.toFixed(1)}" stroke="rgba(255,255,255,.14)" stroke-dasharray="3 4"/>
+        <path d="${area}" fill="url(#rgA)" clip-path="url(#cpA)"/>
+        <path d="${area}" fill="rgba(248,113,113,.22)" clip-path="url(#cpB)"/>
+        <path d="${line}" fill="none" stroke="#2dd4a8" stroke-width="2" clip-path="url(#cpA)"/>
+        <path d="${line}" fill="none" stroke="#f87171" stroke-width="2" clip-path="url(#cpB)"/>
+        ${dots}
+        <circle cx="${x(minI).toFixed(1)}" cy="${y(minP.bal).toFixed(1)}" r="3.5" fill="${minP.bal < 0 ? '#f87171' : '#e8b500'}" stroke="#0f0f14" stroke-width="1.5"/>
+        ${ticks}
+        <line id="ribbonCursor" x1="-10" y1="${PT}" x2="-10" y2="${H - PB}" stroke="rgba(59,130,246,.85)"/>
+      </svg>
+      <div class="ribbon-tip" id="ribbonTip">${anchor ? 'Drag to explore your next 60 days' : 'Drag to explore · relative flow — set a balance for real numbers'}</div>
+      ${lowPill}
+    </div>`;
+}
+
+function ribbonScrub(e) {
+  if (!_ribbonSeries) return;
+  const svg = e.currentTarget.querySelector('svg');
+  const r = svg.getBoundingClientRect();
+  const frac = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+  const i = Math.round(frac * (_ribbonSeries.length - 1));
+  const p = _ribbonSeries[i];
+  const cx = 8 + i * (360 - 16) / (_ribbonSeries.length - 1);
+  const cur = svg.querySelector('#ribbonCursor');
+  cur.setAttribute('x1', cx); cur.setAttribute('x2', cx);
+  const evs = p.events.slice(0, 2).map(ev => `${ev.amt > 0 ? '+' : '−'}${fmtShort(Math.abs(ev.amt))} ${escHtml(ev.name)}`).join(' · ');
+  document.getElementById('ribbonTip').innerHTML =
+    `<b>${SHORT_MONTHS[p.d.getMonth()]} ${p.d.getDate()}</b> — <b style="color:${p.bal < 0 ? 'var(--expense)' : 'var(--paid)'}">${fmt(p.bal)}</b>${evs ? ' · ' + evs : ''}`;
+}
+
+function openCashModal() {
+  document.getElementById('cashInput').value = state.cashAnchor ? state.cashAnchor.amount : '';
+  openModal('cashModal');
+  focusField('cashInput');
+}
+
+function saveCashAnchor() {
+  const v = parseFloat(document.getElementById('cashInput').value);
+  state.cashAnchor = isNaN(v) ? null : { amount: v, asOf: new Date().toISOString().slice(0, 10) };
+  saveState();
+  closeModal('cashModal');
+  render();
+  if (!isNaN(v)) showToast('✓ Cash flow anchored to your balance');
+}
+
 // ── Bills tab
 function renderBills(monthBills) {
   // Category filter tabs
@@ -1765,6 +1973,7 @@ const MODAL_SAVE = {
   incomeModal: () => saveIncome(),
   savingsModal: () => saveSavingsAccount(),
   payAmtModal: () => document.getElementById('payAmtSaveBtn')?.click(),
+  cashModal: () => saveCashAnchor(),
 };
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter' || e.target.tagName !== 'INPUT') return;
