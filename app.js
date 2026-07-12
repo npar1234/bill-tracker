@@ -2613,7 +2613,7 @@ render();
     setTimeout(() => splash.remove(), 700);
   };
   splash.addEventListener('click', dismiss);
-  setTimeout(dismiss, 11500); // Cover shows → opens → pages flip → entries write → PAID stamp → tagline → fade out
+  setTimeout(dismiss, 2600); // mark springs in → wordmark rises → rule sweeps → tagline → fade
 })();
 
 // Re-render when tab becomes visible; also pull household changes made on the other phone

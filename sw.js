@@ -1,4 +1,4 @@
-const CACHE = 'simpleledger-v20';
+const CACHE = 'simpleledger-v21';
 const ASSETS = ['./', 'index.html', 'style.css', 'app.js', 'icon.svg', 'icon-192.png', 'icon-512.png', 'manifest.json'];
 
 self.addEventListener('install', e => {
