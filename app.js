@@ -2545,7 +2545,15 @@ async function syncBillScheduleToServer() {
   const allBills = [...s.bills, ...savBills].map(b => ({
     id: b.id, name: b.name, amount: b.amount, dueDay: b.dueDay,
     frequency: b.frequency || 'monthly', startMonth: b.startMonth || 0,
+    startYear: b.startYear, payMethod: b.payMethod || 'manual',
   }));
+  // Paid markers for current + next month so the cron doesn't notify for bills already paid
+  const nowD = new Date();
+  const paidKeys = [];
+  [[nowD.getMonth(), nowD.getFullYear()],
+   [(nowD.getMonth() + 1) % 12, nowD.getMonth() === 11 ? nowD.getFullYear() + 1 : nowD.getFullYear()]].forEach(([mm, yy]) => {
+    allBills.forEach(b => { if (isPaid(b.id, mm, yy)) paidKeys.push(`${b.id}:${yy}-${mm}`); });
+  });
   const incomes = (s.incomes || []).map(i => ({
     // Server payload keeps the 'source' key for compat, but income objects store the name in .name
     id: i.id, source: i.name || i.source, amount: i.amount, payDay: i.payDay,
@@ -2557,7 +2565,7 @@ async function syncBillScheduleToServer() {
     await fetch('/.netlify/functions/push-subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ deviceId: prefs.deviceId, subscription: sub.toJSON(), bills: allBills, incomes }),
+      body: JSON.stringify({ deviceId: prefs.deviceId, subscription: sub.toJSON(), bills: allBills, incomes, paidKeys }),
     });
   } catch(e) { /* offline — will retry next time */ }
 }

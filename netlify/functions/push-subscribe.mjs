@@ -33,17 +33,19 @@ export default async (req) => {
   }
 
   try {
-    const { deviceId, subscription, bills, incomes } = await req.json();
+    const { deviceId, subscription, bills, incomes, paidKeys } = await req.json();
     if (!deviceId || !subscription) {
       return Response.json({ error: "missing deviceId or subscription" }, { status: 400, headers });
     }
     // Store subscription + lightweight bill schedule
-    // bills: [{ id, name, amount, dueDay, frequency, startMonth }]
+    // bills: [{ id, name, amount, dueDay, frequency, startMonth, startYear, payMethod }]
     // incomes: [{ id, source, amount, payDay, frequency, lastPaidDate }]
+    // paidKeys: ["billId:year-month", ...] — bills already paid, so the cron skips them
     await store.setJSON(deviceId, {
       subscription,
       bills: bills || [],
       incomes: incomes || [],
+      paidKeys: paidKeys || [],
       updatedAt: new Date().toISOString(),
     });
     return Response.json({ ok: true }, { headers });

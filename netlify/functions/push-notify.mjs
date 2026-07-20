@@ -17,13 +17,22 @@ const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY;
 function isBillDueOn(bill, day, month, year) {
   if (bill.dueDay !== day) return false;
   const freq = bill.frequency || "monthly";
-  if (freq === "monthly" || freq === "once") return true;
+  if (freq === "monthly") return true;
+  if (freq === "once") {
+    // One-time bills only fire in their creation month/year (legacy without startYear: allow)
+    return bill.startYear === undefined ? true : (month === (bill.startMonth || 0) && year === bill.startYear);
+  }
   if (freq === "quarterly") {
     const startM = bill.startMonth || 0;
     return ((month - startM) % 3 + 3) % 3 === 0;
   }
   if (freq === "yearly") return month === (bill.startMonth || 0);
   return true;
+}
+
+// Already paid? paidKeys come from the client: "billId:year-month"
+function isPaidKey(paidKeys, bill, month, year) {
+  return (paidKeys || []).includes(`${bill.id}:${year}-${month}`);
 }
 
 function fmt(n) {
@@ -55,9 +64,11 @@ export default async () => {
 
       const notifications = [];
 
-      // Bills due today
+      // Bills due today — skip anything already paid, and autopay bills (they clear themselves)
       const dueToday = (data.bills || []).filter(b =>
         isBillDueOn(b, today.getDate(), today.getMonth(), today.getFullYear())
+        && !isPaidKey(data.paidKeys, b, today.getMonth(), today.getFullYear())
+        && b.payMethod !== "autopay"
       );
       if (dueToday.length > 0) {
         const total = dueToday.reduce((s, b) => s + Number(b.amount), 0);
@@ -73,9 +84,10 @@ export default async () => {
         });
       }
 
-      // Bills due tomorrow
+      // Bills due tomorrow — skip already-paid (heads-up still fires for autopay so funds are ready)
       const dueTmrw = (data.bills || []).filter(b =>
         isBillDueOn(b, tomorrow.getDate(), tomorrow.getMonth(), tomorrow.getFullYear())
+        && !isPaidKey(data.paidKeys, b, tomorrow.getMonth(), tomorrow.getFullYear())
       );
       if (dueTmrw.length > 0) {
         const total = dueTmrw.reduce((s, b) => s + Number(b.amount), 0);
