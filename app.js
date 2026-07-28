@@ -150,6 +150,8 @@ function fmtHero(n) {
 }
 function fmtShort(n) { return "$" + (n >= 1000 ? (n/1000).toFixed(1).replace(/\.0$/,"") + "k" : Number(n).toFixed(0)); }
 function escHtml(s) { return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+// Local-timezone date string — toISOString() flips to tomorrow after 5pm Vegas time
+function localDateISO(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
 function getCats() { return state.categories || CATEGORIES; }
 function catInfo(id) { return getCats().find(c => c.id === id) || { label: id, color: "#6b7280", icon: "📌" }; }
@@ -501,15 +503,25 @@ function computedBalance(acctId) {
   if (!acct) return 0;
   let bal = acct.balance || 0;
 
-  // Manual transactions (exclude auto-deposit "paid" markers — covered by simulation)
-  (state.savingsTransactions || []).filter(t => t.accountId === acctId && !t._pseudoBillId).forEach(t => {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const asOf = acct.balanceAsOf ? new Date(acct.balanceAsOf + 'T00:00:00')
+    : acct.contribStart ? new Date(acct.contribStart + 'T00:00:00') : null;
+
+  // Manual transactions — but only ones AFTER the balance anchor. Anything on or
+  // before it is already baked into the balance the user typed (old interest
+  // entries from the full app were being double-counted on top of fresh balances).
+  (state.savingsTransactions || []).filter(t => {
+    if (t.accountId !== acctId || t._pseudoBillId) return false;
+    if (acct.balanceAsOf) {
+      if (!t.date) return false;
+      return new Date(t.date + 'T00:00:00') > new Date(acct.balanceAsOf + 'T00:00:00');
+    }
+    return true; // no anchor set yet — legacy behavior
+  }).forEach(t => {
     if (t.type === 'deposit' || t.type === 'interest') bal += t.amount;
     else if (t.type === 'withdrawal') bal -= t.amount;
   });
 
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const asOf = acct.balanceAsOf ? new Date(acct.balanceAsOf + 'T00:00:00')
-    : acct.contribStart ? new Date(acct.contribStart + 'T00:00:00') : null;
   if (!asOf || asOf >= today) return bal;
 
   const dailyRate = acct.apy > 0 ? Math.pow(1 + acct.apy / 100, 1 / 365) - 1 : 0;
@@ -2393,7 +2405,7 @@ function saveSavingsAccount() {
   const currentComputed = editSavingsId ? computedBalance(editSavingsId) : null;
   if (!editSavingsId || currentComputed === null || Math.abs(balance - currentComputed) > 0.005) {
     data.balance = balance;
-    data.balanceAsOf = new Date().toISOString().slice(0, 10);
+    data.balanceAsOf = localDateISO(new Date()); // local date — UTC would stamp tomorrow after 5pm PT
   }
 
   if (!state.savingsAccounts) state.savingsAccounts = [];
