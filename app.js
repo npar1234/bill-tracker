@@ -1426,6 +1426,26 @@ function renderPlannerTab() {
   });
   payDates.sort((a, b) => a.date - b.date);
 
+  // Cross-month pay periods: a check late in the month must also carry the
+  // early-next-month bills due before the NEXT check lands. Likewise, bills due
+  // before this month's first check belong to LAST month's final check.
+  const nm = m === 11 ? 0 : m + 1, ny = m === 11 ? y + 1 : y;
+  const pmm = m === 0 ? 11 : m - 1, pyy = m === 0 ? y - 1 : y;
+  const payDaysIn = (mm, yy) => {
+    const sm2 = state.currentMonth, sy2 = state.currentYear;
+    state.currentMonth = mm; state.currentYear = yy; // getNextPayDates anchors on the viewed month
+    const days = [];
+    plannerIncomes.forEach(inc => getNextPayDates(inc, 12).forEach(dt => {
+      if (dt.getMonth() === mm && dt.getFullYear() === yy) days.push(dt.getDate());
+    }));
+    state.currentMonth = sm2; state.currentYear = sy2;
+    return days;
+  };
+  const nmDays = payDaysIn(nm, ny);
+  const nextMonthFirstPay = nmDays.length ? Math.min(...nmDays) : null;
+  const pmDays = payDaysIn(pmm, pyy);
+  const prevMonthLastPay = pmDays.length ? Math.max(...pmDays) : null;
+
   // Empty state
   if (!payDates.length) {
     document.getElementById('plannerForecast').innerHTML = '';
@@ -1440,12 +1460,19 @@ function renderPlannerTab() {
     return { ...pd, periodStart, periodEnd, bills: [], movedBills: new Set() };
   });
 
+  // The month's final check stretches into next month, up to the day before its first check
+  const lastP = periods[periods.length - 1];
+  if (nextMonthFirstPay && nextMonthFirstPay > 1) lastP.spillEnd = nextMonthFirstPay - 1;
+
   // Get overrides for this month
   const overrideKey = `${y}-${m}`;
   const overrides = (state.plannerOverrides && state.plannerOverrides[overrideKey]) || {};
   const hasOverrides = Object.keys(overrides).length > 0;
 
-  // Assign bills to periods (respecting overrides)
+  // Assign bills to periods (respecting overrides). Bills due before the first
+  // check are covered by last month's final paycheck — don't double-plan them.
+  const firstPayDay = periods[0].periodStart;
+  const preFirst = [];
   plannerBills.forEach(b => {
     if (overrides[b.id] !== undefined) {
       const targetIdx = overrides[b.id];
@@ -1456,6 +1483,7 @@ function renderPlannerTab() {
       }
     }
     const dueDay = Math.min(b.dueDay, daysInMonth);
+    if (dueDay < firstPayDay && prevMonthLastPay) { preFirst.push(b); return; }
     let assigned = false;
     for (let i = 0; i < periods.length; i++) {
       if (dueDay >= periods[i].periodStart && dueDay <= periods[i].periodEnd) {
@@ -1467,15 +1495,30 @@ function renderPlannerTab() {
     if (!assigned && periods.length) periods[0].bills.push(b);
   });
 
-  periods.forEach(p => p.bills.sort((a, b) => a.dueDay - b.dueDay));
+  // Borrow early-next-month bills into the final check — its true coverage window
+  if (lastP.spillEnd) {
+    const ndim = new Date(ny, nm + 1, 0).getDate();
+    const nextOverrides = (state.plannerOverrides && state.plannerOverrides[`${ny}-${nm}`]) || {};
+    state.bills.concat(getSavingsContribBills())
+      .filter(b => !b.excludeFromPlanner && isDueThisMonth(b, nm, ny))
+      .forEach(b => {
+        if (nextOverrides[b.id] !== undefined) return; // user manages it in next month's view
+        const dd = Math.min(b.dueDay, ndim);
+        if (dd <= lastP.spillEnd) lastP.bills.push({ ...b, _borrowed: true, _pMonth: nm, _pYear: ny, _pDay: dd });
+      });
+  }
+
+  // Sort by effective due date — borrowed next-month bills come after month-end ones
+  periods.forEach(p => p.bills.sort((a, b) =>
+    (a._borrowed ? a._pDay + 100 : a.dueDay) - (b._borrowed ? b._pDay + 100 : b.dueDay)));
 
   // NO silent rebalancing — assignment is due-date rule + explicit user moves only.
   // Per-period money math with paid-state (the "in → paid → owed → left" rollup)
   periods.forEach(p => {
     p.totalBills = p.bills.reduce((s, b) => s + b.amount, 0);
-    p.paidAmt = p.bills.filter(b => isPaid(b.id, m, y))
-      .reduce((s, b) => s + (getPaidAmount(b.id, m, y) ?? b.amount), 0);
-    p.owedAmt = p.bills.filter(b => !isPaid(b.id, m, y)).reduce((s, b) => s + b.amount, 0);
+    p.paidAmt = p.bills.filter(b => isPaid(b.id, b._pMonth ?? m, b._pYear ?? y))
+      .reduce((s, b) => s + (getPaidAmount(b.id, b._pMonth ?? m, b._pYear ?? y) ?? b.amount), 0);
+    p.owedAmt = p.bills.filter(b => !isPaid(b.id, b._pMonth ?? m, b._pYear ?? y)).reduce((s, b) => s + b.amount, 0);
     p.remaining = p.amount - p.totalBills;
   });
 
@@ -1492,7 +1535,7 @@ function renderPlannerTab() {
       if (bestIdx >= 0 && periods[bestIdx].remaining > 0) {
         // Largest unpaid, unmoved bill that fits in the healthiest check
         const cands = periods[shortIdx].bills
-          .filter(b => overrides[b.id] === undefined && !isPaid(b.id, m, y) && !b._isSavingsContrib
+          .filter(b => overrides[b.id] === undefined && !b._borrowed && !isPaid(b.id, m, y) && !b._isSavingsContrib
             && b.amount <= periods[bestIdx].remaining && !dismissed[`${overrideKey}_${b.id}`])
           .sort((a, b) => b.amount - a.amount);
         if (cands.length) suggestion = { bill: cands[0], fromIdx: shortIdx, toIdx: bestIdx };
@@ -1507,9 +1550,10 @@ function renderPlannerTab() {
     bills: Object.fromEntries(plannerBills.map(b => [b.id, { name: b.name, overridden: overrides[b.id] !== undefined }])),
   };
 
-  // ── Compute totals
+  // ── Compute totals — the month strip stays calendar-month honest (all bills due
+  // this month, regardless of which check pays them)
   const totalIncome = periods.reduce((s, p) => s + p.amount, 0);
-  const totalBills = periods.reduce((s, p) => s + p.totalBills, 0);
+  const totalBills = plannerBills.reduce((s, b) => s + b.amount, 0);
   const monthLeft = totalIncome - totalBills;
 
   // ── Hero: per-check safe-to-spend when viewing the current pay period, month rollup otherwise
@@ -1525,7 +1569,7 @@ function renderPlannerTab() {
     const nextP = periods[curIdx + 1];
     heroLabel = 'Left to Spend This Check';
     heroAmt = cp.remaining;
-    heroSub = `${escHtml(cp.income.name)} · ${mo} ${cp.date} check · ${nextP ? `until ${mo} ${nextP.date}` : `through end of ${mo}`}`;
+    heroSub = `${escHtml(cp.income.name)} · ${mo} ${cp.date} check · ${nextP ? `until ${mo} ${nextP.date}` : cp.spillEnd ? `until ${SHORT_MONTHS[nm]} ${nextMonthFirstPay}` : `through end of ${mo}`}`;
   } else {
     heroLabel = `Uncommitted in ${MONTHS[m]}`;
     heroAmt = monthLeft;
@@ -1567,7 +1611,12 @@ function renderPlannerTab() {
   window._plHeroPrev = heroAmt;
 
   // ── Paycheck cards: in → paid → owed → left, tap a bill to move it
-  document.getElementById('plannerPeriods').innerHTML = periods.map((p, idx) => {
+  // Bills due before the first check — already covered by last month's final paycheck
+  const preFirstHtml = preFirst.length
+    ? `<div class="pl-prefirst">✓ ${preFirst.length} bill${preFirst.length > 1 ? 's' : ''} due ${mo} 1–${firstPayDay - 1} (${fmt(preFirst.reduce((s, b) => s + b.amount, 0))}) covered by your ${SHORT_MONTHS[pmm]} ${prevMonthLastPay} check</div>`
+    : '';
+
+  document.getElementById('plannerPeriods').innerHTML = preFirstHtml + periods.map((p, idx) => {
     const isCurrent = idx === curIdx;
     const remaining = p.remaining;
     const paidPct = p.amount > 0 ? Math.min((p.paidAmt / p.amount) * 100, 100) : 0;
@@ -1576,15 +1625,16 @@ function renderPlannerTab() {
 
     const billRows = p.bills.map(b => {
       const cat = catInfo(b.category);
-      const paid = isPaid(b.id, m, y);
-      const dueDay = Math.min(b.dueDay, daysInMonth);
+      const bm = b._pMonth ?? m, by = b._pYear ?? y;
+      const paid = isPaid(b.id, bm, by);
+      const dueDay = b._borrowed ? b._pDay : Math.min(b.dueDay, daysInMonth);
       const isMoved = p.movedBills.has(b.id);
-      const canMove = !b._isSavingsContrib && periods.length > 1;
+      const canMove = !b._isSavingsContrib && periods.length > 1 && !b._borrowed;
 
       return `<div class="pl-bill${paid ? ' pl-paid' : ''}${isMoved ? ' pl-moved' : ''}${canMove ? ' pl-movable' : ''}"${canMove ? ` onclick="openMoveBillSheet('${b.id}',${idx})"` : ''}>
         <span class="pl-bill-icon" style="background:${cat.color}22">${paid ? '✓' : (b.icon || cat.icon)}</span>
-        <span class="pl-bill-name">${escHtml(b.name)}${isMoved ? '<span class="pl-tag">moved by you</span>' : ''}</span>
-        <span class="pl-bill-due">${paid ? 'Paid' : `Due ${mo} ${dueDay}`}</span>
+        <span class="pl-bill-name">${escHtml(b.name)}${isMoved ? '<span class="pl-tag">moved by you</span>' : ''}${b._borrowed ? '<span class="pl-tag" style="color:var(--warn);background:var(--warn-soft)">next month</span>' : ''}</span>
+        <span class="pl-bill-due">${paid ? 'Paid' : `Due ${SHORT_MONTHS[bm]} ${dueDay}`}</span>
         <span class="pl-bill-amt${paid ? ' pl-paid' : ''}">${fmt(b.amount)}</span>
         ${canMove ? '<span class="pl-move-hint">›</span>' : ''}
       </div>`;
@@ -1598,7 +1648,7 @@ function renderPlannerTab() {
       <div class="pl-card-top">
         <div class="pl-card-source">
           <div class="pl-card-name">💵 ${escHtml(p.income.name)}</div>
-          <div class="pl-card-date">${mo} ${p.date} · covers ${mo} ${p.periodStart}–${p.periodEnd}</div>
+          <div class="pl-card-date">${mo} ${p.date} · covers ${mo} ${p.periodStart} – ${p.spillEnd ? `${SHORT_MONTHS[nm]} ${p.spillEnd}` : `${mo} ${p.periodEnd}`}</div>
         </div>
         <div class="pl-card-pay">+${fmt(p.amount)}</div>
       </div>
