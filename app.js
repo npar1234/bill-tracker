@@ -493,42 +493,41 @@ function getSavingsContribBills() {
   return bills;
 }
 
-// Compute savings balance with transactions + accrued auto-deposits
+// Compute savings balance: daily simulation from the last known balance —
+// compounds APY interest daily and adds auto-deposits on their scheduled days.
+// balanceAsOf rebases the projection whenever the user corrects the balance.
 function computedBalance(acctId) {
   const acct = (state.savingsAccounts || []).find(a => a.id === acctId);
   if (!acct) return 0;
   let bal = acct.balance || 0;
 
-  // Add manual transactions (exclude auto-deposit "paid" markers — those are covered by accrual below)
+  // Manual transactions (exclude auto-deposit "paid" markers — covered by simulation)
   (state.savingsTransactions || []).filter(t => t.accountId === acctId && !t._pseudoBillId).forEach(t => {
     if (t.type === 'deposit' || t.type === 'interest') bal += t.amount;
     else if (t.type === 'withdrawal') bal -= t.amount;
   });
 
-  // Accrue auto-deposits from contribStart to today
-  if (acct.contrib > 0 && acct.contribStart) {
-    const start = new Date(acct.contribStart + 'T00:00:00');
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    if (start <= today) {
-      const freq = acct.contribFreq || 'monthly';
-      let count = 0;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const asOf = acct.balanceAsOf ? new Date(acct.balanceAsOf + 'T00:00:00')
+    : acct.contribStart ? new Date(acct.contribStart + 'T00:00:00') : null;
+  if (!asOf || asOf >= today) return bal;
+
+  const dailyRate = acct.apy > 0 ? Math.pow(1 + acct.apy / 100, 1 / 365) - 1 : 0;
+  const freq = acct.contribFreq || 'monthly';
+  const interval = freq === 'biweekly' ? 14 : freq === 'weekly' ? 7 : 0;
+  const start = (acct.contrib > 0 && acct.contribStart) ? new Date(acct.contribStart + 'T00:00:00') : null;
+
+  for (let d = new Date(asOf.getTime() + 86400000); d <= today; d.setDate(d.getDate() + 1)) {
+    if (dailyRate) bal *= 1 + dailyRate;
+    if (start && d >= start && acct.contrib > 0) {
       if (freq === 'monthly') {
-        // Count months from start to today (inclusive of start month)
-        count = (today.getFullYear() - start.getFullYear()) * 12 + (today.getMonth() - start.getMonth());
-        // Include current month if we've passed the deposit day
-        if (today.getDate() >= (acct.contribDay || 1)) count++;
-      } else if (freq === 'biweekly') {
-        const msPerDay = 86400000;
-        count = Math.floor((today - start) / (14 * msPerDay)) + 1;
-      } else if (freq === 'weekly') {
-        const msPerDay = 86400000;
-        count = Math.floor((today - start) / (7 * msPerDay)) + 1;
+        const dim = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+        if (d.getDate() === Math.min(acct.contribDay || 1, dim)) bal += acct.contrib;
+      } else if (Math.round((d - start) / 86400000) % interval === 0) {
+        bal += acct.contrib;
       }
-      if (count > 0) bal += acct.contrib * count;
     }
   }
-
   return bal;
 }
 
@@ -1988,6 +1987,9 @@ function renderSavings() {
     const goal = a.goal || 0;
     const pct = goal > 0 ? Math.min(100, (bal / goal) * 100) : 0;
     const contribInfo = a.contrib ? `<div class="sav-autodeposit">💰 Auto-deposit: ${fmt(a.contrib)}${freqLabel(a.contribFreq)} on day ${a.contribDay || 1}${a.contribStart ? ' · since ' + a.contribStart : ''}</div>` : '';
+    // HYSA interest line: APY + estimated monthly interest at the current balance
+    const apyInfo = a.apy > 0
+      ? `<div class="sav-autodeposit">📈 ${a.apy}% APY · ≈ +${fmt(bal * (Math.pow(1 + a.apy / 100, 1 / 12) - 1))}/mo interest</div>` : '';
 
     return `<div class="savings-card" onclick="openSavingsModal('${a.id}')" style="margin-bottom:8px;cursor:pointer">
       <div class="sav-header">
@@ -2000,6 +2002,7 @@ function renderSavings() {
       ${goal > 0 ? `<div class="sav-progress"><div class="sav-progress-fill" style="width:${pct}%"></div></div>
       <div class="sav-goal"><span>${pct.toFixed(0)}% of goal</span><span>${fmt(goal)}</span></div>` : ''}
       ${contribInfo}
+      ${apyInfo}
     </div>`;
   }).join('');
 
@@ -2341,8 +2344,10 @@ function openSavingsModal(id) {
     document.getElementById('savingsModalTitle').textContent = 'Edit Savings Account';
     document.getElementById('sName').value = acct.name;
     document.getElementById('sType').value = acct.type || 'Savings';
-    document.getElementById('sBalance').value = acct.balance || 0;
+    // Show today's computed balance (deposits + interest) — save only rebases if you change it
+    document.getElementById('sBalance').value = computedBalance(acct.id).toFixed(2);
     document.getElementById('sGoal').value = acct.goal || '';
+    document.getElementById('sApy').value = acct.apy || '';
     document.getElementById('sContrib').value = acct.contrib || '';
     document.getElementById('sContribDay').value = acct.contribDay || 1;
     document.getElementById('sContribFreq').value = acct.contribFreq || 'monthly';
@@ -2355,6 +2360,7 @@ function openSavingsModal(id) {
     document.getElementById('sType').value = 'Savings';
     document.getElementById('sBalance').value = '';
     document.getElementById('sGoal').value = '';
+    document.getElementById('sApy').value = '';
     document.getElementById('sContrib').value = '';
     document.getElementById('sContribDay').value = 1;
     document.getElementById('sContribFreq').value = 'monthly';
@@ -2374,14 +2380,21 @@ function saveSavingsAccount() {
   const data = {
     name,
     type: document.getElementById('sType').value,
-    balance,
     goal: parseFloat(document.getElementById('sGoal').value) || 0,
+    apy: parseFloat(document.getElementById('sApy').value) || 0,
     contrib: parseFloat(document.getElementById('sContrib').value) || 0,
     contribDay: parseInt(document.getElementById('sContribDay').value) || 1,
     contribFreq: document.getElementById('sContribFreq').value,
     contribStart: document.getElementById('sContribStart').value || '',
     updatedAt: Date.now(),
   };
+  // Rebase only when the balance was actually changed — the field shows today's
+  // computed value, so an untouched field must not restart the projection
+  const currentComputed = editSavingsId ? computedBalance(editSavingsId) : null;
+  if (!editSavingsId || currentComputed === null || Math.abs(balance - currentComputed) > 0.005) {
+    data.balance = balance;
+    data.balanceAsOf = new Date().toISOString().slice(0, 10);
+  }
 
   if (!state.savingsAccounts) state.savingsAccounts = [];
 

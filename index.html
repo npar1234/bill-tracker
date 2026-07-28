@@ -291,6 +291,10 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
       <div class="field"><label>Current Balance ($)</label><input id="sBalance" type="number" step="0.01" placeholder="0.00"></div>
       <div class="field"><label>Goal ($)</label><input id="sGoal" type="number" step="0.01" placeholder="Optional"></div>
     </div>
+    <div class="field-row">
+      <div class="field"><label>APY % (for HYSA interest)</label><input id="sApy" type="number" step="0.01" min="0" placeholder="e.g. 4.00"></div>
+      <div class="field"></div>
+    </div>
     <div class="field-section-label">Auto-Deposit (optional)</div>
     <div class="field-row">
       <div class="field"><label>Amount ($)</label><input id="sContrib" type="number" step="0.01" placeholder="0.00"></div>
@@ -434,6 +438,6 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
   </div>
 </div>
 <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
-<script src="app.js?v=42"></script>
+<script src="app.js?v=43"></script>
 </body>
 </html>
