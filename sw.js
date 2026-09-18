@@ -1,11 +1,11 @@
-const CACHE = 'simpleledger-v23';
+const CACHE = 'simpleledger-v24';
 
 // Precache the EXACT urls index.html requests (query string is part of the cache key).
 // Bump these alongside the ?v= in index.html on every deploy.
 const ASSETS = [
   './', 'index.html',
-  'style.css?v=42',
-  'app.js?v=46',
+  'style.css?v=43',
+  'app.js?v=47',
   'icon.svg', 'icon-192.png', 'icon-512.png', 'manifest.json',
 ];
 
@@ -102,8 +102,23 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   // Don't intercept non-GET or API calls (sync/push functions) — cache.put on POST throws
   if (req.method !== 'GET' || req.url.includes('/.netlify/functions/')) return;
-  // Only our own origin; leave CDNs and third parties to the browser
-  if (new URL(req.url).origin !== self.location.origin) return;
+  const sameOrigin = new URL(req.url).origin === self.location.origin;
+  // Google Fonts css + woff2 are effectively immutable: cache-first, forever.
+  const isFont = /^https:\/\/fonts\.(googleapis|gstatic)\.com\//.test(req.url);
+  if (!sameOrigin && !isFont) return; // leave other third parties to the browser
+  if (isFont) {
+    e.respondWith(caches.open(CACHE).then(async cache => {
+      const hit = await cache.match(req, { ignoreVary: true });
+      if (hit) return hit;
+      try {
+        const res = await fetch(req);
+        // opaque responses are fine to store; they still replay from cache
+        if (res) cache.put(req, res.clone());
+        return res;
+      } catch { return new Response('', { status: 504 }); }
+    }));
+    return;
+  }
 
   const isNav = req.mode === 'navigate';
 

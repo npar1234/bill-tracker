@@ -36,9 +36,14 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
+<!-- Fonts: was an @import inside style.css, which serialised three round trips.
+     preconnect warms the TLS handshake; the link races style.css instead of waiting on it. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;800&display=swap" media="print" onload="this.media='all'">
 <!-- Non-blocking stylesheet: splash is fully styled by inline CSS above -->
-<link rel="stylesheet" href="style.css?v=42" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="style.css?v=42"></noscript>
+<link rel="stylesheet" href="style.css?v=43" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="style.css?v=43"></noscript>
 </head>
 <body style="background:#0f0f14">
 
@@ -438,6 +443,6 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
   </div>
 </div>
 <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
-<script src="app.js?v=46"></script>
+<script src="app.js?v=47"></script>
 </body>
 </html>
