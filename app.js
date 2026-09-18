@@ -2995,10 +2995,66 @@ function updateAppBadge() {
   (n > 0 ? navigator.setAppBadge(n) : navigator.clearAppBadge())?.catch?.(() => {});
 }
 
+// ═══════════════════════════════════════
+//  DIAGNOSTICS — Settings shows what this device is really running.
+//  Desktop numbers say nothing about a phone; this makes the phone report itself.
+// ═══════════════════════════════════════
+// Derived, not hand-typed — a hardcoded build string drifts the moment you bump ?v=
+const BUILD = 'app ' + ((document.querySelector('script[src*="app.js"]')?.src || '').match(/v=(\d+)/)?.[1] || '?');
+async function renderDiagnostics() {
+  const box = document.getElementById('diagBox');
+  if (!box) return;
+  const nav = performance.getEntriesByType('navigation')[0] || {};
+  const ms = v => Math.round(v || 0) + 'ms';
+
+  let swName = 'none', caches_ = 'none';
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    swName = reg && reg.active ? reg.active.state : 'none';
+    caches_ = (await caches.keys()).join(', ') || 'none';
+  } catch (e) {}
+
+  const raw = localStorage.getItem(STORAGE_KEY) || '';
+  // Time the two things that run on every single render
+  const t1 = performance.now(); loadState(); const tLoad = performance.now() - t1;
+  const t2 = performance.now(); render(); const tRender = performance.now() - t2;
+  // And the heaviest derived view
+  let tFlow = -1;
+  try { const t3 = performance.now(); computeCashFlow(60); tFlow = performance.now() - t3; } catch (e) {}
+
+  const slow = performance.getEntriesByType('resource')
+    .map(r => ({ n: r.name.split('/').pop().split('?')[0], d: Math.round(r.duration) }))
+    .sort((a, b) => b.d - a.d).slice(0, 4)
+    .map(r => r.n + ' ' + r.d + 'ms').join(', ');
+
+  box.textContent = [
+    'build       ' + BUILD,
+    'sw          ' + swName + '  [' + caches_ + ']',
+    'boot        ttfb ' + ms(nav.responseStart) + ' · interactive ' + ms(nav.domInteractive) + ' · complete ' + ms(nav.domComplete),
+    'data        ' + Math.round(raw.length / 1024) + 'KB · ' + (state.bills || []).length + ' bills · ' +
+      (state.payments || []).length + ' payments · ' + (state.savingsTransactions || []).length + ' sav-tx · ' +
+      (state.deletions || []).length + ' tombstones',
+    'per-render  loadState ' + (Math.round(tLoad * 10) / 10) + 'ms · render ' + (Math.round(tRender * 10) / 10) +
+      'ms · cashflow ' + (tFlow < 0 ? 'n/a' : (Math.round(tFlow * 10) / 10) + 'ms'),
+    'slowest     ' + (slow || 'none'),
+  ].join('\n');
+}
+
 // Init notifications + sync
 initNotifUI();
 initSyncUI();
 setTimeout(() => syncNow(), 1500); // pull the household's latest shortly after load
+setTimeout(renderDiagnostics, 2500);
+// Settings lives in #dataModal (gear icon -> openModal('dataModal')); refresh on open
+(function hookDiagnostics() {
+  const orig = window.openModal;
+  if (typeof orig !== 'function') return;
+  window.openModal = function (id) {
+    const r = orig.call(this, id);
+    if (id === 'dataModal') renderDiagnostics();
+    return r;
+  };
+})();
 setTimeout(checkAndNotify, 2000); // Local check shortly after load
 setTimeout(syncBillScheduleToServer, 5000); // Sync bill schedule to push server
 setInterval(checkAndNotify, 4 * 60 * 60 * 1000); // Re-check every 4h while open

@@ -1,11 +1,11 @@
-const CACHE = 'simpleledger-v24';
+const CACHE = 'simpleledger-v25';
 
 // Precache the EXACT urls index.html requests (query string is part of the cache key).
 // Bump these alongside the ?v= in index.html on every deploy.
 const ASSETS = [
   './', 'index.html',
-  'style.css?v=43',
-  'app.js?v=47',
+  'style.css?v=44',
+  'app.js?v=48',
   'icon.svg', 'icon-192.png', 'icon-512.png', 'manifest.json',
 ];
 

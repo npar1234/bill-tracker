@@ -42,8 +42,8 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;800&display=swap" media="print" onload="this.media='all'">
 <!-- Non-blocking stylesheet: splash is fully styled by inline CSS above -->
-<link rel="stylesheet" href="style.css?v=43" media="print" onload="this.media='all'">
-<noscript><link rel="stylesheet" href="style.css?v=43"></noscript>
+<link rel="stylesheet" href="style.css?v=44" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="style.css?v=44"></noscript>
 </head>
 <body style="background:#0f0f14">
 
@@ -440,9 +440,11 @@ html,body{background:#0f0f14!important;color-scheme:dark;color:#f0f0f5;min-heigh
       <button class="btn-primary" onclick="exportData()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border)">⬇️ Export JSON Backup</button>
     </div>
     <div id="importStatus" style="margin-top:12px;font-size:12px;text-align:center;color:var(--text3)"></div>
+    <!-- Diagnostics: what this device is actually running and how long its boot took -->
+    <div id="diagBox" style="margin-top:18px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface);font-size:11px;line-height:1.7;color:var(--text2);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;word-break:break-word"></div>
   </div>
 </div>
 <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
-<script src="app.js?v=47"></script>
+<script src="app.js?v=48"></script>
 </body>
 </html>
