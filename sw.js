@@ -1,5 +1,5 @@
-const CACHE = 'simpleledger-v50';
-const ASSETS = ['./', 'index.html', 'style.css?v=50', 'app.js?v=50', 'icon.svg', 'icon-192.png', 'icon-512.png', 'manifest.json'];
+const CACHE = 'simpleledger-v51';
+const ASSETS = ['./', 'index.html', 'style.css?v=51', 'app.js?v=51', 'icon.svg', 'icon-192.png', 'icon-512.png', 'manifest.json'];
 
 self.addEventListener('install', e => {
   // Individually, so one bad url can't fail the whole precache (addAll is all-or-nothing)
@@ -77,24 +77,75 @@ self.addEventListener('notificationclick', e => {
   );
 });
 
-// Stale-while-revalidate: paint from cache immediately, refresh in the background.
-// A new build therefore lands on the NEXT launch, not this one. That is the trade,
-// and it is the right one when the network cannot be relied on.
+// ─────────────────────────────────────────────────────────────────────
+//  Serve from cache, refresh behind the scenes.
+//  HARD RULE: this handler always resolves with a real Response. The previous
+//  worker did `.catch(() => caches.match(req))`, and caches.match resolves to
+//  UNDEFINED on a miss — which Safari reports as "Returned response is null"
+//  and refuses to render. Network failure plus a cache miss must degrade to a
+//  page, never to nothing.
+// ─────────────────────────────────────────────────────────────────────
+const OFFLINE_HTML = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark"><title>SimpleLedger</title></head>
+<body style="background:#0f0f14;color:#f0f0f5;font:16px -apple-system,BlinkMacSystemFont,sans-serif;margin:0;
+display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:24px">
+<div><p style="color:#8b8b9e;line-height:1.6">Couldn't reach the network, and nothing is cached yet.</p>
+<p style="color:#55556a;font-size:13px;line-height:1.6">Your data is safe on this device.<br>Pull down or reopen to retry.</p>
+<button onclick="location.reload()" style="margin-top:18px;background:#3b82f6;color:#fff;border:0;
+border-radius:12px;padding:12px 22px;font-size:15px;font-weight:600">Retry</button></div></body></html>`;
+
+function offlineResponse(req) {
+  const wantsHtml = req.mode === 'navigate' ||
+    (req.headers.get('accept') || '').includes('text/html');
+  return wantsHtml
+    ? new Response(OFFLINE_HTML, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+    : new Response('', { status: 504, statusText: 'Offline' });
+}
+
 self.addEventListener('fetch', e => {
   const req = e.request;
   // Don't intercept non-GET or API calls (sync/push functions) — cache.put on POST throws
   if (req.method !== 'GET' || req.url.includes('/.netlify/functions/')) return;
-  if (new URL(req.url).origin !== self.location.origin) return; // no third parties
-  e.respondWith(
-    caches.open(CACHE).then(async cache => {
-      // ignoreVary: Netlify sends `vary: Accept-Encoding`; one stored variant is all we want
-      const cached = await cache.match(req, { ignoreVary: true });
-      const net = fetch(req)
-        .then(res => { if (res && res.ok) cache.put(req, res.clone()); return res; })
-        .catch(() => null);
-      if (cached) { e.waitUntil(net); return cached; }  // instant paint
-      const fresh = await net;
-      return fresh || new Response('Offline', { status: 503, statusText: 'Offline' });
-    })
-  );
+  let url;
+  try { url = new URL(req.url); } catch { return; }
+  if (url.origin !== self.location.origin) return;       // no third parties
+  if (url.searchParams.has('nosw')) return;              // escape hatch: bypass the worker entirely
+
+  e.respondWith((async () => {
+    let cache = null;
+    try { cache = await caches.open(CACHE); } catch { cache = null; }
+
+    let cached = null;
+    if (cache) { try { cached = await cache.match(req, { ignoreVary: true }); } catch { cached = null; } }
+
+    if (cached) {
+      // Instant paint; refresh for next time without blocking this response.
+      if (cache) e.waitUntil((async () => {
+        try {
+          const fresh = await fetch(req);
+          if (fresh && fresh.ok) await cache.put(req, fresh.clone());
+        } catch {}
+      })());
+      return cached;
+    }
+
+    // Nothing cached — go to network, but never hand back a non-Response.
+    try {
+      const res = await fetch(req);
+      if (res) {
+        if (cache && res.ok) { try { await cache.put(req, res.clone()); } catch {} }
+        return res;
+      }
+    } catch {}
+
+    // Network failed and the cache missed. Last resort: the shell, then a page.
+    if (cache) {
+      try {
+        const shell = await cache.match('index.html', { ignoreVary: true })
+                   || await cache.match('./', { ignoreVary: true });
+        if (shell && req.mode === 'navigate') return shell;
+      } catch {}
+    }
+    return offlineResponse(req);
+  })());
 });

@@ -2920,6 +2920,30 @@ const style = document.createElement('style');
 style.textContent = '.hidden { display: none !important; }';
 document.head.appendChild(style);
 
+// Recovery hatch — open /?nosw=1 to rip out a wedged service worker.
+// Deletes registrations + caches ONLY. Your bills live in localStorage and are
+// deliberately left alone.
+if (location.search.includes('nosw')) {
+  (async () => {
+    let regs = 0, cs = 0;
+    try {
+      const rs = await navigator.serviceWorker.getRegistrations();
+      for (const r of rs) { await r.unregister(); regs++; }
+    } catch (e) {}
+    try {
+      const keys = await caches.keys();
+      for (const k of keys) { await caches.delete(k); cs++; }
+    } catch (e) {}
+    document.body.innerHTML =
+      '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px">' +
+      '<div><p style="color:#f0f0f5;font-size:17px">Reset done.</p>' +
+      '<p style="color:#8b8b9e;font-size:13px;line-height:1.7">Removed ' + regs + ' service worker(s) and ' + cs + ' cache(s).<br>' +
+      'Your bills and income were not touched.</p>' +
+      '<a href="./" style="display:inline-block;margin-top:18px;background:#3b82f6;color:#fff;text-decoration:none;' +
+      'border-radius:12px;padding:12px 22px;font-size:15px;font-weight:600">Open SimpleLedger</a></div></div>';
+  })();
+} else
+
 // Register service worker for PWA install
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
