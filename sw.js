@@ -1,19 +1,9 @@
-const CACHE = 'simpleledger-v26';
-
-// Precache the EXACT urls index.html requests (query string is part of the cache key).
-// Bump these alongside the ?v= in index.html on every deploy.
-const ASSETS = [
-  './', 'index.html',
-  'style.css?v=45',
-  'app.js?v=49',
-  'icon.svg', 'icon-192.png', 'icon-512.png', 'manifest.json',
-];
+const CACHE = 'simpleledger-v50';
+const ASSETS = ['./', 'index.html', 'style.css?v=50', 'app.js?v=50', 'icon.svg', 'icon-192.png', 'icon-512.png', 'manifest.json'];
 
 self.addEventListener('install', e => {
-  // Individually so one 404 can't fail the whole precache (addAll is all-or-nothing)
-  e.waitUntil(caches.open(CACHE).then(c =>
-    Promise.all(ASSETS.map(u => c.add(u).catch(() => {})))
-  ));
+  // Individually, so one bad url can't fail the whole precache (addAll is all-or-nothing)
+  e.waitUntil(caches.open(CACHE).then(c => Promise.all(ASSETS.map(u => c.add(u).catch(() => {})))));
   self.skipWaiting();
 });
 
@@ -87,47 +77,23 @@ self.addEventListener('notificationclick', e => {
   );
 });
 
-// Tell every open client the app shell changed under them (only ever sent for navigations)
-function broadcast(msg) {
-  clients.matchAll({ type: 'window', includeUncontrolled: true })
-    .then(ws => ws.forEach(w => w.postMessage(msg)));
-}
-
-// ─────────────────────────────────────────────────────────────
-// Stale-while-revalidate: paint from cache instantly, refresh in
-// the background. Was network-first, which made EVERY launch wait
-// on ~230KB (index + app.js + style.css) before anything rendered.
-// ─────────────────────────────────────────────────────────────
+// Stale-while-revalidate: paint from cache immediately, refresh in the background.
+// A new build therefore lands on the NEXT launch, not this one. That is the trade,
+// and it is the right one when the network cannot be relied on.
 self.addEventListener('fetch', e => {
   const req = e.request;
   // Don't intercept non-GET or API calls (sync/push functions) — cache.put on POST throws
   if (req.method !== 'GET' || req.url.includes('/.netlify/functions/')) return;
-  // Same-origin only. The app has no third-party requests left by design.
-  if (new URL(req.url).origin !== self.location.origin) return;
-
-  const isNav = req.mode === 'navigate';
-
+  if (new URL(req.url).origin !== self.location.origin) return; // no third parties
   e.respondWith(
     caches.open(CACHE).then(async cache => {
       // ignoreVary: Netlify sends `vary: Accept-Encoding`; one stored variant is all we want
       const cached = await cache.match(req, { ignoreVary: true });
-
-      const network = fetch(req).then(async res => {
-        if (res && res.ok) {
-          // Compare bodies before declaring a shell update, so header/ETag
-          // churn can't trigger a reload loop
-          if (isNav && cached) {
-            const [a, b] = await Promise.all([cached.clone().text(), res.clone().text()]);
-            if (a !== b) broadcast({ type: 'SHELL_UPDATED' });
-          }
-          cache.put(req, res.clone());
-        }
-        return res;
-      }).catch(() => null);
-
-      // Cache hit → instant paint, update lands in the background
-      if (cached) return cached;
-      const fresh = await network;
+      const net = fetch(req)
+        .then(res => { if (res && res.ok) cache.put(req, res.clone()); return res; })
+        .catch(() => null);
+      if (cached) { e.waitUntil(net); return cached; }  // instant paint
+      const fresh = await net;
       return fresh || new Response('Offline', { status: 503, statusText: 'Offline' });
     })
   );
