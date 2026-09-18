@@ -2905,7 +2905,8 @@ render();
     setTimeout(() => splash.remove(), 700);
   };
   splash.addEventListener('click', dismiss);
-  setTimeout(dismiss, 2600); // mark springs in → wordmark rises → rule sweeps → tagline → fade
+  // Choreography completes at ~0.95s (compressed from 1.55s); the old 2600 was ~1s of dead air.
+  setTimeout(dismiss, 1000);
 })();
 
 // Re-render when tab becomes visible; also pull household changes made on the other phone

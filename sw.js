@@ -1,5 +1,5 @@
-const CACHE = 'simpleledger-v51';
-const ASSETS = ['./', 'index.html', 'style.css?v=51', 'app.js?v=51', 'icon.svg', 'icon-192.png', 'icon-512.png', 'manifest.json'];
+const CACHE = 'simpleledger-v52';
+const ASSETS = ['./', 'index.html', 'style.css?v=52', 'app.js?v=52', 'icon.svg', 'icon-192.png', 'icon-512.png', 'manifest.json'];
 
 self.addEventListener('install', e => {
   // Individually, so one bad url can't fail the whole precache (addAll is all-or-nothing)
