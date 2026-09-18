@@ -2888,6 +2888,11 @@ function updateSyncStatus(msg) {
 // ═══════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════
+const _bootAt = Date.now();
+let _userTouched = false;
+['pointerdown', 'keydown'].forEach(ev =>
+  addEventListener(ev, () => { _userTouched = true; }, { once: true, passive: true }));
+
 state = loadState();
 document.body.classList.add('glow-home');
 restoreCollapsed();
@@ -2905,12 +2910,19 @@ render();
     setTimeout(() => splash.remove(), 700);
   };
   splash.addEventListener('click', dismiss);
-  setTimeout(dismiss, 2600); // mark springs in → wordmark rises → rule sweeps → tagline → fade
+  // The CSS choreography now completes at ~0.95s (it was 1.55s, held until 2600ms).
+  // Dismiss the moment it lands — the app itself is painted by ~100ms.
+  setTimeout(dismiss, 1000);
 })();
 
 // Re-render when tab becomes visible; also pull household changes made on the other phone
+let _lastFgSync = 0;
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) { render(); syncNow(); }
+  if (document.hidden) return;
+  render();
+  // Throttled: a foreground sync is a full network round trip + merge + re-render.
+  // Unthrottled it ran on every app switch and made resume feel sluggish.
+  if (Date.now() - _lastFgSync > 60000) { _lastFgSync = Date.now(); syncNow(); }
 });
 
 // Utility class
@@ -2928,6 +2940,18 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', e => {
     if (e.data?.type === 'MARK_PAID' && Array.isArray(e.data.billIds)) {
       markPaidFromNotification(e.data.billIds, e.data.month, e.data.year);
+    }
+    // New build fetched in the background. Swap to it only while the splash is
+    // still up and untouched, and at most once per session — no reload loops,
+    // never yanked out from under a tap.
+    if (e.data?.type === 'SHELL_UPDATED') {
+      const fresh = Date.now() - _bootAt < 4000;
+      let once = false;
+      try {
+        once = !sessionStorage.getItem('sl_shell_reloaded');
+        if (fresh && once && !_userTouched) sessionStorage.setItem('sl_shell_reloaded', '1');
+      } catch (err) { once = false; }
+      if (fresh && once && !_userTouched) location.reload();
     }
   });
 }
